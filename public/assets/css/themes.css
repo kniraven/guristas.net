@@ -1,0 +1,4124 @@
+/*
+|--------------------------------------------------------------------------
+| GURISTAS.NET — VISUAL THEMES
+|--------------------------------------------------------------------------
+|
+| This file controls:
+| - Theme colors
+| - Background imagery
+| - Transparency
+| - Borders and corner treatments
+| - Shadows and glow
+| - Rabbit logo appearance
+| - Glitches and theme-specific effects
+|
+| This file does not control page layout or content order.
+|
+*/
+
+/* =========================================================
+   DEFAULT THEME — CRYPTIC ECDYSIS
+   ========================================================= */
+
+:root,
+html[data-theme="cryptic"] {
+    color-scheme: dark;
+
+    --shell: 1180px;
+    --header-height: 78px;
+
+    --void: #010101;
+    --background: #030303;
+    --background-raised: #080808;
+
+    --panel: rgba(5, 5, 5, 0.92);
+    --panel-solid: #080808;
+    --panel-soft: #101010;
+
+    --text: #f7f2eb;
+    --muted: #aca49b;
+    --faint: #67615c;
+
+    --accent: #ff6a00;
+    --accent-bright: #ff9b3d;
+    --accent-pale: #ffd0a0;
+    --accent-dark: #752100;
+
+    --secondary: #5bd7ff;
+    --secondary-bright: #a4edff;
+
+    --danger: #ff3d4f;
+    --success: #a0d66d;
+
+    --logo-color: #ff720c;
+    --logo-cut: #020202;
+
+    --line: rgba(255, 106, 0, 0.18);
+    --line-strong: rgba(255, 122, 20, 0.48);
+    --line-soft: rgba(255, 106, 0, 0.09);
+
+    --panel-radius: 0;
+    --button-radius: 0;
+
+    --panel-clip:
+        polygon(
+            18px 0,
+            100% 0,
+            100% calc(100% - 18px),
+            calc(100% - 18px) 100%,
+            0 100%,
+            0 18px
+        );
+
+    --button-clip:
+        polygon(
+            10px 0,
+            100% 0,
+            100% calc(100% - 10px),
+            calc(100% - 10px) 100%,
+            0 100%,
+            0 10px
+        );
+
+    --body-background:
+        linear-gradient(
+            rgba(0, 0, 0, 0.67),
+            rgba(0, 0, 0, 0.82)
+        ),
+        radial-gradient(
+            circle at 82% 5%,
+            rgba(255, 94, 0, 0.17),
+            transparent 30rem
+        ),
+        radial-gradient(
+            circle at 10% 42%,
+            rgba(91, 215, 255, 0.045),
+            transparent 34rem
+        ),
+        url("../images/themes/cryptic-ecdysis-tile.png"),
+        #020202;
+
+    --panel-background:
+        radial-gradient(
+            circle at 87% 94%,
+            rgba(255, 82, 0, 0.13),
+            transparent 24%
+        ),
+        radial-gradient(
+            circle at 14% 10%,
+            rgba(91, 215, 255, 0.035),
+            transparent 24%
+        ),
+        linear-gradient(
+            145deg,
+            rgba(10, 10, 10, 0.96),
+            rgba(2, 2, 2, 0.98)
+        );
+
+    --header-background:
+        rgba(2, 2, 2, 0.91);
+
+    --button-background:
+        linear-gradient(
+            180deg,
+            #ff8c2f,
+            #ff5d00
+        );
+
+    --secondary-button-background:
+        rgba(255, 106, 0, 0.055);
+
+    --nav-background:
+        rgba(4, 4, 4, 0.985);
+
+    --ship-background:
+        radial-gradient(
+            circle at 49% 54%,
+            rgba(255, 91, 0, 0.20),
+            transparent 34%
+        ),
+        radial-gradient(
+            circle at 82% 76%,
+            rgba(91, 215, 255, 0.075),
+            transparent 25%
+        ),
+        linear-gradient(
+            rgba(0, 0, 0, 0.64),
+            rgba(0, 0, 0, 0.85)
+        ),
+        url("../images/themes/cryptic-ecdysis-tile.png"),
+        #020202;
+
+    --ship-filter:
+        saturate(0.96)
+        contrast(1.12)
+        brightness(0.90)
+        drop-shadow(
+            0 36px 40px
+            rgba(0, 0, 0, 0.76)
+        );
+
+    --screen-noise-opacity: 0.034;
+    --scanline-opacity: 0.038;
+
+    --shadow:
+        0 26px 90px rgba(0, 0, 0, 0.58),
+        0 0 42px rgba(255, 74, 0, 0.075);
+
+    --focus-color: #ffb067;
+
+    --glitch-a: #5bd7ff;
+    --glitch-b: #ff3653;
+}
+
+/* =========================================================
+   COMMANDO GURI
+   ========================================================= */
+
+html[data-theme="commando"] {
+    color-scheme: dark;
+
+    --void: #0d0b06;
+    --background: #171209;
+    --background-raised: #211a0f;
+
+    --panel: rgba(28, 23, 14, 0.96);
+    --panel-solid: #1c170e;
+    --panel-soft: #302618;
+
+    --text: #fff4df;
+    --muted: #ead8b8;
+    --faint: #bca784;
+
+    --accent: #e28c3d;
+    --accent-bright: #ffc47e;
+    --accent-pale: #fbe0b4;
+    --accent-dark: #75421e;
+
+    --secondary: #a7aa70;
+    --secondary-bright: #e0dfa8;
+
+    --danger: #cf5c43;
+    --success: #bdc986;
+
+    --logo-color: #f4d9aa;
+    --logo-cut: #151006;
+
+    --line: rgba(238, 202, 143, 0.28);
+    --line-strong: rgba(244, 207, 145, 0.62);
+    --line-soft: rgba(238, 202, 143, 0.12);
+
+    --panel-radius: 3px;
+    --button-radius: 2px;
+
+    --panel-clip:
+        polygon(
+            9px 0,
+            100% 0,
+            100% calc(100% - 9px),
+            calc(100% - 9px) 100%,
+            0 100%,
+            0 9px
+        );
+
+    --button-clip:
+        polygon(
+            5px 0,
+            100% 0,
+            100% calc(100% - 5px),
+            calc(100% - 5px) 100%,
+            0 100%,
+            0 5px
+        );
+
+    --body-background:
+        linear-gradient(
+            rgba(18, 14, 8, 0.48),
+            rgba(10, 8, 5, 0.64)
+        ),
+        radial-gradient(
+            circle at 77% 5%,
+            rgba(226, 140, 61, 0.17),
+            transparent 34rem
+        ),
+        radial-gradient(
+            circle at 8% 44%,
+            rgba(168, 171, 111, 0.065),
+            transparent 35rem
+        ),
+        url("../images/themes/commando-guri-tile.png"),
+        #211a10;
+
+    --panel-background:
+        linear-gradient(
+            rgba(30, 24, 14, 0.90),
+            rgba(14, 12, 7, 0.97)
+        ),
+        radial-gradient(
+            circle at 88% 8%,
+            rgba(226, 140, 61, 0.09),
+            transparent 32%
+        ),
+        url("../images/themes/commando-guri-tile.png"),
+        #1c170e;
+
+    --header-background:
+        rgba(15, 12, 7, 0.94);
+
+    --button-background:
+        linear-gradient(
+            180deg,
+            #e9a55d,
+            #b96d31
+        );
+
+    --secondary-button-background:
+        rgba(230, 184, 112, 0.09);
+
+    --nav-background:
+        rgba(18, 15, 9, 0.99);
+
+    --ship-background:
+        linear-gradient(
+            rgba(26, 21, 12, 0.74),
+            rgba(10, 9, 5, 0.88)
+        ),
+        radial-gradient(
+            circle at 48% 52%,
+            rgba(232, 177, 102, 0.15),
+            transparent 37%
+        ),
+        url("../images/themes/commando-guri-tile.png"),
+        #151108;
+
+    --ship-filter:
+        sepia(0.14)
+        saturate(0.84)
+        contrast(1.12)
+        brightness(0.94)
+        drop-shadow(
+            0 32px 38px
+            rgba(0, 0, 0, 0.72)
+        );
+
+    --screen-noise-opacity: 0.018;
+    --scanline-opacity: 0.021;
+
+    --shadow:
+        0 24px 72px rgba(0, 0, 0, 0.58),
+        0 0 0 1px rgba(239, 203, 143, 0.045),
+        0 0 34px rgba(187, 122, 57, 0.06);
+
+    --focus-color: #f7d4a0;
+
+    --glitch-a: #d3d99b;
+    --glitch-b: #e77843;
+}
+
+/* =========================================================
+   COZEN
+   ========================================================= */
+
+html[data-theme="cozen"] {
+    color-scheme: dark;
+
+    --void: #08070a;
+    --background: #0d0a0f;
+    --background-raised: #17111a;
+
+    --panel: rgba(26, 18, 28, 0.93);
+    --panel-solid: #1a131d;
+    --panel-soft: #27192c;
+
+    --text: #fff1dc;
+    --muted: #c0a7af;
+    --faint: #765f6b;
+
+    --accent: #ff7922;
+    --accent-bright: #ffb469;
+    --accent-pale: #f8d5ad;
+    --accent-dark: #8e3304;
+
+    --secondary: #a16dd7;
+    --secondary-bright: #d7b5ff;
+
+    --danger: #ff4f6c;
+    --success: #a9d177;
+
+    --logo-color: #f7e6d0;
+    --logo-cut: #110b14;
+
+    --line: rgba(255, 133, 55, 0.19);
+    --line-strong: rgba(177, 112, 212, 0.43);
+    --line-soft: rgba(255, 180, 95, 0.09);
+
+    --panel-radius: 2px;
+    --button-radius: 1px;
+
+    --panel-clip:
+        polygon(
+            18px 0,
+            100% 0,
+            100% calc(100% - 8px),
+            calc(100% - 8px) 100%,
+            0 100%,
+            0 18px
+        );
+
+    --button-clip:
+        polygon(
+            6px 0,
+            100% 0,
+            100% calc(100% - 10px),
+            calc(100% - 10px) 100%,
+            0 100%,
+            0 6px
+        );
+
+    --body-background:
+        radial-gradient(
+            circle at 83% 0%,
+            rgba(255, 112, 32, 0.13),
+            transparent 34rem
+        ),
+        radial-gradient(
+            circle at 12% 28%,
+            rgba(139, 83, 191, 0.13),
+            transparent 32rem
+        ),
+        repeating-linear-gradient(
+            135deg,
+            rgba(255, 143, 52, 0.025) 0 18px,
+            transparent 18px 36px
+        ),
+        #0d0a0f;
+
+    --panel-background:
+        radial-gradient(
+            circle at 87% 92%,
+            rgba(255, 103, 20, 0.10),
+            transparent 24%
+        ),
+        radial-gradient(
+            circle at 12% 10%,
+            rgba(161, 109, 215, 0.08),
+            transparent 27%
+        ),
+        linear-gradient(
+            145deg,
+            rgba(46, 27, 30, 0.95),
+            rgba(27, 17, 30, 0.97) 55%,
+            rgba(11, 8, 14, 0.99)
+        );
+
+    --header-background:
+        rgba(13, 9, 15, 0.90);
+
+    --button-background:
+        linear-gradient(
+            135deg,
+            #ff913c,
+            #df5e18 58%,
+            #9c59c5
+        );
+
+    --secondary-button-background:
+        linear-gradient(
+            135deg,
+            rgba(255, 123, 31, 0.07),
+            rgba(155, 87, 200, 0.08)
+        );
+
+    --nav-background:
+        rgba(15, 10, 18, 0.985);
+
+    --ship-background:
+        radial-gradient(
+            circle at 50% 55%,
+            rgba(255, 121, 32, 0.15),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 73% 24%,
+            rgba(163, 99, 213, 0.10),
+            transparent 26%
+        ),
+        linear-gradient(
+            145deg,
+            #28151b,
+            #0a070c 72%
+        );
+
+    --ship-filter:
+        sepia(0.07)
+        saturate(0.92)
+        contrast(1.08)
+        drop-shadow(
+            9px 0 22px
+            rgba(130, 70, 170, 0.10)
+        )
+        drop-shadow(
+            0 32px 36px
+            rgba(0, 0, 0, 0.68)
+        );
+
+    --screen-noise-opacity: 0.026;
+    --scanline-opacity: 0.030;
+
+    --shadow:
+        0 26px 82px rgba(0, 0, 0, 0.46),
+        0 0 32px rgba(255, 112, 30, 0.05),
+        0 0 48px rgba(143, 85, 190, 0.04);
+
+    --focus-color: #d5b2ff;
+
+    --glitch-a: #b979ed;
+    --glitch-b: #ff6b34;
+}
+
+/* =========================================================
+   GALNET
+   ========================================================= */
+
+html[data-theme="kniraven"] {
+    color-scheme: light;
+
+    --void: #ffffff;
+    --background: #ffffff;
+    --background-raised: #ffffff;
+
+    --panel: rgba(255, 255, 255, 0.86);
+    --panel-solid: #ffffff;
+    --panel-soft: #eee8f7;
+
+    --text: #24172e;
+    --muted: #675870;
+    --faint: #95889c;
+
+    --accent: #7932ad;
+    --accent-bright: #9a57c7;
+    --accent-pale: #e3c8f4;
+    --accent-dark: #471565;
+
+    --secondary: #8475e8;
+    --secondary-bright: #6555c8;
+
+    --danger: #b53c6f;
+    --success: #5c936a;
+
+    --logo-color: #ffffff;
+    --logo-cut: #7932ad;
+
+    --line: rgba(91, 49, 119, 0.17);
+    --line-strong: rgba(113, 64, 150, 0.39);
+    --line-soft: rgba(113, 64, 150, 0.08);
+
+    --panel-radius: 20px;
+    --button-radius: 999px;
+
+    --panel-clip: none;
+    --button-clip: none;
+
+    --body-background:
+        #ffffff;
+
+    --panel-background:
+        radial-gradient(
+            circle at 90% 15%,
+            rgba(145, 91, 204, 0.08),
+            transparent 30%
+        ),
+        linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.95),
+            rgba(241, 236, 248, 0.91)
+        );
+
+    --header-background:
+        rgba(250, 248, 253, 0.90);
+
+    --button-background:
+        linear-gradient(
+            135deg,
+            #6c2f9c,
+            #9162d8
+        );
+
+    --secondary-button-background:
+        rgba(115, 70, 153, 0.06);
+
+    --nav-background:
+        rgba(253, 251, 255, 0.985);
+
+    --ship-background:
+        radial-gradient(
+            circle at 50% 55%,
+            rgba(132, 83, 192, 0.12),
+            transparent 36%
+        ),
+        radial-gradient(
+            circle at 78% 20%,
+            rgba(105, 154, 255, 0.12),
+            transparent 25%
+        ),
+        linear-gradient(
+            145deg,
+            #ffffff,
+            #e9e2f1
+        );
+
+    --ship-filter:
+        saturate(0.84)
+        contrast(1.02)
+        brightness(1.08)
+        drop-shadow(
+            0 30px 28px
+            rgba(70, 40, 91, 0.22)
+        );
+
+    --screen-noise-opacity: 0;
+    --scanline-opacity: 0;
+
+    --shadow:
+        0 22px 65px rgba(64, 38, 80, 0.13),
+        0 0 38px rgba(132, 82, 190, 0.07);
+
+    --focus-color: #7433a6;
+
+    --glitch-a: #6c7ff0;
+    --glitch-b: #b747bc;
+}
+
+/* =========================================================
+   GLOBAL THEME APPLICATION
+   ========================================================= */
+
+body {
+    background: var(--body-background);
+    background-attachment: fixed;
+
+    color: var(--text);
+}
+
+html[data-theme="cryptic"] body {
+    background-size:
+        auto,
+        auto,
+        auto,
+        720px 720px,
+        auto;
+}
+
+html[data-theme="commando"] body {
+    background-size:
+        auto,
+        auto,
+        auto,
+        960px 960px,
+        auto;
+}
+
+html[data-theme="cozen"] body,
+html[data-theme="kniraven"] body {
+    background-size: auto;
+}
+
+a {
+    color: inherit;
+}
+
+button {
+    border: 0;
+}
+
+button:disabled,
+[disabled] {
+    opacity: 0.58;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--focus-color);
+    outline-offset: 4px;
+}
+
+.skip-link {
+    border: 1px solid var(--accent);
+
+    background: var(--void);
+    color: var(--text);
+}
+
+/* =========================================================
+   GLOBAL DISPLAY EFFECTS
+   ========================================================= */
+
+.ambient-grid {
+    opacity: 0.18;
+
+    background-image:
+        linear-gradient(
+            var(--line-soft) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            var(--line-soft) 1px,
+            transparent 1px
+        );
+
+    background-size: 42px 42px;
+
+    mask-image:
+        linear-gradient(
+            to bottom,
+            black,
+            transparent 82%
+        );
+
+    -webkit-mask-image:
+        linear-gradient(
+            to bottom,
+            black,
+            transparent 82%
+        );
+}
+
+html[data-theme="commando"] .ambient-grid {
+    opacity: 0.10;
+
+    background-size: 56px 56px;
+}
+
+.screen-noise {
+    opacity: var(--screen-noise-opacity);
+
+    background-image:
+        radial-gradient(
+            circle,
+            currentColor 0 1px,
+            transparent 1px
+        );
+
+    background-size: 5px 5px;
+
+    animation:
+        noise-drift
+        320ms
+        steps(2, end)
+        infinite;
+}
+
+.scanlines {
+    opacity: var(--scanline-opacity);
+
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            transparent 0,
+            transparent 3px,
+            currentColor 4px
+        );
+}
+
+/* =========================================================
+   BOOT SCREEN
+   ========================================================= */
+
+.boot-screen {
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(255, 106, 0, 0.15),
+            transparent 34rem
+        ),
+        var(--void);
+}
+
+html[data-theme="cryptic"] .boot-screen {
+    background:
+        linear-gradient(
+            rgba(0, 0, 0, 0.76),
+            rgba(0, 0, 0, 0.88)
+        ),
+        radial-gradient(
+            circle at center,
+            rgba(255, 89, 0, 0.20),
+            transparent 31rem
+        ),
+        url("../images/themes/cryptic-ecdysis-tile.png"),
+        #010101;
+
+    background-size:
+        auto,
+        auto,
+        720px 720px,
+        auto;
+}
+
+html[data-theme="commando"] .boot-screen {
+    background:
+        linear-gradient(
+            rgba(12, 10, 6, 0.78),
+            rgba(7, 6, 3, 0.90)
+        ),
+        radial-gradient(
+            circle at center,
+            rgba(226, 140, 61, 0.17),
+            transparent 34rem
+        ),
+        url("../images/themes/commando-guri-tile.png"),
+        var(--void);
+
+    background-size:
+        auto,
+        auto,
+        960px 960px,
+        auto;
+}
+
+html[data-theme="cozen"] .boot-screen {
+    background:
+        radial-gradient(
+            circle at 38% 50%,
+            rgba(255, 121, 34, 0.13),
+            transparent 32rem
+        ),
+        radial-gradient(
+            circle at 65% 50%,
+            rgba(161, 109, 215, 0.11),
+            transparent 30rem
+        ),
+        var(--void);
+}
+
+html[data-theme="kniraven"] .boot-screen {
+    background:
+        radial-gradient(
+            circle at 45% 50%,
+            rgba(121, 50, 173, 0.16),
+            transparent 29rem
+        ),
+        radial-gradient(
+            circle at 62% 48%,
+            rgba(132, 117, 232, 0.13),
+            transparent 26rem
+        ),
+        var(--void);
+}
+
+.boot-screen::before {
+    content: "";
+
+    position: absolute;
+    inset: -30%;
+
+    background:
+        repeating-linear-gradient(
+            90deg,
+            transparent 0 44px,
+            var(--line-soft) 44px 45px
+        );
+
+    transform: skewX(-12deg);
+
+    animation:
+        boot-grid-drift
+        7s
+        linear
+        infinite;
+}
+
+.boot-screen::after {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    top: -24%;
+
+    height: 18%;
+
+    background:
+        linear-gradient(
+            to bottom,
+            transparent,
+            var(--line-strong),
+            rgba(91, 215, 255, 0.06),
+            transparent
+        );
+
+    opacity: 0.70;
+
+    animation:
+        boot-scanner
+        2.25s
+        linear
+        infinite;
+}
+
+.boot-terminal::before,
+.boot-terminal::after {
+    content: "";
+
+    position: absolute;
+
+    width: 52px;
+    height: 52px;
+
+    border-color: var(--accent);
+    border-style: solid;
+
+    opacity: 0.45;
+}
+
+.boot-terminal::before {
+    top: -18px;
+    left: -4px;
+
+    border-width: 1px 0 0 1px;
+}
+
+.boot-terminal::after {
+    right: -4px;
+    bottom: -18px;
+
+    border-width: 0 1px 1px 0;
+}
+
+.boot-mark {
+    color: var(--logo-color);
+
+    filter:
+        drop-shadow(
+            0 0 18px
+            var(--line-strong)
+        );
+
+    animation:
+        boot-mark-pulse
+        1.45s
+        ease-in-out
+        infinite;
+}
+
+.boot-mark svg,
+.brand-mark svg {
+    fill: currentColor;
+}
+
+.boot-mark-cut,
+.brand-mark-cut {
+    fill: var(--logo-cut);
+}
+
+.boot-kicker,
+.eyebrow,
+.system-label,
+.card-number {
+    color: var(--accent);
+}
+
+.boot-sequence {
+    color: var(--muted);
+}
+
+.boot-sequence span::before {
+    content: ">";
+
+    color: var(--faint);
+}
+
+.boot-sequence span.is-current {
+    color: var(--accent-bright);
+}
+
+.boot-sequence span.is-current::before {
+    content: "›";
+
+    color: var(--accent);
+
+    animation:
+        boot-cursor-blink
+        420ms
+        steps(1, end)
+        infinite;
+}
+
+.boot-sequence span.is-complete::before {
+    content: "✓";
+
+    color: var(--success);
+}
+
+.boot-sequence span:last-child.is-complete {
+    color: var(--accent-bright);
+
+    text-shadow:
+        0 0 15px
+        var(--line-strong);
+}
+
+.boot-screen.is-unlocking {
+    animation:
+        boot-unlock-shake
+        560ms
+        steps(2, end);
+}
+
+.boot-screen.is-unlocking .boot-terminal {
+    animation:
+        boot-terminal-unlock
+        560ms
+        steps(2, end);
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.site-header {
+    border-bottom:
+        1px solid
+        var(--line);
+
+    background:
+        var(--header-background);
+
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+html[data-theme="commando"] .site-header {
+    border-bottom-color:
+        rgba(245, 207, 145, 0.42);
+
+    box-shadow:
+        0 9px 26px
+        rgba(0, 0, 0, 0.34);
+}
+
+.brand {
+    color: var(--text);
+}
+
+.brand-mark {
+    border:
+        1px solid
+        var(--line-strong);
+
+    border-radius:
+        var(--panel-radius);
+
+    background:
+        radial-gradient(
+            circle at center,
+            var(--line-strong),
+            transparent 72%
+        ),
+        var(--panel-solid);
+
+    color: var(--logo-color);
+
+    clip-path: var(--panel-clip);
+}
+
+.brand-copy span {
+    color: var(--muted);
+}
+
+.menu-button,
+.theme-option {
+    border:
+        1px solid
+        var(--line);
+
+    border-radius:
+        var(--button-radius);
+
+    background:
+        var(--secondary-button-background);
+
+    color: var(--text);
+}
+
+.menu-lines i {
+    background: var(--accent);
+}
+
+/* =========================================================
+   COMPACT THEME BUTTONS
+   ========================================================= */
+
+.theme-option {
+    border-radius: 50%;
+
+    transition:
+        border-color 150ms ease,
+        background 150ms ease,
+        box-shadow 150ms ease,
+        transform 150ms ease;
+}
+
+.theme-option:hover {
+    transform: translateY(-2px) scale(1.06);
+}
+
+.theme-option[aria-pressed="true"] {
+    border-color: var(--accent);
+
+    background: var(--panel-soft);
+
+    box-shadow:
+        0 0 0 2px var(--void),
+        0 0 0 3px var(--accent),
+        0 0 16px var(--line-strong);
+}
+
+.theme-swatch {
+    box-shadow:
+        inset 0 0 0 1px
+        rgba(255, 255, 255, 0.16);
+}
+
+.theme-swatch[data-theme-preview="commando"] {
+    border: 1px solid #e2c99d;
+
+    background:
+        url("../images/themes/commando-guri-tile.png"),
+        #8f764c;
+
+    background-size: 56px 56px;
+}
+
+.theme-swatch[data-theme-preview="cryptic"] {
+    border: 1px solid #ff8b37;
+
+    background:
+        url("../images/themes/cryptic-ecdysis-tile.png"),
+        #020202;
+
+    background-size: 56px 56px;
+}
+
+.theme-swatch[data-theme-preview="cozen"] {
+    border: 1px solid #d89deb;
+
+    background:
+        linear-gradient(
+            135deg,
+            #0e0911 0 38%,
+            #ff7620 38% 68%,
+            #9455be 68%
+        );
+}
+
+.theme-swatch[data-theme-preview="kniraven"] {
+    border: 1px solid #7841a1;
+
+    background:
+        url("../images/themes/Galnet.png")
+        center / cover
+        no-repeat,
+        #ffffff;
+}
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+.site-nav {
+    border:
+        1px solid
+        var(--line-strong);
+
+    background:
+        var(--nav-background);
+
+    box-shadow:
+        var(--shadow);
+}
+
+.site-nav a {
+    color: var(--muted);
+}
+
+.site-nav a:hover {
+    background:
+        var(--secondary-button-background);
+
+    color: var(--text);
+}
+
+.site-nav .nav-cta {
+    background:
+        var(--button-background);
+
+    color: #ffffff;
+}
+
+/* =========================================================
+   SHARED TEXT
+   ========================================================= */
+
+.section-heading > p,
+.hero-lede,
+.feature-copy > p:not(.eyebrow),
+.industry-copy > p,
+.lore-brief p,
+.timeline p,
+.media-card p,
+.join-content > p:not(.eyebrow),
+.cozen-card p,
+.footer-grid p {
+    color: var(--muted);
+}
+
+/* Commando readability improvements */
+
+html[data-theme="commando"]
+:is(
+    .hero-lede,
+    .section-heading > p,
+    .feature-copy > p:not(.eyebrow),
+    .industry-copy > p,
+    .lore-brief p,
+    .timeline p,
+    .media-card p,
+    .join-content > p:not(.eyebrow),
+    .cozen-card p,
+    .footer-grid p,
+    .operation-card p,
+    .war-objectives p,
+    .initiative-list p,
+    .status-item small
+) {
+    color: #ead8b8;
+
+    text-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.96),
+        0 0 7px rgba(0, 0, 0, 0.38);
+}
+
+html[data-theme="commando"]
+:is(
+    .hero h1,
+    .section-heading h2,
+    .feature-copy h2,
+    .join-content h2,
+    .operation-card h3,
+    .industry-copy h3,
+    .lore-brief h3,
+    .media-card h3
+) {
+    text-shadow:
+        0 2px 1px rgba(0, 0, 0, 0.98),
+        0 0 22px rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme="commando"]
+:is(
+    .operation-subtitle,
+    .operation-card a,
+    .console-header strong,
+    .blueprint-code,
+    .selected-operation strong,
+    .button-status
+) {
+    text-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.95),
+        0 0 9px rgba(226, 140, 61, 0.18);
+}
+
+/* =========================================================
+   PANELS
+   ========================================================= */
+
+.cut-panel,
+.join-section {
+    border:
+        1px solid
+        var(--line);
+
+    border-radius:
+        var(--panel-radius);
+
+    background:
+        var(--panel-background);
+
+    box-shadow:
+        var(--shadow);
+
+    clip-path:
+        var(--panel-clip);
+}
+
+.cut-panel::before {
+    content: "";
+
+    position: absolute;
+
+    top: 18px;
+    left: 0;
+
+    width: 34px;
+    height: 1px;
+
+    background:
+        var(--accent);
+
+    opacity: 0.65;
+}
+
+.cut-panel::after {
+    content: "";
+
+    position: absolute;
+
+    right: -10%;
+    bottom: -15%;
+
+    width: 180px;
+    height: 120px;
+
+    background:
+        radial-gradient(
+            circle at center,
+            var(--line-soft),
+            transparent 72%
+        );
+
+    pointer-events: none;
+}
+
+/* =========================================================
+   CRYPTIC ECDYSIS DAMAGE LAYERS
+   ========================================================= */
+
+html[data-theme="cryptic"] .cut-panel {
+    background:
+        radial-gradient(
+            circle at 89% 82%,
+            #000000 0 6px,
+            rgba(255, 74, 0, 0.94) 7px,
+            rgba(255, 107, 0, 0.32) 13px,
+            transparent 30px
+        ),
+        radial-gradient(
+            circle at 13% 72%,
+            #000000 0 4px,
+            rgba(255, 80, 0, 0.88) 5px,
+            rgba(255, 106, 0, 0.25) 11px,
+            transparent 25px
+        ),
+        radial-gradient(
+            circle at 77% 16%,
+            #000000 0 3px,
+            rgba(255, 91, 0, 0.78) 4px,
+            transparent 20px
+        ),
+        var(--panel-background);
+}
+
+html[data-theme="cryptic"] .cut-panel::before {
+    width: 58px;
+    height: 2px;
+
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            #ff730e 18%,
+            #ffb05d 48%,
+            #ff5500 76%,
+            transparent
+        );
+
+    box-shadow:
+        0 0 8px rgba(255, 87, 0, 0.70),
+        0 0 18px rgba(255, 69, 0, 0.38);
+
+    opacity: 0.92;
+}
+
+html[data-theme="cryptic"] .cut-panel::after {
+    right: -22px;
+    bottom: -24px;
+
+    width: 150px;
+    height: 150px;
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle at center,
+            #000000 0 13%,
+            #130500 14% 18%,
+            rgba(255, 59, 0, 0.88) 19% 22%,
+            rgba(255, 110, 0, 0.28) 24% 35%,
+            transparent 58%
+        );
+
+    filter:
+        drop-shadow(
+            0 0 12px
+            rgba(255, 74, 0, 0.34)
+        );
+
+    opacity: 0.68;
+}
+
+/* =========================================================
+   COMMANDO GURI PANEL SEPARATION
+   ========================================================= */
+
+html[data-theme="commando"] .cut-panel,
+html[data-theme="commando"] .join-section {
+    border-color:
+        rgba(241, 202, 137, 0.46);
+
+    background:
+        linear-gradient(
+            rgba(29, 24, 14, 0.91),
+            rgba(12, 10, 6, 0.97)
+        ),
+        radial-gradient(
+            circle at 88% 8%,
+            rgba(229, 148, 69, 0.10),
+            transparent 34%
+        ),
+        url("../images/themes/commando-guri-tile.png"),
+        #18130b;
+
+    background-size:
+        auto,
+        auto,
+        540px 540px,
+        auto;
+
+    box-shadow:
+        inset 0 0 0 1px
+        rgba(255, 224, 173, 0.045),
+        inset 0 0 58px
+        rgba(0, 0, 0, 0.42),
+        0 18px 52px
+        rgba(0, 0, 0, 0.44),
+        0 0 0 1px
+        rgba(0, 0, 0, 0.32);
+}
+
+html[data-theme="commando"] .cut-panel::before {
+    width: 46px;
+    height: 2px;
+
+    background:
+        linear-gradient(
+            90deg,
+            #e28c3d,
+            #f9d49b,
+            transparent
+        );
+
+    box-shadow:
+        0 0 8px
+        rgba(226, 140, 61, 0.32);
+
+    opacity: 0.90;
+}
+
+html[data-theme="commando"] .cut-panel::after {
+    right: -34px;
+    bottom: -38px;
+
+    width: 170px;
+    height: 170px;
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(226, 140, 61, 0.10),
+            rgba(167, 171, 112, 0.045) 34%,
+            transparent 69%
+        );
+
+    opacity: 0.78;
+}
+
+/* Stronger separation for primary consoles and major cards */
+
+html[data-theme="commando"]
+:is(
+    .war-console,
+    .fulcrum-console,
+    .industry-preview,
+    .lore-brief,
+    .signal-scanner,
+    .media-card,
+    .cozen-card
+) {
+    border-color:
+        rgba(247, 211, 151, 0.55);
+
+    box-shadow:
+        inset 0 0 0 1px
+        rgba(255, 233, 190, 0.05),
+        inset 0 0 68px
+        rgba(0, 0, 0, 0.48),
+        0 21px 58px
+        rgba(0, 0, 0, 0.48),
+        0 0 18px
+        rgba(200, 132, 61, 0.04);
+}
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+.primary-button {
+    border-radius:
+        var(--button-radius);
+
+    background:
+        var(--button-background);
+
+    color: #ffffff;
+
+    box-shadow:
+        0 0 20px
+        var(--line-strong);
+
+    clip-path:
+        var(--button-clip);
+}
+
+.secondary-button {
+    border:
+        1px solid
+        var(--line-strong);
+
+    border-radius:
+        var(--button-radius);
+
+    background:
+        var(--secondary-button-background);
+
+    color:
+        var(--accent-bright);
+
+    clip-path:
+        var(--button-clip);
+}
+
+.text-button {
+    background: transparent;
+
+    color:
+        var(--accent-bright);
+}
+
+html[data-theme="commando"] .primary-button {
+    border:
+        1px solid
+        rgba(255, 213, 153, 0.34);
+
+    color: #fff7e9;
+
+    text-shadow:
+        0 1px 1px
+        rgba(0, 0, 0, 0.82);
+
+    box-shadow:
+        inset 0 1px 0
+        rgba(255, 235, 197, 0.20),
+        0 8px 22px
+        rgba(0, 0, 0, 0.31),
+        0 0 16px
+        rgba(226, 140, 61, 0.12);
+}
+
+html[data-theme="commando"] .secondary-button {
+    background:
+        linear-gradient(
+            rgba(64, 50, 29, 0.82),
+            rgba(32, 27, 17, 0.92)
+        );
+
+    color: #f5d4a3;
+
+    text-shadow:
+        0 1px 2px
+        rgba(0, 0, 0, 0.88);
+}
+
+html[data-theme="commando"]
+.primary-button:disabled {
+    opacity: 0.82;
+
+    border-color:
+        rgba(238, 199, 134, 0.38);
+
+    background:
+        linear-gradient(
+            rgba(133, 84, 43, 0.90),
+            rgba(91, 58, 31, 0.94)
+        );
+
+    color: #f3dfc0;
+}
+
+/* =========================================================
+   HERO
+   ========================================================= */
+
+.hero h1 span {
+    color: transparent;
+
+    -webkit-text-stroke:
+        1px
+        var(--accent-pale);
+
+    text-shadow:
+        0 0 32px
+        var(--line-soft);
+}
+
+html[data-theme="cryptic"] .hero h1 span {
+    -webkit-text-stroke:
+        1px
+        rgba(255, 141, 64, 0.80);
+
+    text-shadow:
+        0 0 12px rgba(255, 91, 0, 0.18),
+        0 0 34px rgba(255, 70, 0, 0.11);
+}
+
+html[data-theme="commando"] .hero h1 span {
+    -webkit-text-stroke:
+        1px
+        rgba(255, 220, 166, 0.82);
+
+    text-shadow:
+        0 2px 1px rgba(0, 0, 0, 0.98),
+        0 0 18px rgba(0, 0, 0, 0.62);
+}
+
+html[data-theme="kniraven"] .hero h1 span {
+    color: rgba(121, 50, 173, 0.04);
+
+    -webkit-text-stroke:
+        1px
+        rgba(121, 50, 173, 0.55);
+}
+
+.selected-operation {
+    border-left:
+        2px solid
+        var(--accent);
+}
+
+.selected-operation span {
+    color: var(--muted);
+}
+
+.selected-operation strong {
+    color: var(--accent-bright);
+}
+
+/* =========================================================
+   SHIP DISPLAY
+   ========================================================= */
+
+.ship-frame {
+    border:
+        1px solid
+        var(--line);
+
+    border-radius:
+        var(--panel-radius);
+
+    background:
+        var(--ship-background);
+
+    box-shadow:
+        var(--shadow);
+
+    clip-path:
+        var(--panel-clip);
+}
+
+html[data-theme="cryptic"] .ship-frame {
+    background-size:
+        auto,
+        auto,
+        auto,
+        560px 560px,
+        auto;
+}
+
+html[data-theme="commando"] .ship-frame {
+    border-color:
+        rgba(244, 207, 145, 0.49);
+
+    background-size:
+        auto,
+        auto,
+        650px 650px,
+        auto;
+
+    box-shadow:
+        inset 0 0 72px
+        rgba(0, 0, 0, 0.48),
+        0 22px 64px
+        rgba(0, 0, 0, 0.50);
+}
+
+.ship-frame::before {
+    content: "GURISTAS HULL RENDER";
+
+    position: absolute;
+
+    top: 20px;
+    left: 20px;
+
+    color: var(--faint);
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.62rem;
+    letter-spacing: 0.10em;
+}
+
+.ship-frame::after {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    z-index: 5;
+
+    opacity: 0;
+
+    background:
+        linear-gradient(
+            to bottom,
+            transparent 0 27%,
+            rgba(91, 215, 255, 0.08) 27% 29%,
+            transparent 29% 62%,
+            rgba(255, 54, 83, 0.07) 62% 63.5%,
+            transparent 63.5%
+        );
+
+    pointer-events: none;
+
+    mix-blend-mode: screen;
+}
+
+html[data-theme="cryptic"] .ship-frame {
+    box-shadow:
+        inset 0 0 90px rgba(0, 0, 0, 0.88),
+        inset 0 0 18px rgba(255, 91, 0, 0.10),
+        0 26px 90px rgba(0, 0, 0, 0.62),
+        0 0 34px rgba(255, 67, 0, 0.10);
+}
+
+html[data-theme="cryptic"] .ship-frame::after {
+    opacity: 0.36;
+
+    background:
+        radial-gradient(
+            circle at 16% 24%,
+            #000000 0 7px,
+            rgba(255, 69, 0, 0.92) 8px,
+            rgba(255, 112, 0, 0.22) 14px,
+            transparent 30px
+        ),
+        radial-gradient(
+            circle at 84% 38%,
+            #000000 0 11px,
+            rgba(255, 71, 0, 0.88) 12px,
+            rgba(255, 104, 0, 0.22) 18px,
+            transparent 38px
+        ),
+        radial-gradient(
+            circle at 68% 84%,
+            #000000 0 5px,
+            rgba(255, 88, 0, 0.84) 6px,
+            transparent 25px
+        ),
+        linear-gradient(
+            to bottom,
+            transparent 0 27%,
+            rgba(91, 215, 255, 0.08) 27% 29%,
+            transparent 29% 62%,
+            rgba(255, 54, 83, 0.07) 62% 63.5%,
+            transparent 63.5%
+        );
+}
+
+.ship-frame img {
+    filter:
+        var(--ship-filter);
+
+    animation:
+        ship-float
+        6s
+        ease-in-out
+        infinite;
+}
+
+.ship-frame.is-missing::after {
+    content: "SHIP RENDER PENDING";
+
+    display: grid;
+    place-items: center;
+
+    opacity: 1;
+
+    color: var(--accent);
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+}
+
+.ship-orbit {
+    border:
+        1px solid
+        var(--line-strong);
+
+    animation:
+        orbit-spin
+        28s
+        linear
+        infinite;
+}
+
+.orbit-two {
+    animation-direction: reverse;
+    animation-duration: 17s;
+}
+
+.ship-orbit::before {
+    background:
+        var(--accent);
+
+    box-shadow:
+        0 0 16px
+        var(--accent);
+}
+
+.target-lock span {
+    border-color:
+        var(--accent-bright);
+
+    border-style: solid;
+
+    opacity: 0.70;
+}
+
+.target-lock span:nth-child(1) {
+    border-width: 1px 0 0 1px;
+}
+
+.target-lock span:nth-child(2) {
+    border-width: 1px 1px 0 0;
+}
+
+.target-lock span:nth-child(3) {
+    border-width: 0 1px 1px 0;
+}
+
+.target-lock span:nth-child(4) {
+    border-width: 0 0 1px 1px;
+}
+
+.ship-readout {
+    color: var(--muted);
+}
+
+/* =========================================================
+   STATUS AND DATA GRIDS
+   ========================================================= */
+
+.command-status,
+.metric-row,
+.war-objectives,
+.initiative-list,
+.timeline,
+.track-list {
+    border:
+        1px solid
+        var(--line);
+
+    background:
+        var(--line);
+}
+
+.status-item,
+.metric-row article,
+.war-objectives article,
+.initiative-list > div,
+.timeline li,
+.track-list span {
+    background:
+        var(--panel-solid);
+}
+
+html[data-theme="cryptic"] .status-item,
+html[data-theme="cryptic"] .metric-row article,
+html[data-theme="cryptic"] .war-objectives article,
+html[data-theme="cryptic"] .initiative-list > div,
+html[data-theme="cryptic"] .timeline li,
+html[data-theme="cryptic"] .track-list span {
+    background:
+        linear-gradient(
+            rgba(7, 7, 7, 0.94),
+            rgba(2, 2, 2, 0.98)
+        ),
+        url("../images/themes/cryptic-ecdysis-tile.png"),
+        #050505;
+
+    background-size:
+        auto,
+        480px 480px,
+        auto;
+}
+
+html[data-theme="commando"] .command-status,
+html[data-theme="commando"] .metric-row,
+html[data-theme="commando"] .war-objectives,
+html[data-theme="commando"] .initiative-list,
+html[data-theme="commando"] .timeline,
+html[data-theme="commando"] .track-list {
+    border-color:
+        rgba(241, 204, 141, 0.47);
+
+    background:
+        rgba(241, 204, 141, 0.35);
+
+    box-shadow:
+        0 13px 34px
+        rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="commando"] .status-item,
+html[data-theme="commando"] .metric-row article,
+html[data-theme="commando"] .war-objectives article,
+html[data-theme="commando"] .initiative-list > div,
+html[data-theme="commando"] .timeline li,
+html[data-theme="commando"] .track-list span {
+    background:
+        linear-gradient(
+            rgba(28, 23, 14, 0.96),
+            rgba(13, 11, 7, 0.985)
+        ),
+        url("../images/themes/commando-guri-tile.png"),
+        #18130b;
+
+    background-size:
+        auto,
+        420px 420px,
+        auto;
+
+    box-shadow:
+        inset 0 0 32px
+        rgba(0, 0, 0, 0.34);
+}
+
+.status-label,
+.status-item small,
+.metric-row span,
+.war-meter-row span,
+.initiative-progress > span,
+.frequency-display span,
+.enemy-classification span,
+.footer-status span {
+    color: var(--muted);
+}
+
+.status-active strong,
+.metric-row strong {
+    color: var(--accent-bright);
+}
+
+.status-warning strong,
+.card-tag,
+.enemy-classification strong {
+    color: var(--secondary-bright);
+}
+
+.card-tag {
+    border:
+        1px solid
+        var(--line-strong);
+}
+
+/* =========================================================
+   OPERATION SELECTOR
+   ========================================================= */
+
+.operation-chip {
+    border:
+        1px solid
+        var(--line);
+
+    border-radius:
+        var(--button-radius);
+
+    background:
+        var(--secondary-button-background);
+
+    color:
+        var(--muted);
+}
+
+.operation-chip span {
+    color:
+        var(--accent);
+}
+
+.operation-chip[aria-pressed="true"] {
+    border-color:
+        var(--accent);
+
+    background:
+        var(--panel-soft);
+
+    color:
+        var(--text);
+
+    box-shadow:
+        inset 0 -2px 0
+        var(--accent);
+}
+
+.operation-card.is-selected {
+    border-color:
+        var(--accent);
+}
+
+html[data-theme="commando"] .operation-chip {
+    background:
+        linear-gradient(
+            rgba(47, 38, 23, 0.91),
+            rgba(23, 19, 12, 0.96)
+        );
+
+    color: #d9c6a6;
+
+    text-shadow:
+        0 1px 2px
+        rgba(0, 0, 0, 0.92);
+}
+
+html[data-theme="commando"]
+.operation-chip[aria-pressed="true"] {
+    border-color: #e28c3d;
+
+    background:
+        linear-gradient(
+            rgba(105, 70, 35, 0.95),
+            rgba(53, 38, 23, 0.98)
+        );
+
+    color: #fff3dc;
+
+    box-shadow:
+        inset 0 -3px 0
+        #e28c3d,
+        0 0 15px
+        rgba(226, 140, 61, 0.16);
+}
+
+html[data-theme="commando"]
+.operation-card.is-selected {
+    border-color:
+        rgba(255, 166, 77, 0.92);
+
+    box-shadow:
+        inset 0 0 0 1px
+        rgba(255, 204, 139, 0.08),
+        inset 0 0 58px
+        rgba(0, 0, 0, 0.42),
+        0 20px 56px
+        rgba(0, 0, 0, 0.48),
+        0 0 18px
+        rgba(226, 140, 61, 0.11);
+}
+
+.operation-subtitle,
+.operation-card a,
+.console-header strong,
+.war-objectives article > span,
+.initiative-list > div > span,
+.blueprint-code,
+.signal-message,
+.cozen-card > strong,
+.footer-grid > div:first-child strong {
+    color:
+        var(--accent-bright);
+}
+
+.operation-card p,
+.war-objectives p,
+.initiative-list p {
+    color:
+        var(--muted);
+}
+
+/* =========================================================
+   CONSOLES
+   ========================================================= */
+
+.console-header {
+    border-bottom:
+        1px solid
+        var(--line);
+
+    color:
+        var(--muted);
+}
+
+.enemy-classification,
+.legal {
+    border-top:
+        1px solid
+        var(--line);
+}
+
+.meter-track {
+    border:
+        1px solid
+        var(--line);
+
+    background:
+        var(--void);
+}
+
+.meter-track span {
+    background:
+        repeating-linear-gradient(
+            135deg,
+            var(--accent) 0 8px,
+            var(--accent-dark) 8px 16px
+        );
+
+    box-shadow:
+        0 0 16px
+        var(--line-strong);
+}
+
+html[data-theme="commando"] .console-header {
+    border-bottom-color:
+        rgba(241, 204, 141, 0.40);
+
+    color: #d8c4a4;
+
+    text-shadow:
+        0 1px 2px
+        rgba(0, 0, 0, 0.94);
+}
+
+html[data-theme="commando"] .meter-track {
+    border-color:
+        rgba(245, 207, 145, 0.40);
+
+    background:
+        rgba(4, 4, 2, 0.88);
+
+    box-shadow:
+        inset 0 1px 5px
+        rgba(0, 0, 0, 0.88);
+}
+
+/* =========================================================
+   INDUSTRY
+   ========================================================= */
+
+.blueprint-display {
+    background:
+        linear-gradient(
+            var(--line-soft) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            var(--line-soft) 1px,
+            transparent 1px
+        ),
+        var(--panel-solid);
+
+    background-size:
+        24px 24px;
+}
+
+html[data-theme="cryptic"] .blueprint-display {
+    background:
+        linear-gradient(
+            rgba(2, 2, 2, 0.75),
+            rgba(0, 0, 0, 0.91)
+        ),
+        linear-gradient(
+            var(--line-soft) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            var(--line-soft) 1px,
+            transparent 1px
+        ),
+        url("../images/themes/cryptic-ecdysis-tile.png"),
+        #020202;
+
+    background-size:
+        auto,
+        24px 24px,
+        24px 24px,
+        520px 520px,
+        auto;
+}
+
+html[data-theme="commando"] .blueprint-display {
+    background:
+        linear-gradient(
+            rgba(18, 15, 9, 0.84),
+            rgba(7, 6, 4, 0.95)
+        ),
+        linear-gradient(
+            rgba(238, 202, 143, 0.08) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            rgba(238, 202, 143, 0.08) 1px,
+            transparent 1px
+        ),
+        url("../images/themes/commando-guri-tile.png"),
+        #151108;
+
+    background-size:
+        auto,
+        24px 24px,
+        24px 24px,
+        620px 620px,
+        auto;
+
+    box-shadow:
+        inset 0 0 65px
+        rgba(0, 0, 0, 0.52);
+}
+
+.blueprint-display::after {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    background:
+        linear-gradient(
+            to bottom,
+            transparent,
+            var(--line-strong),
+            transparent
+        );
+
+    opacity: 0.25;
+
+    transform:
+        translateY(-110%);
+
+    animation:
+        blueprint-scan
+        4.5s
+        linear
+        infinite;
+}
+
+.blueprint-shape,
+.blueprint-shape span {
+    border:
+        1px solid
+        var(--line-strong);
+}
+
+.blueprint-shape {
+    transform:
+        skewX(-12deg)
+        rotate(-7deg);
+
+    background:
+        linear-gradient(
+            135deg,
+            transparent 0 20%,
+            var(--line-soft) 20% 22%,
+            transparent 22% 48%,
+            var(--line-soft) 48% 50%,
+            transparent 50%
+        );
+
+    box-shadow:
+        inset 0 0 40px
+        var(--line-soft),
+        0 0 30px
+        var(--line-soft);
+}
+
+/* =========================================================
+   SIGNAL SCANNER
+   ========================================================= */
+
+.frequency-display output {
+    color:
+        var(--accent-bright);
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+    background:
+        linear-gradient(
+            90deg,
+            var(--accent-dark),
+            var(--accent),
+            var(--secondary)
+        );
+}
+
+input[type="range"]::-moz-range-track {
+    background:
+        linear-gradient(
+            90deg,
+            var(--accent-dark),
+            var(--accent),
+            var(--secondary)
+        );
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    border:
+        3px solid
+        var(--panel-solid);
+
+    background:
+        var(--accent);
+
+    box-shadow:
+        0 0 0 1px
+        var(--accent),
+        0 0 18px
+        var(--line-strong);
+}
+
+input[type="range"]::-moz-range-thumb {
+    border:
+        3px solid
+        var(--panel-solid);
+
+    background:
+        var(--accent);
+
+    box-shadow:
+        0 0 0 1px
+        var(--accent),
+        0 0 18px
+        var(--line-strong);
+}
+
+.signal-message {
+    border-left:
+        2px solid
+        var(--accent);
+
+    background:
+        var(--secondary-button-background);
+
+    color:
+        var(--accent-pale);
+}
+
+.status-light {
+    background:
+        var(--faint);
+}
+
+.track-list span {
+    color:
+        var(--accent-pale);
+}
+
+/* =========================================================
+   JOIN SECTION
+   ========================================================= */
+
+.join-background {
+    border:
+        1px solid
+        var(--line);
+
+    box-shadow:
+        inset 0 0 0 60px
+        var(--line-soft),
+        inset 0 0 0 120px
+        var(--line-soft);
+}
+
+.cozen-card {
+    border:
+        1px solid
+        var(--line-strong);
+
+    border-radius:
+        var(--panel-radius);
+
+    background:
+        var(--panel);
+}
+
+.cozen-card > span {
+    color:
+        var(--secondary-bright);
+}
+
+.button-status {
+    color:
+        var(--accent-bright);
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.site-footer {
+    border-top:
+        1px solid
+        var(--line);
+
+    background:
+        var(--void);
+}
+
+.legal p {
+    color:
+        var(--faint);
+}
+
+/* =========================================================
+   THEME CHANGE OVERLAY
+   ========================================================= */
+
+.theme-transition {
+    background:
+        rgba(5, 3, 2, 0.94);
+
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+html[data-theme="cryptic"] .theme-transition {
+    background:
+        linear-gradient(
+            rgba(0, 0, 0, 0.88),
+            rgba(0, 0, 0, 0.96)
+        ),
+        url("../images/themes/cryptic-ecdysis-tile.png"),
+        #000000;
+
+    background-size:
+        auto,
+        720px 720px,
+        auto;
+}
+
+html[data-theme="commando"] .theme-transition {
+    background:
+        linear-gradient(
+            rgba(11, 9, 5, 0.84),
+            rgba(6, 5, 3, 0.95)
+        ),
+        url("../images/themes/commando-guri-tile.png"),
+        #0d0b06;
+
+    background-size:
+        auto,
+        960px 960px,
+        auto;
+}
+
+html[data-theme="cozen"] .theme-transition {
+    background:
+        rgba(9, 7, 11, 0.95);
+}
+
+html[data-theme="kniraven"] .theme-transition {
+    background:
+        rgba(246, 243, 250, 0.95);
+}
+
+.theme-transition-panel {
+    border:
+        1px solid
+        var(--line-strong);
+
+    border-radius:
+        var(--panel-radius);
+
+    background:
+        var(--panel-background);
+
+    box-shadow:
+        var(--shadow);
+
+    clip-path:
+        var(--panel-clip);
+}
+
+.theme-transition-code {
+    color:
+        var(--accent);
+}
+
+.theme-transition-status {
+    color:
+        var(--muted);
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+}
+
+/* =========================================================
+   COMMANDO GURI GENERATED EFFECTS
+   ========================================================= */
+
+html[data-theme="commando"] .fx-particle {
+    background:
+        radial-gradient(
+            circle,
+            #f0d6a6,
+            #a78a59 55%,
+            transparent 75%
+        );
+
+    filter:
+        blur(0.35px)
+        drop-shadow(
+            0 0 5px
+            rgba(225, 201, 157, 0.34)
+        );
+}
+
+html[data-theme="commando"] .fx-shard {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(218, 202, 145, 0.58),
+            rgba(159, 164, 94, 0.45),
+            transparent
+        );
+}
+
+html[data-theme="commando"] .fx-scan-bar {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(226, 197, 141, 0.18),
+            rgba(151, 157, 91, 0.14),
+            transparent
+        );
+}
+
+html[data-theme="commando"] .ship-frame::before {
+    content:
+        "COMMANDO GURI TACTICAL HULL";
+
+    color: #d9c19b;
+
+    text-shadow:
+        0 1px 2px
+        rgba(0, 0, 0, 0.94);
+}
+
+/* =========================================================
+   CRYPTIC ECDYSIS GENERATED EFFECTS
+   ========================================================= */
+
+html[data-theme="cryptic"] .fx-particle {
+    background:
+        radial-gradient(
+            circle,
+            #fff4b8 0 14%,
+            #ff9a2d 22%,
+            #ff4d00 54%,
+            transparent 76%
+        );
+
+    filter:
+        drop-shadow(
+            0 0 7px
+            rgba(255, 92, 10, 0.75)
+        )
+        drop-shadow(
+            0 0 15px
+            rgba(255, 50, 0, 0.30)
+        );
+}
+
+html[data-theme="cryptic"] .fx-shard {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(91, 215, 255, 0.58),
+            rgba(255, 255, 255, 0.20),
+            rgba(255, 104, 0, 0.54),
+            transparent
+        );
+
+    box-shadow:
+        0 0 12px
+        rgba(91, 215, 255, 0.27),
+        0 0 18px
+        rgba(255, 96, 0, 0.22);
+}
+
+html[data-theme="cryptic"] .fx-scan-bar {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(91, 215, 255, 0.13),
+            rgba(255, 100, 0, 0.25),
+            transparent
+        );
+}
+
+html[data-theme="cryptic"] .ship-frame::before {
+    content:
+        "CRYPTIC ECDYSIS HULL RECONSTRUCTION";
+}
+
+/* =========================================================
+   COZEN GENERATED EFFECTS
+   ========================================================= */
+
+html[data-theme="cozen"] .cut-panel::after {
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(255, 113, 26, 0.13),
+            rgba(150, 84, 195, 0.08) 38%,
+            transparent 72%
+        );
+}
+
+html[data-theme="cozen"] .fx-particle:nth-child(even) {
+    background:
+        radial-gradient(
+            circle,
+            #ffc488,
+            #ff7320 45%,
+            transparent 75%
+        );
+}
+
+html[data-theme="cozen"] .fx-particle:nth-child(odd) {
+    background:
+        radial-gradient(
+            circle,
+            #e3b9ff,
+            #9e5fc7 45%,
+            transparent 75%
+        );
+}
+
+html[data-theme="cozen"] .fx-shard {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 119, 32, 0.50),
+            rgba(164, 94, 204, 0.50),
+            transparent
+        );
+}
+
+html[data-theme="cozen"] .fx-scan-bar {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 119, 32, 0.16),
+            rgba(164, 94, 204, 0.14),
+            transparent
+        );
+}
+
+html[data-theme="cozen"] .ship-frame::before {
+    content:
+        "COZEN ACQUISITION TARGET";
+}
+
+/* =========================================================
+   KNIRAVEN GENERATED EFFECTS
+   ========================================================= */
+
+html[data-theme="kniraven"] .ambient-grid {
+    opacity: 0;
+
+    background-size:
+        56px 56px;
+}
+
+html[data-theme="kniraven"] .screen-noise {
+    mix-blend-mode: multiply;
+}
+
+html[data-theme="kniraven"] .brand-mark {
+    background:
+        radial-gradient(
+            circle,
+            #aa73d3,
+            #703498
+        );
+}
+
+html[data-theme="kniraven"] .boot-mark {
+    color: #ffffff;
+
+    filter:
+        drop-shadow(
+            0 0 13px
+            rgba(121, 50, 173, 0.65)
+        )
+        drop-shadow(
+            0 0 30px
+            rgba(132, 117, 232, 0.28)
+        );
+}
+
+html[data-theme="kniraven"] .fx-ring {
+    border:
+        1px solid
+        rgba(121, 71, 166, 0.30);
+
+    box-shadow:
+        0 0 22px
+        rgba(126, 92, 219, 0.12),
+        inset 0 0 20px
+        rgba(135, 101, 224, 0.06);
+}
+
+html[data-theme="kniraven"] .fx-number {
+    color:
+        rgba(86, 51, 120, 0.38);
+
+    text-shadow:
+        0 0 10px
+        rgba(132, 102, 224, 0.16);
+}
+
+html[data-theme="kniraven"] .fx-shard {
+    border-radius: 999px;
+
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(117, 110, 235, 0.42),
+            rgba(177, 93, 198, 0.35),
+            transparent
+        );
+}
+
+html[data-theme="kniraven"] .fx-particle {
+    background:
+        radial-gradient(
+            circle,
+            rgba(255, 255, 255, 0.95),
+            rgba(145, 98, 216, 0.48) 52%,
+            transparent 76%
+        );
+
+    box-shadow:
+        0 0 12px
+        rgba(132, 117, 232, 0.30);
+}
+
+html[data-theme="kniraven"] .ship-orbit {
+    box-shadow:
+        0 0 22px
+        rgba(132, 117, 232, 0.10);
+}
+
+html[data-theme="kniraven"] .ship-frame::before {
+    content:
+        "WHITE RABBIT PORTAL PROJECTION";
+}
+
+/* =========================================================
+   GLITCH TEXT
+   ========================================================= */
+
+.glitch-text {
+    position: relative;
+
+    isolation: isolate;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+    content:
+        attr(data-glitch);
+
+    position: absolute;
+    inset: 0;
+
+    z-index: -1;
+
+    overflow: hidden;
+
+    opacity: 0;
+
+    pointer-events: none;
+}
+
+.glitch-text::before {
+    color:
+        var(--glitch-a);
+
+    transform:
+        translateX(-2px);
+
+    clip-path:
+        polygon(
+            0 12%,
+            100% 12%,
+            100% 38%,
+            0 38%
+        );
+}
+
+.glitch-text::after {
+    color:
+        var(--glitch-b);
+
+    transform:
+        translateX(2px);
+
+    clip-path:
+        polygon(
+            0 58%,
+            100% 58%,
+            100% 86%,
+            0 86%
+        );
+}
+
+.glitch-text.is-text-glitching::before {
+    animation:
+        glitch-text-before
+        430ms
+        steps(2, end);
+}
+
+.glitch-text.is-text-glitching::after {
+    animation:
+        glitch-text-after
+        430ms
+        steps(2, end);
+}
+
+/* =========================================================
+   FULL-SCREEN GLITCH
+   ========================================================= */
+
+body.is-glitching::before,
+body.is-hard-glitching::before,
+body.is-glitching::after,
+body.is-hard-glitching::after {
+    content: "";
+
+    position: fixed;
+    inset: 0;
+
+    z-index: 303;
+
+    pointer-events: none;
+}
+
+body.is-glitching::before,
+body.is-hard-glitching::before {
+    background:
+        linear-gradient(
+            to bottom,
+            transparent 0 17%,
+            var(--line-strong) 17% 18%,
+            transparent 18% 43%,
+            rgba(91, 215, 255, 0.07) 43% 44%,
+            transparent 44% 72%,
+            rgba(255, 54, 83, 0.05) 72% 73%,
+            transparent 73%
+        );
+
+    mix-blend-mode: screen;
+}
+
+body.is-glitching::after,
+body.is-hard-glitching::after {
+    background:
+        linear-gradient(
+            90deg,
+            rgba(91, 215, 255, 0.08),
+            transparent 30%,
+            transparent 70%,
+            rgba(255, 54, 83, 0.08)
+        );
+
+    mix-blend-mode: screen;
+}
+
+html[data-theme="commando"]
+body.is-glitching::after,
+html[data-theme="commando"]
+body.is-hard-glitching::after {
+    background:
+        linear-gradient(
+            90deg,
+            rgba(211, 217, 155, 0.09),
+            transparent 30%,
+            transparent 70%,
+            rgba(231, 120, 67, 0.09)
+        );
+}
+
+html[data-theme="cozen"]
+body.is-glitching::after,
+html[data-theme="cozen"]
+body.is-hard-glitching::after {
+    background:
+        linear-gradient(
+            90deg,
+            rgba(185, 121, 237, 0.09),
+            transparent 30%,
+            transparent 70%,
+            rgba(255, 107, 52, 0.09)
+        );
+}
+
+html[data-theme="kniraven"]
+body.is-glitching::after,
+html[data-theme="kniraven"]
+body.is-hard-glitching::after {
+    background:
+        linear-gradient(
+            90deg,
+            rgba(108, 127, 240, 0.09),
+            transparent 30%,
+            transparent 70%,
+            rgba(183, 71, 188, 0.09)
+        );
+
+    mix-blend-mode: multiply;
+}
+
+body.is-glitching::before {
+    animation:
+        screen-tear
+        360ms
+        steps(2, end);
+}
+
+body.is-glitching::after {
+    animation:
+        channel-flash
+        360ms
+        steps(2, end);
+}
+
+body.is-hard-glitching::before {
+    animation:
+        hard-screen-tear
+        650ms
+        steps(2, end);
+}
+
+body.is-hard-glitching::after {
+    animation:
+        hard-channel-flash
+        650ms
+        steps(2, end);
+}
+
+/* =========================================================
+   GENERATED THEME EFFECTS
+   ========================================================= */
+
+.fx-line {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            var(--line-strong),
+            rgba(91, 215, 255, 0.14),
+            transparent
+        );
+
+    mix-blend-mode: screen;
+
+    animation:
+        glitch-line-burst
+        430ms
+        steps(2, end)
+        forwards;
+}
+
+.fx-line.is-alternate {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 54, 83, 0.17),
+            var(--line-strong),
+            transparent
+        );
+}
+
+html[data-theme="kniraven"] .fx-line {
+    mix-blend-mode: multiply;
+}
+
+.is-panel-glitching {
+    animation:
+        panel-glitch
+        430ms
+        steps(2, end);
+}
+
+.is-theme-pulsing {
+    animation:
+        theme-pulse
+        2.5s
+        ease-out;
+}
+
+.ship-frame.is-ship-glitching {
+    animation:
+        ship-frame-glitch
+        540ms
+        steps(2, end);
+}
+
+.ship-frame.is-ship-glitching::after {
+    animation:
+        ship-overlay-glitch
+        540ms
+        steps(2, end);
+}
+
+.ship-frame.is-ship-glitching img {
+    animation:
+        ship-image-glitch
+        540ms
+        steps(2, end);
+}
+
+.frequency-display
+output.is-frequency-glitching {
+    animation:
+        frequency-glitch
+        400ms
+        steps(2, end);
+}
+
+.signal-message.is-signal-glitching {
+    animation:
+        signal-message-glitch
+        470ms
+        steps(2, end);
+}
+
+.selected-operation.is-updating {
+    animation:
+        operation-readout-glitch
+        370ms
+        steps(2, end);
+}
+
+.operation-chip.is-chip-glitching {
+    animation:
+        chip-glitch
+        330ms
+        steps(2, end);
+}
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes noise-drift {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    25% {
+        transform: translate(-1px, 1px);
+    }
+
+    50% {
+        transform: translate(1px, -1px);
+    }
+
+    75% {
+        transform: translate(1px, 1px);
+    }
+
+    100% {
+        transform: translate(0, 0);
+    }
+}
+
+@keyframes boot-grid-drift {
+    to {
+        transform:
+            translateX(90px)
+            skewX(-12deg);
+    }
+}
+
+@keyframes boot-scanner {
+    from {
+        transform:
+            translateY(-25vh);
+    }
+
+    to {
+        transform:
+            translateY(135vh);
+    }
+}
+
+@keyframes boot-mark-pulse {
+    0%,
+    100% {
+        opacity: 0.78;
+
+        transform:
+            scale(0.98);
+    }
+
+    50% {
+        opacity: 1;
+
+        transform:
+            scale(1.025);
+    }
+}
+
+@keyframes boot-cursor-blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+@keyframes boot-unlock-shake {
+    0%,
+    100% {
+        transform: translate(0, 0);
+        filter: none;
+    }
+
+    15% {
+        transform: translate(-5px, 1px);
+        filter: hue-rotate(18deg);
+    }
+
+    31% {
+        transform: translate(7px, -1px);
+    }
+
+    47% {
+        transform: translate(-2px, 2px);
+        filter: contrast(1.4);
+    }
+
+    66% {
+        transform: translate(4px, 0);
+    }
+
+    82% {
+        transform: translate(-1px, -1px);
+    }
+}
+
+@keyframes boot-terminal-unlock {
+    0%,
+    100% {
+        opacity: 1;
+
+        transform:
+            translateX(0);
+    }
+
+    20% {
+        opacity: 0.75;
+
+        transform:
+            translateX(-7px);
+
+        text-shadow:
+            5px 0 var(--glitch-a),
+            -5px 0 var(--glitch-b);
+    }
+
+    38% {
+        opacity: 0.95;
+
+        transform:
+            translateX(9px);
+
+        text-shadow:
+            -4px 0 var(--glitch-a),
+            4px 0 var(--glitch-b);
+    }
+
+    62% {
+        opacity: 0.70;
+
+        transform:
+            translateX(-3px);
+    }
+}
+
+@keyframes screen-tear {
+    0%,
+    100% {
+        opacity: 0;
+
+        transform:
+            translateX(0);
+    }
+
+    18% {
+        opacity: 0.90;
+
+        transform:
+            translateX(-8px);
+    }
+
+    35% {
+        opacity: 0.25;
+
+        transform:
+            translateX(11px);
+    }
+
+    54% {
+        opacity: 0.70;
+
+        transform:
+            translateX(-3px);
+    }
+
+    75% {
+        opacity: 0.15;
+
+        transform:
+            translateX(6px);
+    }
+}
+
+@keyframes channel-flash {
+    0%,
+    100% {
+        opacity: 0;
+    }
+
+    20% {
+        opacity: 0.75;
+
+        transform:
+            translateX(3px);
+    }
+
+    42% {
+        opacity: 0.18;
+
+        transform:
+            translateX(-5px);
+    }
+
+    64% {
+        opacity: 0.55;
+
+        transform:
+            translateX(2px);
+    }
+}
+
+@keyframes hard-screen-tear {
+    0%,
+    100% {
+        opacity: 0;
+
+        transform:
+            translateX(0)
+            scaleY(1);
+    }
+
+    10% {
+        opacity: 0.95;
+
+        transform:
+            translateX(-14px)
+            scaleY(1.015);
+    }
+
+    24% {
+        opacity: 0.25;
+
+        transform:
+            translateX(18px)
+            scaleY(0.99);
+    }
+
+    38% {
+        opacity: 0.80;
+
+        transform:
+            translateX(-6px)
+            scaleY(1.02);
+    }
+
+    68% {
+        opacity: 0.70;
+
+        transform:
+            translateX(-3px);
+    }
+}
+
+@keyframes hard-channel-flash {
+    0%,
+    100% {
+        opacity: 0;
+    }
+
+    12% {
+        opacity: 0.95;
+
+        transform:
+            translateX(7px);
+    }
+
+    28% {
+        opacity: 0.20;
+
+        transform:
+            translateX(-9px);
+    }
+
+    42% {
+        opacity: 0.75;
+
+        transform:
+            translateX(4px);
+    }
+
+    76% {
+        opacity: 0.50;
+
+        transform:
+            translateX(2px);
+    }
+}
+
+@keyframes glitch-line-burst {
+    0% {
+        opacity: 0;
+
+        transform:
+            translateX(0)
+            scaleX(1);
+    }
+
+    15% {
+        opacity: 0.90;
+
+        transform:
+            translateX(-18px)
+            scaleX(1.04);
+    }
+
+    31% {
+        opacity: 0.25;
+
+        transform:
+            translateX(30px)
+            scaleX(0.96);
+    }
+
+    52% {
+        opacity: 0.75;
+
+        transform:
+            translateX(-7px)
+            scaleX(1.02);
+    }
+
+    100% {
+        opacity: 0;
+
+        transform:
+            translateX(0);
+    }
+}
+
+@keyframes glitch-text-before {
+    0%,
+    100% {
+        opacity: 0;
+
+        transform:
+            translateX(0);
+    }
+
+    15% {
+        opacity: 0.85;
+
+        transform:
+            translateX(-4px);
+    }
+
+    33% {
+        opacity: 0.25;
+
+        transform:
+            translateX(6px);
+    }
+
+    52% {
+        opacity: 0.70;
+
+        transform:
+            translateX(-2px);
+    }
+}
+
+@keyframes glitch-text-after {
+    0%,
+    100% {
+        opacity: 0;
+
+        transform:
+            translateX(0);
+    }
+
+    12% {
+        opacity: 0.80;
+
+        transform:
+            translateX(5px);
+    }
+
+    29% {
+        opacity: 0.20;
+
+        transform:
+            translateX(-7px);
+    }
+
+    48% {
+        opacity: 0.65;
+
+        transform:
+            translateX(3px);
+    }
+}
+
+@keyframes panel-glitch {
+    0%,
+    100% {
+        transform:
+            translateX(0);
+
+        filter: none;
+    }
+
+    18% {
+        transform:
+            translateX(-4px);
+
+        filter:
+            drop-shadow(
+                4px 0
+                var(--glitch-a)
+            );
+    }
+
+    37% {
+        transform:
+            translateX(6px);
+
+        filter:
+            drop-shadow(
+                -4px 0
+                var(--glitch-b)
+            );
+    }
+
+    58% {
+        transform:
+            translateX(-2px);
+    }
+}
+
+@keyframes theme-pulse {
+    0%,
+    100% {
+        box-shadow:
+            var(--shadow);
+    }
+
+    35% {
+        box-shadow:
+            0 0 0 1px
+            var(--line-strong),
+            0 0 26px
+            var(--line-strong),
+            0 0 50px
+            var(--line-soft),
+            var(--shadow);
+    }
+}
+
+@keyframes ship-frame-glitch {
+    0%,
+    100% {
+        transform:
+            translateX(0);
+    }
+
+    12% {
+        transform:
+            translateX(-6px);
+    }
+
+    26% {
+        transform:
+            translateX(8px);
+    }
+
+    44% {
+        transform:
+            translateX(-2px);
+    }
+
+    61% {
+        transform:
+            translateX(5px);
+    }
+}
+
+@keyframes ship-overlay-glitch {
+    0%,
+    100% {
+        opacity: 0;
+
+        transform:
+            translateX(0);
+    }
+
+    18% {
+        opacity: 0.95;
+
+        transform:
+            translateX(-12px);
+    }
+
+    35% {
+        opacity: 0.25;
+
+        transform:
+            translateX(15px);
+    }
+
+    56% {
+        opacity: 0.70;
+
+        transform:
+            translateX(-4px);
+    }
+
+    77% {
+        opacity: 0.18;
+
+        transform:
+            translateX(8px);
+    }
+}
+
+@keyframes ship-image-glitch {
+    0%,
+    100% {
+        transform:
+            translateY(0)
+            rotate(-3deg);
+
+        filter:
+            var(--ship-filter);
+    }
+
+    16% {
+        transform:
+            translate(-8px, 2px)
+            rotate(-3deg)
+            scaleX(1.018);
+
+        filter:
+            var(--ship-filter)
+            drop-shadow(
+                7px 0
+                var(--glitch-a)
+            )
+            drop-shadow(
+                -7px 0
+                var(--glitch-b)
+            );
+    }
+
+    34% {
+        transform:
+            translate(10px, -1px)
+            rotate(-2deg)
+            scaleX(0.985);
+    }
+
+    74% {
+        transform:
+            translate(5px, 0)
+            rotate(-2deg);
+    }
+}
+
+@keyframes frequency-glitch {
+    0%,
+    100% {
+        transform:
+            translateX(0);
+
+        text-shadow: none;
+    }
+
+    20% {
+        transform:
+            translateX(-5px);
+
+        text-shadow:
+            5px 0 var(--glitch-a),
+            -3px 0 var(--glitch-b);
+    }
+
+    43% {
+        transform:
+            translateX(7px);
+
+        text-shadow:
+            -4px 0 var(--glitch-a),
+            4px 0 var(--glitch-b);
+    }
+}
+
+@keyframes signal-message-glitch {
+    0%,
+    100% {
+        transform:
+            translateX(0);
+
+        opacity: 1;
+    }
+
+    16% {
+        transform:
+            translateX(-5px);
+
+        opacity: 0.50;
+    }
+
+    32% {
+        transform:
+            translateX(7px);
+
+        opacity: 0.92;
+
+        border-color:
+            var(--glitch-a);
+    }
+
+    52% {
+        transform:
+            translateX(-2px);
+
+        opacity: 0.70;
+
+        border-color:
+            var(--glitch-b);
+    }
+}
+
+@keyframes operation-readout-glitch {
+    0%,
+    100% {
+        transform:
+            translateX(0);
+
+        opacity: 1;
+    }
+
+    20% {
+        transform:
+            translateX(-5px);
+
+        opacity: 0.60;
+
+        text-shadow:
+            3px 0
+            var(--glitch-a);
+    }
+
+    45% {
+        transform:
+            translateX(6px);
+
+        opacity: 0.90;
+
+        text-shadow:
+            -3px 0
+            var(--glitch-b);
+    }
+}
+
+@keyframes chip-glitch {
+    0%,
+    100% {
+        transform:
+            translateX(0);
+    }
+
+    25% {
+        transform:
+            translateX(-3px);
+
+        filter:
+            drop-shadow(
+                3px 0
+                var(--glitch-a)
+            );
+    }
+
+    50% {
+        transform:
+            translateX(4px);
+
+        filter:
+            drop-shadow(
+                -3px 0
+                var(--glitch-b)
+            );
+    }
+}
+
+@keyframes blueprint-scan {
+    to {
+        transform:
+            translateY(110%);
+    }
+}
+
+@keyframes ship-float {
+    0%,
+    100% {
+        transform:
+            translateY(0)
+            rotate(-3deg);
+    }
+
+    50% {
+        transform:
+            translateY(-10px)
+            rotate(-1deg);
+    }
+}
+
+@keyframes orbit-spin {
+    to {
+        transform:
+            rotate(360deg);
+    }
+}
+
+@keyframes particle-rise {
+    0% {
+        opacity: 0;
+
+        transform:
+            translate3d(0, 0, 0)
+            scale(0.65);
+    }
+
+    12% {
+        opacity: 0.95;
+    }
+
+    100% {
+        opacity: 0;
+
+        transform:
+            translate3d(
+                var(--travel-x, 0),
+                var(--travel-y, -220px),
+                0
+            )
+            scale(1.15);
+    }
+}
+
+@keyframes shard-travel {
+    0% {
+        opacity: 0;
+
+        transform:
+            translate3d(0, 0, 0)
+            scaleX(0.8);
+    }
+
+    15% {
+        opacity: 0.90;
+    }
+
+    100% {
+        opacity: 0;
+
+        transform:
+            translate3d(
+                var(--travel-x, 120px),
+                var(--travel-y, 0),
+                0
+            )
+            scaleX(1.25);
+    }
+}
+
+@keyframes number-drift {
+    0% {
+        opacity: 0;
+
+        transform:
+            translateY(8px);
+    }
+
+    20% {
+        opacity: 0.65;
+    }
+
+    100% {
+        opacity: 0;
+
+        transform:
+            translateY(-75px);
+    }
+}
+
+@keyframes portal-expand {
+    0% {
+        opacity: 0;
+
+        transform:
+            scale(0.3);
+    }
+
+    25% {
+        opacity: 0.65;
+    }
+
+    100% {
+        opacity: 0;
+
+        transform:
+            scale(1.8);
+    }
+}
+
+@keyframes military-scan {
+    0% {
+        opacity: 0;
+
+        transform:
+            translateX(-12%);
+    }
+
+    20% {
+        opacity: 0.55;
+    }
+
+    100% {
+        opacity: 0;
+
+        transform:
+            translateX(12%);
+    }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+    .screen-noise,
+    .scanlines,
+    .boot-screen::before,
+    .boot-screen::after,
+    .ship-frame img,
+    .ship-orbit,
+    .blueprint-display::after {
+        animation: none;
+    }
+}
+
+/* =========================================================
+   COMMANDO GURI — EXPOSED TEXT READABILITY
+   ========================================================= */
+
+/*
+ * Strong dark edge and shadow for large text placed directly
+ * over the camouflage background.
+ */
+html[data-theme="commando"]
+:is(
+    .hero-copy h1,
+    .section-heading h2,
+    .feature-copy h2
+) {
+    text-shadow:
+        -2px -2px 0 rgba(0, 0, 0, 0.82),
+        2px -2px 0 rgba(0, 0, 0, 0.82),
+        -2px 2px 0 rgba(0, 0, 0, 0.82),
+        2px 2px 0 rgba(0, 0, 0, 0.82),
+        0 4px 7px rgba(0, 0, 0, 0.98),
+        0 0 18px rgba(0, 0, 0, 0.84);
+}
+
+/*
+ * Preserve the outlined hero text while adding a dark exterior
+ * shadow around the tan lettering.
+ */
+html[data-theme="commando"] .hero-copy h1 span {
+    text-shadow:
+        -2px -2px 0 rgba(0, 0, 0, 0.88),
+        2px -2px 0 rgba(0, 0, 0, 0.88),
+        -2px 2px 0 rgba(0, 0, 0, 0.88),
+        2px 2px 0 rgba(0, 0, 0, 0.88),
+        0 4px 8px rgba(0, 0, 0, 1),
+        0 0 20px rgba(0, 0, 0, 0.88);
+}
+
+/*
+ * Smaller headings, body copy, labels, and selected-operation
+ * text displayed directly over the page background.
+ */
+html[data-theme="commando"]
+:is(
+    .hero-copy > .eyebrow,
+    .hero-copy > .hero-lede,
+    .section-heading .eyebrow,
+    .section-heading > p,
+    .feature-copy > .eyebrow,
+    .feature-copy > p:not(.eyebrow),
+    .selected-operation span,
+    .selected-operation strong
+) {
+    text-shadow:
+        -1px -1px 0 rgba(0, 0, 0, 0.78),
+        1px -1px 0 rgba(0, 0, 0, 0.78),
+        -1px 1px 0 rgba(0, 0, 0, 0.78),
+        1px 1px 0 rgba(0, 0, 0, 0.78),
+        0 2px 4px rgba(0, 0, 0, 0.98),
+        0 0 9px rgba(0, 0, 0, 0.82);
+}
+
+/*
+ * The orange tactical labels benefit from a slightly tighter
+ * shadow so their edges remain sharp.
+ */
+html[data-theme="commando"]
+:is(
+    .hero-copy > .eyebrow,
+    .section-heading .eyebrow,
+    .feature-copy > .eyebrow,
+    .selected-operation strong
+) {
+    text-shadow:
+        -1px -1px 0 rgba(0, 0, 0, 0.92),
+        1px -1px 0 rgba(0, 0, 0, 0.92),
+        -1px 1px 0 rgba(0, 0, 0, 0.92),
+        1px 1px 0 rgba(0, 0, 0, 0.92),
+        0 2px 5px rgba(0, 0, 0, 1),
+        0 0 10px rgba(0, 0, 0, 0.88);
+}
+
+/* =========================================================
+   COMMANDO GURI — STRONGER EXPOSED PARAGRAPH SHADOW
+   ========================================================= */
+
+/*
+ * Paragraphs that sit directly over the camouflage receive a
+ * dense black edge plus a broad shadow. Panel-contained copy
+ * retains the existing, lighter treatment.
+ */
+html[data-theme="commando"]
+:is(
+    .hero-copy > .hero-lede,
+    .section-heading > p,
+    .feature-copy > p:not(.eyebrow),
+    .join-content > p:not(.eyebrow)
+) {
+    color: #f2e2c3;
+
+    text-shadow:
+        -1px -1px 0 rgba(0, 0, 0, 1),
+        1px -1px 0 rgba(0, 0, 0, 1),
+        -1px 1px 0 rgba(0, 0, 0, 1),
+        1px 1px 0 rgba(0, 0, 0, 1),
+        0 3px 5px rgba(0, 0, 0, 1),
+        0 0 12px rgba(0, 0, 0, 0.95),
+        0 0 22px rgba(0, 0, 0, 0.72);
+}
+
+/* BEGIN THEME CLIPPED SIDE-RAIL ARTWORK */
+
+/*
+|--------------------------------------------------------------------------
+| COZEN CORP AND GALNET — CLIPPED SIDE-GUTTER ARTWORK
+|--------------------------------------------------------------------------
+|
+| structure.css provides a three-column fixed stage:
+| left gutter | protected content shell | right gutter.
+|
+| The stage remains hidden by default. Only Cozen Corp and Galnet reveal
+| it. Each rail clips its own background at the center-column boundary,
+| so neither character art nor Galnet art can overlap the site content.
+|
+*/
+
+.theme-side-stage {
+    transition:
+        opacity 180ms ease,
+        visibility 180ms ease;
+}
+
+html[data-theme="cozen"] .theme-side-stage,
+html[data-theme="kniraven"] .theme-side-stage {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Cozen Corp character artwork */
+
+html[data-theme="cozen"] .theme-side-rail-left {
+    grid-column: 1;
+
+    background-image:
+        url("../images/themes/CozenLeft.png");
+
+    background-repeat:
+        no-repeat;
+
+    background-size:
+        auto clamp(540px, 72vh, 790px);
+
+    background-position:
+        right bottom;
+}
+
+html[data-theme="cozen"] .theme-side-rail-right {
+    grid-column: 3;
+
+    background-image:
+        url("../images/themes/CozenRight.png");
+
+    background-repeat:
+        no-repeat;
+
+    background-size:
+        auto clamp(540px, 72vh, 790px);
+
+    background-position:
+        left bottom;
+}
+
+/*
+ * Galnet.png is 1200 × 360 pixels, with white at both outer edges
+ * and the strongest purple through its horizontal center.
+ *
+ * Each gutter receives its own full-width copy:
+ *
+ * - The left rail anchors the image's RIGHT white edge to the
+ *   left edge of the protected content shell.
+ * - The right rail anchors the image's LEFT white edge to the
+ *   right edge of the protected content shell.
+ *
+ * The rails clip everything outside their own gutter. This mirrors
+ * the Cozen Corp placement model: artwork starts at the shell boundary
+ * and extends outward, never through the center content.
+ *
+ * repeat-y preserves the requested vertical tiling.
+ */
+
+html[data-theme="kniraven"] .theme-side-rail-left {
+    grid-column: 1;
+
+    background-image:
+        url("../images/themes/Galnet.png");
+
+    background-repeat:
+        repeat-y;
+
+    background-size:
+        1200px 360px;
+
+    background-position:
+        right top;
+}
+
+html[data-theme="kniraven"] .theme-side-rail-right {
+    grid-column: 3;
+
+    background-image:
+        url("../images/themes/Galnet.png");
+
+    background-repeat:
+        repeat-y;
+
+    background-size:
+        1200px 360px;
+
+    background-position:
+        left top;
+}
+
+/* END THEME CLIPPED SIDE-RAIL ARTWORK */

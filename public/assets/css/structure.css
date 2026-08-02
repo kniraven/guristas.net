@@ -1,0 +1,2056 @@
+/*
+|--------------------------------------------------------------------------
+| GURISTAS.NET — UNIVERSAL STRUCTURE
+|--------------------------------------------------------------------------
+|
+| This file controls:
+| - Browser normalization
+| - Element sizing
+| - Layout
+| - Spacing
+| - Responsive behavior
+| - Positioning
+| - Content order
+|
+| It deliberately avoids theme colors, decorative backgrounds,
+| shadows, border appearance, and theme-specific effects.
+|
+*/
+
+/* =========================================================
+   NORMALIZATION
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 320px;
+
+    scroll-behavior: smooth;
+    scroll-padding-top: calc(
+        var(--header-height, 78px) + 24px
+    );
+
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    min-width: 320px;
+    min-height: 100vh;
+
+    margin: 0;
+
+    overflow-x: hidden;
+
+    font-family:
+        "Segoe UI Variable",
+        "Segoe UI",
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        sans-serif;
+
+    line-height: 1.55;
+}
+
+main,
+header,
+footer,
+section,
+article,
+aside,
+nav {
+    display: block;
+}
+
+button,
+input,
+select,
+textarea {
+    margin: 0;
+    font: inherit;
+}
+
+button,
+select {
+    text-transform: none;
+}
+
+button,
+[type="button"],
+[type="submit"],
+[type="reset"] {
+    appearance: button;
+    -webkit-appearance: button;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+    -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+    touch-action: manipulation;
+}
+
+img,
+svg,
+video,
+canvas,
+audio,
+iframe {
+    display: block;
+    max-width: 100%;
+}
+
+img {
+    height: auto;
+}
+
+a {
+    text-decoration-skip-ink: auto;
+}
+
+button {
+    padding: 0;
+    cursor: pointer;
+}
+
+button:disabled,
+[disabled] {
+    cursor: not-allowed;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+/* =========================================================
+   ACCESSIBILITY
+   ========================================================= */
+
+.sr-only,
+.theme-option-name {
+    position: absolute !important;
+
+    width: 1px !important;
+    height: 1px !important;
+
+    padding: 0 !important;
+    margin: -1px !important;
+
+    overflow: hidden !important;
+
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+
+    white-space: nowrap !important;
+
+    border: 0 !important;
+}
+
+.skip-link {
+    position: fixed;
+
+    top: 12px;
+    left: 12px;
+
+    z-index: 2000;
+
+    transform: translateY(-180%);
+
+    padding: 10px 14px;
+
+    transition: transform 160ms ease;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
+/* =========================================================
+   GLOBAL WIDTH
+   ========================================================= */
+
+.shell {
+    width: min(
+        calc(100% - 32px),
+        var(--shell, 1180px)
+    );
+
+    margin-inline: auto;
+}
+
+/* =========================================================
+   FIXED VISUAL LAYERS
+   ========================================================= */
+
+.ambient-grid,
+.screen-noise,
+.scanlines,
+.theme-fx-layer,
+.theme-transition {
+    position: fixed;
+    inset: 0;
+
+    pointer-events: none;
+}
+
+
+.ambient-grid {
+    z-index: -3;
+}
+
+/* =========================================================
+   THEME SIDE-GUTTER STAGE
+   ========================================================= */
+
+/*
+ * This decorative stage has the same center-column width as
+ * every .shell element:
+ *
+ *     min(calc(100% - 32px), var(--shell, 1180px))
+ *
+ * The left and right rails receive only the remaining viewport
+ * width. Because each rail clips its own contents, artwork placed
+ * inside a rail can never enter the protected center column.
+ *
+ * Visibility and artwork are assigned only by eligible themes in
+ * themes.css.
+ */
+.theme-side-stage {
+    position: fixed;
+    inset: 0;
+
+    z-index: 0;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        min(
+            calc(100% - 32px),
+            var(--shell, 1180px)
+        )
+        minmax(0, 1fr);
+
+    min-width: 320px;
+
+    overflow: hidden;
+
+    visibility: hidden;
+    opacity: 0;
+
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.theme-side-rail,
+.theme-side-clearance {
+    min-width: 0;
+    min-height: 0;
+}
+
+.theme-side-rail {
+    position: relative;
+
+    overflow: hidden;
+    overflow: clip;
+
+    background-repeat: no-repeat;
+}
+
+.theme-side-clearance {
+    grid-column: 2;
+}
+
+/*
+ * The decorative side stage uses z-index: 0. Normal site content is
+ * explicitly raised above it, while the header, boot screen,
+ * transitions, skip link, scanlines, and generated effects retain
+ * their existing higher stacking levels.
+ */
+body > main,
+body > footer {
+    position: relative;
+
+    z-index: 1;
+}
+
+.screen-noise {
+    z-index: 300;
+}
+
+.scanlines {
+    z-index: 301;
+}
+
+.theme-fx-layer {
+    z-index: 304;
+
+    overflow: hidden;
+}
+
+.theme-transition {
+    z-index: 1500;
+
+    display: grid;
+    place-items: center;
+
+    padding: 24px;
+
+    visibility: hidden;
+    opacity: 0;
+
+    transition:
+        opacity 220ms ease,
+        visibility 220ms ease;
+}
+
+.theme-transition.is-active {
+    visibility: visible;
+    opacity: 1;
+
+    pointer-events: all;
+}
+
+.theme-transition-panel {
+    width: min(100%, 560px);
+
+    padding: 30px;
+
+    text-align: center;
+}
+
+.theme-transition-code {
+    display: block;
+
+    margin-bottom: 10px;
+}
+
+.theme-transition-panel h2 {
+    margin: 0;
+
+    font-size: clamp(2rem, 10vw, 4.8rem);
+    line-height: 0.92;
+
+    text-transform: uppercase;
+}
+
+.theme-transition-status {
+    min-height: 48px;
+
+    margin: 24px 0 0;
+}
+
+.fx-line,
+.fx-particle,
+.fx-shard,
+.fx-number,
+.fx-ring,
+.fx-scan-bar {
+    position: absolute;
+
+    pointer-events: none;
+}
+
+.fx-line {
+    left: -5%;
+
+    width: 110%;
+}
+
+.fx-particle {
+    border-radius: 50%;
+}
+
+.fx-number {
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+}
+
+.fx-ring {
+    border-radius: 50%;
+}
+
+.fx-scan-bar {
+    left: -10%;
+
+    width: 120%;
+}
+
+/* =========================================================
+   BOOT SCREEN
+   ========================================================= */
+
+.boot-screen {
+    position: fixed;
+    inset: 0;
+
+    z-index: 1400;
+
+    display: grid;
+    place-items: center;
+
+    padding: 24px;
+
+    overflow: hidden;
+
+    transition:
+        opacity 650ms ease,
+        visibility 650ms ease;
+}
+
+.boot-screen.is-complete {
+    visibility: hidden;
+    opacity: 0;
+
+    pointer-events: none;
+}
+
+.boot-terminal {
+    position: relative;
+
+    z-index: 2;
+
+    width: min(100%, 540px);
+
+    text-align: center;
+}
+
+.boot-mark {
+    width: 88px;
+
+    margin: 0 auto 24px;
+}
+
+.boot-kicker {
+    margin: 0 0 8px;
+}
+
+.boot-terminal h1 {
+    margin: 0;
+
+    font-size: clamp(2rem, 10vw, 4.5rem);
+    line-height: 0.95;
+
+    text-transform: uppercase;
+}
+
+.boot-sequence {
+    min-height: 132px;
+
+    display: grid;
+    align-content: center;
+    gap: 8px;
+
+    margin: 30px 0;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.78rem;
+    text-align: left;
+}
+
+.boot-sequence span {
+    position: relative;
+
+    opacity: 0;
+
+    transform: translateX(-8px);
+
+    transition:
+        opacity 180ms ease,
+        transform 180ms ease;
+}
+
+.boot-sequence span::before {
+    display: inline-block;
+
+    width: 18px;
+}
+
+.boot-sequence span.is-visible {
+    opacity: 1;
+
+    transform: translateX(0);
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.site-header {
+    position: sticky;
+
+    top: 0;
+
+    z-index: 100;
+}
+
+.header-inner {
+    position: relative;
+
+    min-height: var(--header-height, 78px);
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+
+    grid-template-areas:
+        "brand menu"
+        "themes themes";
+
+    align-items: center;
+
+    gap: 8px 16px;
+
+    padding-block: 10px;
+}
+
+/* Brand */
+
+.brand {
+    grid-area: brand;
+
+    min-width: 0;
+
+    display: inline-flex;
+    align-items: center;
+
+    gap: 11px;
+
+    text-decoration: none;
+}
+
+.brand-mark {
+    flex: 0 0 auto;
+
+    width: 42px;
+    height: 42px;
+
+    display: grid;
+    place-items: center;
+
+    padding: 6px;
+}
+
+.brand-copy {
+    min-width: 0;
+
+    display: grid;
+}
+
+.brand-copy strong {
+    font-size: 0.92rem;
+    letter-spacing: 0.06em;
+}
+
+.brand-copy span {
+    overflow: hidden;
+
+    font-size: 0.67rem;
+    letter-spacing: 0.06em;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Mobile menu button */
+
+.menu-button {
+    grid-area: menu;
+
+    min-height: 40px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-self: end;
+
+    gap: 10px;
+
+    padding: 9px 12px;
+}
+
+.menu-button-label {
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+
+    text-transform: uppercase;
+}
+
+.menu-lines {
+    width: 19px;
+
+    display: grid;
+
+    gap: 4px;
+}
+
+.menu-lines i {
+    display: block;
+
+    height: 1px;
+
+    transition:
+        transform 160ms ease,
+        opacity 160ms ease;
+}
+
+.menu-button[aria-expanded="true"]
+    .menu-lines
+    i:nth-child(1) {
+    transform: translateY(5px) rotate(45deg);
+}
+
+.menu-button[aria-expanded="true"]
+    .menu-lines
+    i:nth-child(2) {
+    opacity: 0;
+}
+
+.menu-button[aria-expanded="true"]
+    .menu-lines
+    i:nth-child(3) {
+    transform: translateY(-5px) rotate(-45deg);
+}
+
+/* Theme selector */
+
+.theme-switcher {
+    grid-area: themes;
+
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    overflow-x: auto;
+
+    padding: 4px 0 3px;
+
+    scrollbar-width: thin;
+}
+
+.theme-option {
+    position: relative;
+
+    flex: 0 0 auto;
+
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+
+    display: inline-grid;
+    place-items: center;
+
+    padding: 0;
+}
+
+.theme-swatch {
+    display: block;
+
+    width: 22px;
+    height: 22px;
+
+    border-radius: 50%;
+}
+
+/* Main navigation */
+
+.site-nav {
+    position: absolute;
+
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+
+    display: grid;
+
+    gap: 2px;
+
+    padding: 10px;
+
+    visibility: hidden;
+    opacity: 0;
+
+    transform: translateY(-8px);
+
+    pointer-events: none;
+
+    transition:
+        opacity 160ms ease,
+        visibility 160ms ease,
+        transform 160ms ease;
+}
+
+.site-nav.is-open {
+    visibility: visible;
+    opacity: 1;
+
+    transform: translateY(0);
+
+    pointer-events: auto;
+}
+
+.site-nav a {
+    padding: 13px 14px;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+/* =========================================================
+   SHARED CONTENT
+   ========================================================= */
+
+.section {
+    padding-block: 72px;
+}
+
+.section-heading {
+    display: grid;
+
+    gap: 16px;
+
+    margin-bottom: 28px;
+}
+
+.section-heading h2,
+.feature-copy h2,
+.join-content h2 {
+    margin: 0;
+
+    font-size: clamp(2.1rem, 9vw, 5rem);
+    line-height: 0.94;
+    letter-spacing: -0.055em;
+
+    text-transform: uppercase;
+}
+
+.section-heading > p {
+    max-width: 600px;
+
+    margin: 0;
+}
+
+.eyebrow,
+.system-label,
+.boot-kicker,
+.card-number,
+.card-tag,
+.status-label,
+.ship-readout,
+.console-header,
+.frequency-display span,
+.footer-status span,
+.enemy-classification span,
+.theme-transition-code {
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    letter-spacing: 0.13em;
+
+    text-transform: uppercase;
+}
+
+.eyebrow,
+.system-label {
+    margin: 0 0 10px;
+
+    font-size: 0.69rem;
+    font-weight: 800;
+}
+
+.cut-panel {
+    position: relative;
+
+    overflow: hidden;
+}
+
+/* Buttons */
+
+.primary-button,
+.secondary-button {
+    min-height: 46px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    padding: 12px 17px;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.74rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+
+    transition:
+        transform 150ms ease,
+        opacity 150ms ease;
+}
+
+.primary-button:not([disabled]):hover,
+.secondary-button:not([disabled]):hover {
+    transform: translateY(-2px);
+}
+
+.text-button {
+    padding: 7px;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.74rem;
+
+    text-decoration: underline;
+}
+
+/* =========================================================
+   HERO
+   ========================================================= */
+
+.hero {
+    min-height: calc(
+        100svh -
+        var(--header-height, 78px)
+    );
+
+    display: grid;
+    align-items: center;
+
+    gap: 34px;
+
+    padding-block: 54px 48px;
+}
+
+.hero-copy {
+    position: relative;
+
+    z-index: 2;
+}
+
+.hero h1 {
+    max-width: 880px;
+
+    margin: 0;
+
+    font-size: clamp(3.4rem, 16vw, 8.8rem);
+    line-height: 0.82;
+    letter-spacing: -0.075em;
+
+    text-transform: uppercase;
+}
+
+.hero h1 span {
+    display: block;
+}
+
+.hero-lede {
+    max-width: 680px;
+
+    margin: 24px 0 0;
+
+    font-size: 1rem;
+}
+
+.hero-actions,
+.feature-actions,
+.join-actions {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-top: 26px;
+}
+
+.selected-operation {
+    display: grid;
+
+    gap: 4px;
+
+    margin-top: 25px;
+    padding-left: 13px;
+}
+
+.selected-operation span {
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.64rem;
+    letter-spacing: 0.09em;
+
+    text-transform: uppercase;
+}
+
+.selected-operation strong {
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+}
+
+.hero-visual {
+    min-width: 0;
+}
+
+/* Ship display */
+
+.ship-frame {
+    position: relative;
+
+    min-height: 340px;
+
+    display: grid;
+    place-items: center;
+
+    overflow: hidden;
+}
+
+.ship-frame img {
+    position: relative;
+
+    z-index: 2;
+
+    width: 82%;
+    max-height: 430px;
+
+    object-fit: contain;
+}
+
+.ship-frame.is-missing {
+    min-height: 390px;
+}
+
+.ship-frame.is-missing img {
+    display: none;
+}
+
+.ship-orbit {
+    position: absolute;
+
+    width: 74%;
+    aspect-ratio: 1;
+
+    border-radius: 50%;
+}
+
+.orbit-two {
+    width: 47%;
+}
+
+.ship-orbit::before {
+    content: "";
+
+    position: absolute;
+
+    top: 9%;
+    left: 18%;
+
+    width: 8px;
+    height: 8px;
+
+    border-radius: 50%;
+}
+
+.target-lock {
+    position: absolute;
+
+    inset: 20%;
+
+    z-index: 3;
+
+    pointer-events: none;
+}
+
+.target-lock span {
+    position: absolute;
+
+    width: 34px;
+    height: 34px;
+}
+
+.target-lock span:nth-child(1) {
+    top: 0;
+    left: 0;
+}
+
+.target-lock span:nth-child(2) {
+    top: 0;
+    right: 0;
+}
+
+.target-lock span:nth-child(3) {
+    right: 0;
+    bottom: 0;
+}
+
+.target-lock span:nth-child(4) {
+    bottom: 0;
+    left: 0;
+}
+
+.ship-readout {
+    position: absolute;
+
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+
+    z-index: 4;
+
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 5px 14px;
+
+    font-size: 0.57rem;
+}
+
+/* =========================================================
+   STATUS STRIP
+   ========================================================= */
+
+.command-status {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 1px;
+}
+
+.status-item {
+    min-width: 0;
+
+    padding: 14px;
+}
+
+.status-item span,
+.status-item strong,
+.status-item small {
+    display: block;
+}
+
+.status-label {
+    font-size: 0.58rem;
+}
+
+.status-item strong {
+    margin-top: 7px;
+
+    overflow: hidden;
+
+    font-size: 0.88rem;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-item small {
+    margin-top: 2px;
+
+    font-size: 0.67rem;
+}
+
+/* =========================================================
+   OPERATION SELECTOR
+   ========================================================= */
+
+.operation-selector {
+    display: flex;
+
+    gap: 8px;
+
+    overflow-x: auto;
+
+    margin-bottom: 18px;
+    padding-bottom: 6px;
+
+    scrollbar-width: thin;
+}
+
+.operation-chip {
+    flex: 0 0 auto;
+
+    min-height: 40px;
+
+    display: inline-flex;
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 10px 13px;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+
+    text-transform: uppercase;
+}
+
+.operation-grid {
+    display: grid;
+
+    gap: 12px;
+}
+
+.operation-card {
+    min-height: 270px;
+
+    display: flex;
+    flex-direction: column;
+
+    padding: 22px;
+}
+
+.operation-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 14px;
+}
+
+.card-number {
+    font-size: 0.68rem;
+}
+
+.card-tag {
+    padding: 4px 7px;
+
+    font-size: 0.55rem;
+}
+
+.operation-card h3 {
+    margin: 32px 0 2px;
+
+    font-size: 2rem;
+    line-height: 1;
+
+    text-transform: uppercase;
+}
+
+.operation-subtitle {
+    font-size: 0.84rem;
+}
+
+.operation-card p {
+    margin: 14px 0 24px;
+
+    font-size: 0.88rem;
+}
+
+.operation-card a {
+    margin-top: auto;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+/* =========================================================
+   FEATURE SECTIONS
+   ========================================================= */
+
+.feature-layout {
+    display: grid;
+    align-items: center;
+
+    gap: 24px;
+}
+
+.feature-copy > p:not(.eyebrow) {
+    max-width: 680px;
+}
+
+.war-console,
+.fulcrum-console {
+    padding: 21px;
+}
+
+.console-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    padding-bottom: 15px;
+
+    font-size: 0.61rem;
+}
+
+.war-meter,
+.initiative-progress {
+    margin-top: 24px;
+}
+
+.war-meter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.war-meter-row span,
+.initiative-progress > span {
+    font-size: 0.72rem;
+}
+
+.initiative-progress > span,
+.initiative-progress > strong {
+    display: block;
+}
+
+.initiative-progress > strong {
+    margin-top: 3px;
+}
+
+.meter-track {
+    height: 8px;
+
+    margin-top: 10px;
+
+    overflow: hidden;
+}
+
+.meter-track span {
+    display: block;
+
+    height: 100%;
+}
+
+.war-objectives,
+.initiative-list {
+    display: grid;
+
+    gap: 1px;
+
+    margin-top: 24px;
+}
+
+.war-objectives article,
+.initiative-list > div {
+    display: grid;
+
+    grid-template-columns:
+        auto
+        minmax(0, 1fr);
+
+    gap: 13px;
+
+    padding: 14px;
+}
+
+.war-objectives article > span,
+.initiative-list > div > span {
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.7rem;
+}
+
+.war-objectives strong {
+    display: block;
+}
+
+.war-objectives p,
+.initiative-list p {
+    margin: 2px 0 0;
+
+    font-size: 0.78rem;
+}
+
+/* =========================================================
+   INDUSTRY PREVIEW
+   ========================================================= */
+
+.industry-preview {
+    display: grid;
+}
+
+.blueprint-display {
+    position: relative;
+
+    min-height: 290px;
+
+    display: grid;
+    place-items: center;
+
+    padding: 24px;
+
+    overflow: hidden;
+}
+
+.blueprint-code {
+    position: absolute;
+
+    top: 17px;
+    left: 17px;
+
+    z-index: 2;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.62rem;
+    letter-spacing: 0.09em;
+}
+
+.blueprint-shape {
+    position: relative;
+
+    z-index: 1;
+
+    width: min(70%, 280px);
+    aspect-ratio: 1.55;
+}
+
+.blueprint-shape span {
+    position: absolute;
+}
+
+.blueprint-shape span:nth-child(1) {
+    inset: 12% 18%;
+}
+
+.blueprint-shape span:nth-child(2) {
+    top: 35%;
+    left: 31%;
+
+    width: 38%;
+    height: 28%;
+}
+
+.blueprint-shape span:nth-child(3) {
+    top: 23%;
+    left: 42%;
+
+    width: 16%;
+    height: 52%;
+}
+
+.industry-copy {
+    padding: 24px;
+}
+
+.industry-copy h3 {
+    margin: 0;
+
+    font-size: clamp(2rem, 9vw, 4rem);
+    line-height: 0.95;
+
+    text-transform: uppercase;
+}
+
+.metric-row {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 1px;
+
+    margin: 22px 0;
+}
+
+.metric-row article {
+    min-width: 0;
+
+    padding: 12px;
+}
+
+.metric-row span,
+.metric-row strong {
+    display: block;
+}
+
+.metric-row span {
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.56rem;
+}
+
+.metric-row strong {
+    margin-top: 4px;
+}
+
+/* =========================================================
+   LORE
+   ========================================================= */
+
+.lore-layout {
+    display: grid;
+
+    gap: 18px;
+}
+
+.lore-brief {
+    padding: 24px;
+}
+
+.lore-brief h3 {
+    margin: 0;
+
+    font-size: clamp(2rem, 8vw, 3.7rem);
+    line-height: 0.98;
+
+    text-transform: uppercase;
+}
+
+.timeline {
+    display: grid;
+
+    gap: 1px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.timeline li {
+    display: grid;
+
+    grid-template-columns:
+        auto
+        minmax(0, 1fr);
+
+    gap: 15px;
+
+    padding: 18px;
+}
+
+.timeline li > span {
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+}
+
+.timeline strong {
+    font-size: 1rem;
+
+    text-transform: uppercase;
+}
+
+.timeline p {
+    margin: 4px 0 0;
+
+    font-size: 0.82rem;
+}
+
+/* =========================================================
+   SIGNALS
+   ========================================================= */
+
+.signals-grid {
+    display: grid;
+
+    gap: 12px;
+}
+
+.signal-scanner,
+.media-card {
+    padding: 22px;
+}
+
+.frequency-display {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    margin-top: 28px;
+}
+
+.frequency-display span {
+    font-size: 0.6rem;
+}
+
+.frequency-display output {
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: clamp(2.5rem, 15vw, 5.6rem);
+    line-height: 0.8;
+}
+
+input[type="range"] {
+    width: 100%;
+    height: 30px;
+
+    margin-top: 24px;
+
+    appearance: none;
+    -webkit-appearance: none;
+
+    background: transparent;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+    height: 5px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    width: 21px;
+    height: 21px;
+
+    margin-top: -8px;
+
+    appearance: none;
+    -webkit-appearance: none;
+
+    border-radius: 50%;
+}
+
+input[type="range"]::-moz-range-track {
+    height: 5px;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+
+    border-radius: 50%;
+}
+
+.signal-message {
+    min-height: 72px;
+
+    margin: 18px 0;
+    padding: 14px;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.8rem;
+}
+
+.media-card {
+    min-height: 280px;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.media-card h3 {
+    margin: 8px 0 0;
+
+    font-size: 1.8rem;
+    line-height: 1;
+
+    text-transform: uppercase;
+}
+
+.media-card .secondary-button {
+    align-self: flex-start;
+
+    margin-top: auto;
+}
+
+.media-status {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin-top: 18px;
+}
+
+.status-light {
+    width: 9px;
+    height: 9px;
+
+    border-radius: 50%;
+}
+
+.enemy-classification {
+    margin-top: auto;
+    padding-top: 18px;
+}
+
+.enemy-classification span,
+.enemy-classification strong {
+    display: block;
+}
+
+.enemy-classification span {
+    font-size: 0.58rem;
+}
+
+.enemy-classification strong {
+    margin-top: 4px;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.73rem;
+}
+
+.track-list {
+    display: grid;
+
+    gap: 1px;
+
+    margin-top: auto;
+}
+
+.track-list span {
+    padding: 10px 12px;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.72rem;
+}
+
+/* =========================================================
+   JOIN
+   ========================================================= */
+
+.join-section {
+    position: relative;
+
+    display: grid;
+
+    gap: 28px;
+
+    margin-bottom: 72px;
+    padding: 34px;
+
+    overflow: hidden;
+}
+
+.join-background {
+    position: absolute;
+
+    right: -100px;
+    bottom: -180px;
+
+    width: 430px;
+    aspect-ratio: 1;
+
+    border-radius: 50%;
+}
+
+.join-content,
+.cozen-card {
+    position: relative;
+
+    z-index: 2;
+}
+
+.join-content > p:not(.eyebrow) {
+    max-width: 700px;
+}
+
+.cozen-card {
+    padding: 20px;
+}
+
+.cozen-card > span {
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.61rem;
+    letter-spacing: 0.08em;
+}
+
+.cozen-card > strong {
+    display: block;
+
+    margin-top: 8px;
+
+    font-size: 1.8rem;
+}
+
+.cozen-card p {
+    margin-bottom: 0;
+
+    font-size: 0.85rem;
+}
+
+.button-status {
+    align-self: center;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+
+    font-size: 0.7rem;
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.footer-grid {
+    display: grid;
+
+    gap: 24px;
+
+    padding-block: 34px;
+}
+
+.footer-grid p {
+    margin: 5px 0 0;
+
+    font-size: 0.8rem;
+}
+
+.footer-status span,
+.footer-status strong {
+    display: block;
+}
+
+.footer-status span {
+    font-size: 0.58rem;
+}
+
+.footer-status strong {
+    margin-top: 4px;
+
+    font-family:
+        ui-monospace,
+        "Cascadia Code",
+        Consolas,
+        monospace;
+}
+
+.legal {
+    padding-block: 18px 30px;
+}
+
+.legal p {
+    margin: 0;
+
+    font-size: 0.72rem;
+}
+
+/* =========================================================
+   UNIVERSAL INTERACTION STATES
+   ========================================================= */
+
+.reveal {
+    opacity: 0;
+
+    transform: translateY(14px);
+
+    transition:
+        opacity 500ms ease,
+        transform 500ms ease;
+}
+
+.reveal.is-visible {
+    opacity: 1;
+
+    transform: translateY(0);
+}
+
+/* =========================================================
+   RESPONSIVE — 600PX
+   ========================================================= */
+
+@media (min-width: 600px) {
+    .operation-grid,
+    .signals-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .command-status {
+        grid-template-columns:
+            repeat(4, minmax(0, 1fr));
+    }
+
+    .footer-grid {
+        grid-template-columns:
+            minmax(0, 1fr)
+            auto
+            auto;
+
+        align-items: start;
+    }
+}
+
+/* =========================================================
+   RESPONSIVE — 800PX
+   ========================================================= */
+
+@media (min-width: 800px) {
+    .hero {
+        grid-template-columns:
+            minmax(0, 1.08fr)
+            minmax(360px, 0.92fr);
+
+        gap: 24px;
+    }
+
+    .industry-preview {
+        grid-template-columns:
+            minmax(300px, 0.8fr)
+            minmax(0, 1.2fr);
+    }
+
+    .lore-layout {
+        grid-template-columns:
+            minmax(0, 1.05fr)
+            minmax(360px, 0.95fr);
+    }
+}
+
+/* =========================================================
+   RESPONSIVE — DESKTOP
+   ========================================================= */
+
+@media (min-width: 1050px) {
+    .header-inner {
+        grid-template-columns:
+            auto
+            minmax(0, 1fr)
+            auto;
+
+        grid-template-areas:
+            "brand nav themes";
+
+        gap: 18px;
+
+        padding-block: 0;
+    }
+
+    .menu-button {
+        display: none;
+    }
+
+    .theme-switcher {
+        justify-self: end;
+
+        max-width: none;
+
+        padding: 0;
+    }
+
+    .site-nav {
+        grid-area: nav;
+
+        position: static;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        gap: 2px;
+
+        padding: 0;
+
+        visibility: visible;
+        opacity: 1;
+
+        transform: none;
+
+        pointer-events: auto;
+    }
+
+    .site-nav a {
+        padding: 10px;
+    }
+
+    .site-nav .nav-cta {
+        margin-left: 8px;
+        padding-inline: 15px;
+    }
+
+    .section-heading {
+        grid-template-columns:
+            minmax(0, 1fr)
+            minmax(300px, 0.55fr);
+
+        align-items: end;
+    }
+
+    .operation-grid {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+    .feature-layout {
+        grid-template-columns:
+            minmax(0, 1fr)
+            minmax(390px, 0.82fr);
+
+        gap: 64px;
+    }
+
+    .feature-layout-reverse {
+        grid-template-columns:
+            minmax(390px, 0.82fr)
+            minmax(0, 1fr);
+    }
+
+    .signals-grid {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+    .signal-scanner {
+        grid-column: span 2;
+    }
+
+    .join-section {
+        grid-template-columns:
+            minmax(0, 1.3fr)
+            minmax(300px, 0.7fr);
+
+        align-items: center;
+
+        padding: 54px;
+    }
+}
+
+/* =========================================================
+   RESPONSIVE — LARGE DESKTOP
+   ========================================================= */
+
+@media (min-width: 1300px) {
+    .hero h1 {
+        font-size: 7.7rem;
+    }
+
+    .ship-frame {
+        min-height: 520px;
+    }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+
+        transition-duration: 1ms !important;
+    }
+
+    .reveal {
+        opacity: 1;
+
+        transform: none;
+    }
+
+    .theme-fx-layer {
+        display: none;
+    }
+}

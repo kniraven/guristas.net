@@ -1,0 +1,45 @@
+﻿# Secrets and environment files
+.env
+.env.*
+!.env.example
+
+# Local configuration
+config.local.php
+*.local.php
+
+# Private keys and certificates
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Database files and exports
+*.sql
+*.sqlite
+*.sqlite3
+*.bak
+*.backup
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Runtime-generated content
+/storage/logs/
+/storage/cache/
+/storage/tmp/
+/storage/sessions/
+*.log
+
+# User uploads
+/public/uploads/
+
+# IDE and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local backup copies
+*.backup-*
