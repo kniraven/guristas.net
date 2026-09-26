@@ -1,0 +1,171 @@
+/* Guristas.net unified stream notification component */
+
+.stream-notice {
+    position: absolute;
+    width: 372px;
+    min-height: 88px;
+    padding: 15px 18px 15px 20px;
+    box-sizing: border-box;
+    overflow: hidden;
+    color: var(--notice-secondary, #fff);
+    border: 1px solid var(--notice-border, #ff7b21);
+    background:
+        linear-gradient(135deg,
+            rgba(var(--notice-bg-rgb, 18, 9, 4), .93),
+            rgba(var(--notice-bg-rgb, 18, 9, 4), .78));
+    box-shadow:
+        inset 0 0 12px rgba(var(--notice-accent-rgb, 255, 106, 0), .12),
+        0 0 12px rgba(var(--notice-glow-rgb, 255, 106, 0), .28),
+        0 0 22px rgba(var(--notice-glow-rgb, 255, 106, 0), .10);
+    clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+    transition:
+        opacity var(--notice-enter-ms, 140ms) ease-out,
+        transform var(--notice-enter-ms, 140ms) ease-out;
+    pointer-events: none;
+    will-change: opacity, transform;
+    font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.stream-notice::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 7px;
+    background: linear-gradient(
+        180deg,
+        rgba(var(--notice-secondary-rgb, 255,255,255), .18),
+        rgba(var(--notice-accent-rgb, 255,106,0), .98),
+        rgba(var(--notice-secondary-rgb, 255,255,255), .18)
+    );
+}
+
+.stream-notice::after {
+    content: "";
+    position: absolute;
+    top: -20%;
+    bottom: -20%;
+    left: 0;
+    width: 62%;
+    opacity: .34;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(var(--notice-accent-rgb, 255,106,0), .10) 22%,
+        rgba(var(--notice-secondary-rgb,255,255,255), .28) 50%,
+        rgba(var(--notice-accent-rgb,255,106,0), .12) 68%,
+        transparent
+    );
+    transform: translate3d(-120%,0,0) skewX(-13deg);
+    animation: streamNoticeSweep var(--notice-scan-ms, 4600ms) linear infinite;
+}
+
+.stream-notice.is-visible {
+    opacity: 1;
+    transform: translate3d(0,0,0);
+}
+
+.stream-notice.is-hiding {
+    opacity: 0;
+    transform: translate3d(0,-8px,0);
+    transition:
+        opacity var(--notice-exit-ms, 280ms) ease-in,
+        transform var(--notice-exit-ms, 280ms) ease-in;
+}
+
+.stream-notice.is-priority {
+    box-shadow:
+        inset 0 0 14px rgba(var(--notice-secondary-rgb,255,255,255), .10),
+        0 0 18px rgba(var(--notice-glow-rgb,255,106,0), .50),
+        0 0 28px rgba(var(--notice-glow-rgb,255,106,0), .16);
+}
+
+.stream-notice.is-critical {
+    border-width: 2px;
+}
+
+.stream-notice-header,
+.stream-notice-body,
+.stream-notice-meta {
+    position: relative;
+    z-index: 2;
+}
+
+.stream-notice-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.stream-notice-title {
+    min-width: 0;
+    color: var(--notice-secondary, #fff);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 2px #000, 0 0 4px rgba(var(--notice-glow-rgb,255,106,0), .36);
+}
+
+.stream-notice-badge {
+    color: var(--notice-accent, #ff6a00);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px #000;
+}
+
+.stream-notice-body {
+    color: var(--notice-secondary, #fff);
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.36;
+    letter-spacing: .45px;
+    text-shadow: 0 1px 2px #000, 0 0 3px #000;
+}
+
+.stream-notice-meta {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 9px;
+    color: var(--notice-meta, #ffc599);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.25px;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px #000;
+}
+
+.stream-notice-meta::before {
+    content: "";
+    flex: 0 0 38px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--notice-accent,#ff6a00), var(--notice-secondary,#fff), transparent);
+}
+
+.stream-notice-preview {
+    position: relative;
+    left: auto !important;
+    top: auto !important;
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto;
+}
+
+@keyframes streamNoticeSweep {
+    from { transform: translate3d(-120%,0,0) skewX(-13deg); }
+    to { transform: translate3d(235%,0,0) skewX(-13deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stream-notice::after { animation: none; display: none; }
+}

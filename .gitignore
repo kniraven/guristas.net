@@ -27,6 +27,7 @@ config.local.php
 # Runtime-generated content
 /storage/logs/
 /storage/cache/
+/storage/history/
 /storage/tmp/
 /storage/sessions/
 *.log
@@ -43,3 +44,4 @@ desktop.ini
 
 # Local backup copies
 *.backup-*
+/config/auth.local.php

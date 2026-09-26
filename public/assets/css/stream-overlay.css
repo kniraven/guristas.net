@@ -1,0 +1,523 @@
+/* Guristas.net 1920x1080 OBS command overlay */
+
+:root {
+    --design-w: 1920px;
+    --design-h: 1080px;
+    --purple: #8b2bb0;
+    --purple-bright: #c34cff;
+    --frame-white: #ffffff;
+    --orange: #ff6a00;
+    --red: #ff2739;
+    --cyan: #55d9ff;
+    --green: #56ff8a;
+    --toxic: #61ff78;
+}
+
+* { box-sizing: border-box; }
+html, body {
+    width: 100%; height: 100%; margin: 0; overflow: hidden;
+    background: transparent !important;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+body { color: white; }
+
+.viewport {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: transparent;
+}
+
+.stream-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--design-w);
+    height: var(--design-h);
+    transform-origin: top left;
+    overflow: hidden;
+    pointer-events: none;
+    background: transparent;
+}
+
+/* Decorative effects retained from the prior overlay, but without the old
+   particle/node network. */
+.overlay-grid,
+.edge-glow,
+.overlay-scan,
+.tech-lines,
+.vertical-data,
+.frame-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.overlay-grid {
+    z-index: 2;
+    opacity: .19;
+    background:
+        linear-gradient(rgba(196,76,255,.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(196,76,255,.055) 1px, transparent 1px);
+    background-size: 48px 48px;
+}
+
+.edge-glow {
+    z-index: 3;
+    opacity: .52;
+    background:
+        radial-gradient(circle at 5% 12%, rgba(195,76,255,.26), transparent 19%),
+        radial-gradient(circle at 95% 80%, rgba(255,255,255,.12), transparent 19%),
+        linear-gradient(90deg, rgba(96,21,108,.24), transparent 25%, transparent 75%, rgba(96,21,108,.24));
+}
+
+.overlay-scan { z-index: 35; overflow: hidden; opacity: .68; }
+.overlay-scan::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: -64px;
+    height: 64px;
+    background: linear-gradient(180deg, transparent, rgba(255,255,255,.06), rgba(195,76,255,.17), rgba(255,255,255,.05), transparent);
+    animation: overlayScan 10s linear infinite;
+    will-change: transform;
+}
+
+.frame-layer { z-index: 55; }
+.top-bar, .bottom-bar {
+    position: absolute;
+    left: 70px; right: 70px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #60156c, white, #b340ff, transparent);
+    opacity: .90;
+    box-shadow: 0 0 5px rgba(195,76,255,.72), 0 0 11px rgba(195,76,255,.34);
+}
+.top-bar { top: 42px; }
+.bottom-bar { bottom: 42px; }
+.top-bar::before, .bottom-bar::before {
+    content: "";
+    position: absolute;
+    top: -2px; left: -220px;
+    width: 180px; height: 7px;
+    background: linear-gradient(90deg, transparent, white, transparent);
+    animation: frameSweep 7.5s linear infinite;
+    will-change: transform;
+}
+
+.corner {
+    position: absolute;
+    width: 110px; height: 110px;
+    opacity: .82;
+    color: white;
+}
+.corner.tl { top: 42px; left: 42px; border-top: 4px solid; border-left: 4px solid; }
+.corner.tr { top: 42px; right: 42px; border-top: 4px solid; border-right: 4px solid; }
+.corner.bl { bottom: 42px; left: 42px; border-bottom: 4px solid; border-left: 4px solid; }
+.corner.br { bottom: 42px; right: 42px; border-bottom: 4px solid; border-right: 4px solid; }
+
+.tech-line {
+    position: absolute;
+    height: 2px;
+    opacity: .34;
+    background: linear-gradient(90deg, transparent, #b340ff, white, transparent);
+    animation: techFlow 7.5s linear infinite;
+    will-change: transform, opacity;
+}
+.tech-line.one { width: 340px; top: 210px; left: 105px; }
+.tech-line.two { width: 250px; top: 320px; right: 120px; animation-delay: 1.1s; }
+.tech-line.three { width: 380px; bottom: 230px; left: 205px; animation-delay: 2.1s; }
+
+.vertical-data {
+    z-index: 4;
+    left: auto;
+    right: 42px;
+    top: 190px;
+    width: 20px;
+    height: 520px;
+    border-left: 1px solid rgba(217,140,255,.30);
+    border-right: 1px solid rgba(217,140,255,.30);
+    opacity: .40;
+    overflow: hidden;
+}
+.vertical-data::before {
+    content: "";
+    position: absolute;
+    inset: -100% 0 0;
+    background: repeating-linear-gradient(180deg, transparent 0 18px, rgba(255,255,255,.55) 18px 22px, rgba(179,64,255,.62) 22px 30px);
+    animation: dataFall 4.4s linear infinite;
+}
+
+/* Single WebGL surface; render code uses scissors for only the left-upper and
+   right thirds, leaving 640-1280 completely untouched by maps. */
+#streamWebgl {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    width: 1920px;
+    height: 1080px;
+    display: block;
+    background: transparent;
+}
+
+.map-label-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.map-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    text-align: center;
+    line-height: 1;
+    will-change: transform;
+}
+
+.map-panel-title {
+    position: absolute;
+    z-index: 35;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    transform: none;
+    max-width: 330px;
+    white-space: nowrap;
+    pointer-events: none;
+    text-align: left;
+    opacity: .94;
+}
+.map-panel-title.venal {
+    align-items: flex-end;
+    text-align: right;
+}
+.map-panel-kicker {
+    display: inline-block;
+    width: fit-content;
+    max-width: 100%;
+    padding: 3px 7px;
+    border-radius: 7px;
+    background: #000000;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.42), 0 2px 4px rgba(0,0,0,.24);
+    color: rgba(255, 210, 158, .90);
+    font-size: 9px;
+    line-height: 1;
+    letter-spacing: .17em;
+    font-weight: 800;
+    text-transform: uppercase;
+    -webkit-text-stroke: .45px rgba(0,0,0,.98);
+    paint-order: stroke fill;
+    text-shadow:
+        -1px -1px 0 rgba(0,0,0,.95), 1px -1px 0 rgba(0,0,0,.95),
+        -1px 1px 0 rgba(0,0,0,.95), 1px 1px 0 rgba(0,0,0,.95),
+        0 2px 3px rgba(0,0,0,.98), 0 0 6px rgba(0,0,0,.82);
+}
+.map-panel-name {
+    color: #f6f7fb;
+    font-size: 18px;
+    line-height: 1.04;
+    letter-spacing: .11em;
+    font-weight: 900;
+    text-transform: uppercase;
+    -webkit-text-stroke: .7px rgba(0,0,0,.98);
+    paint-order: stroke fill;
+    text-shadow:
+        -1px -1px 0 rgba(0,0,0,.98), 1px -1px 0 rgba(0,0,0,.98),
+        -1px 1px 0 rgba(0,0,0,.98), 1px 1px 0 rgba(0,0,0,.98),
+        0 2px 3px rgba(0,0,0,.98), 0 0 7px rgba(0,0,0,.88);
+}
+.map-panel-title.venal .map-panel-name,
+.map-panel-title.war .map-panel-name {
+    color: #f6f7fb;
+}
+.node-depth {
+    position: absolute;
+    z-index: 0;
+    left: 50%;
+    top: 50%;
+    width: var(--node-depth-size, 15px);
+    height: var(--node-depth-size, 15px);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    pointer-events: none;
+
+    /* IMPORTANT: this layer sits above the WebGL canvas, so it must remain
+       hollow.  A filled dark backplate would darken/cover the actual colored
+       node.  The border + offset shadow creates separation while leaving the
+       orange/cyan/green/red core fully visible. */
+    background: transparent;
+    border: 1px solid rgba(0,0,0,.82);
+    box-shadow:
+        2px 3px 0 1px rgba(0,0,0,.46),
+        0 0 0 1px rgba(var(--node-glow-rgb, 255,106,0), .22),
+        0 0 4px rgba(var(--node-glow-rgb, 255,106,0), .28);
+    opacity: .96;
+}
+
+.map-label .system-name {
+    position: relative;
+    z-index: 5;
+    display: inline-block;
+    padding: 1px 3px;
+    color: rgba(255,255,255,.94);
+    background: rgba(0,0,0,.22);
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.18);
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    -webkit-text-stroke: .4px rgba(0,0,0,.96);
+    paint-order: stroke fill;
+    text-shadow:
+        -1px -1px 0 #000, 1px -1px 0 #000,
+        -1px 1px 0 #000, 1px 1px 0 #000,
+        0 2px 2px rgba(0,0,0,.98),
+        0 0 6px #000;
+}
+.map-label.venal-label .system-name {
+    transform: translate(var(--label-offset-x, 8px), var(--label-offset-y, -13px));
+}
+.map-label.war-label .system-name {
+    transform: translate(var(--label-offset-x, 6px), var(--label-offset-y, -18px));
+    font-size: 12px;
+}
+.map-label.is-home .system-name { color: #ffd5b7; font-size: 14px; }
+.map-label.is-fob .system-name { color: #fff; font-weight: 900; }
+
+.kill-badge {
+    position: absolute;
+    z-index: 2;
+    left: 50%; top: 50%;
+    display: grid;
+    place-items: center;
+    width: var(--kill-size, 22px);
+    height: var(--kill-size, 22px);
+    box-sizing: border-box;
+    transform: translate(-50%,-50%);
+    border-radius: 50%;
+    border: 2px solid var(--kill-color, #ff6a00);
+    background: rgba(0,0,0,.92);
+    color: #ffffff;
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 900;
+    -webkit-text-stroke: .38px rgba(0,0,0,.98);
+    text-shadow: 0 1px 2px #000, 0 0 4px #000;
+    box-shadow:
+        2px 3px 0 1px rgba(0,0,0,.54),
+        0 0 0 1px rgba(0,0,0,.30) inset,
+        0 0 5px rgba(255,106,0,.38);
+}
+.kill-badge[hidden] { display: none; }
+
+.war-state-ring {
+    position: absolute;
+    z-index: 1;
+    left: 50%; top: 50%;
+    width: var(--state-size, 18px);
+    height: var(--state-size, 18px);
+    transform: translate(-50%,-50%);
+    border: 2px solid var(--state-color, #fff);
+    border-radius: 50%;
+    box-shadow:
+        2px 3px 0 1px rgba(0,0,0,.50),
+        0 0 5px var(--state-color, #fff);
+    background: rgba(0,0,0,.10);
+}
+.war-state-ring[hidden] { display: none; }
+.war-kills {
+    position: absolute;
+    z-index: 2;
+    left: 50%; top: 50%;
+    display: grid;
+    place-items: center;
+    width: calc(var(--state-size, 18px) - 4px);
+    height: calc(var(--state-size, 18px) - 4px);
+    min-width: calc(var(--state-size, 18px) - 4px);
+    box-sizing: border-box;
+    padding: 0;
+    transform: translate(-50%,-50%);
+    border-radius: 50%;
+    background: rgba(0,0,0,.92);
+    box-shadow: 0 0 0 1px rgba(0,0,0,.78), 0 0 0 1px rgba(0,0,0,.22) inset;
+    color: white;
+    font: 900 10px/1 Consolas, monospace;
+    -webkit-text-stroke: .38px rgba(0,0,0,.98);
+    text-shadow: 0 1px 2px #000, 0 0 4px #000;
+}
+.war-kills[hidden] { display: none; }
+
+.map-label.is-pulsing::after {
+    content: "";
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 34px; height: 34px;
+    border: 2px solid var(--pulse-color, #ff6a00);
+    border-radius: 50%;
+    transform: translate(-50%,-50%);
+    animation: systemPulse 1.15s ease-out 3;
+    pointer-events: none;
+}
+
+/* Zarzakh is deliberately a light CSS element rather than a third WebGL scene. */
+.zarzakh-zone {
+    position: absolute;
+    left: 0;
+    top: 540px;
+    width: 640px;
+    height: 540px;
+    z-index: 18;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+}
+.zarzakh-mark {
+    position: relative;
+    width: 230px;
+    height: 230px;
+    display: grid;
+    place-items: center;
+    isolation: isolate;
+}
+.zarzakh-mark::before {
+    content: "";
+    position: absolute;
+    inset: 22px;
+    border-radius: 50%;
+    background: repeating-conic-gradient(from 12deg, rgba(95,255,120,.72) 0 5deg, transparent 5deg 18deg);
+    -webkit-mask: radial-gradient(circle, transparent 58%, black 60% 64%, transparent 66%);
+    mask: radial-gradient(circle, transparent 58%, black 60% 64%, transparent 66%);
+    opacity: .62;
+    animation: zarzakhDrift 22s linear infinite;
+}
+.zarzakh-mark::after {
+    content: "";
+    position: absolute;
+    inset: 45px;
+    border: 1px solid rgba(93,255,120,.38);
+    border-radius: 50%;
+    animation: zarzakhBreath 5s ease-in-out infinite;
+}
+.zarzakh-core {
+    position: relative;
+    z-index: 2;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: 3px solid #61ff78;
+    background: radial-gradient(circle at 40% 35%, #102816 0 12%, #020502 48%, #000 100%);
+    box-shadow:
+        inset 0 0 15px rgba(93,255,120,.18),
+        0 0 10px rgba(93,255,120,.80),
+        0 0 26px rgba(93,255,120,.30);
+}
+.zarzakh-core.has-kills {
+    box-shadow:
+        inset 0 0 15px rgba(93,255,120,.18),
+        0 0 0 5px rgba(255,39,57,.45),
+        0 0 13px rgba(255,39,57,.65),
+        0 0 26px rgba(93,255,120,.30);
+}
+.zarzakh-core::after {
+    content: attr(data-kills);
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #ffffff;
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1;
+    -webkit-text-stroke: .4px rgba(0,0,0,.95);
+    text-shadow: 0 1px 2px #000, 0 0 4px #000;
+    pointer-events: none;
+}
+.zarzakh-copy {
+    position: absolute;
+    z-index: 3;
+    left: 50%; top: calc(50% + 46px);
+    transform: translateX(-50%);
+    width: 280px;
+    text-align: center;
+    font-family: Consolas, monospace;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px #000;
+}
+.zarzakh-copy strong {
+    display: block;
+    color: #b5ffbe;
+    font-size: 17px;
+    letter-spacing: .20em;
+    -webkit-text-stroke: .8px rgba(0,0,0,.98);
+    paint-order: stroke fill;
+    text-shadow:
+        -2px -2px 0 rgba(0,0,0,.92), 2px -2px 0 rgba(0,0,0,.92),
+        -2px 2px 0 rgba(0,0,0,.92), 2px 2px 0 rgba(0,0,0,.92),
+        0 2px 3px #000, 0 0 9px #000;
+}
+.zarzakh-copy span {
+    display: inline-block;
+    margin-top: 5px;
+    padding: 3px 8px;
+    border-radius: 7px;
+    background: #000000;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.42), 0 2px 4px rgba(0,0,0,.24);
+    color: rgba(210,255,218,.90);
+    font-size: 11px;
+    letter-spacing: .14em;
+    -webkit-text-stroke: .55px rgba(0,0,0,.98);
+    paint-order: stroke fill;
+    text-shadow:
+        -1px -1px 0 #000, 1px -1px 0 #000,
+        -1px 1px 0 #000, 1px 1px 0 #000,
+        0 2px 3px #000, 0 0 9px #000;
+}
+.zarzakh-kills { display: none !important; }
+.zarzakh-kills:empty { display: none !important; }
+
+.notification-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 45;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* Debug only; never visible in normal operation. */
+.stream-error {
+    position: absolute;
+    z-index: 70;
+    left: 14px;
+    bottom: 14px;
+    max-width: 600px;
+    padding: 7px 9px;
+    color: #ff9aa3;
+    background: #000000;
+    border-left: 2px solid #ff3348;
+    font: 11px Consolas, monospace;
+    opacity: 0;
+}
+.stream-error.is-visible { opacity: .86; }
+
+@keyframes overlayScan { from { transform: translateY(-64px); opacity: 0; } 10%,90% { opacity: .9; } to { transform: translateY(1144px); opacity: 0; } }
+@keyframes frameSweep { from { transform: translateX(0); } to { transform: translateX(1900px); } }
+@keyframes techFlow { 0% { opacity:0; transform: translateX(-50px) scaleX(.35); } 25%,70% { opacity:.42; } 100% { opacity:0; transform: translateX(130px) scaleX(1); } }
+@keyframes dataFall { from { transform: translateY(-120px); } to { transform: translateY(120px); } }
+@keyframes systemPulse { 0% { opacity:.95; transform:translate(-50%,-50%) scale(.55); } 100% { opacity:0; transform:translate(-50%,-50%) scale(2.2); } }
+@keyframes zarzakhDrift { to { transform: rotate(360deg); } }
+@keyframes zarzakhBreath { 0%,100% { opacity:.18; transform:scale(.88); } 50% { opacity:.64; transform:scale(1.08); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .overlay-scan::after,
+    .top-bar::before,
+    .bottom-bar::before,
+    .tech-line,
+    .vertical-data::before,
+    .zarzakh-mark::before,
+    .zarzakh-mark::after { animation: none !important; }
+}

@@ -1,0 +1,9 @@
+<?php
+// Copy to auth.local.php outside public/ and fill in your own values.
+return [
+    'client_id' => 'YOUR_EVE_SSO_CLIENT_ID',
+    'redirect_uri' => 'https://guristas.net/auth/callback.php',
+    'db_dsn' => 'mysql:host=127.0.0.1;dbname=guristas_net;charset=utf8mb4',
+    'db_user' => 'YOUR_DB_USER',
+    'db_password' => 'YOUR_DB_PASSWORD',
+];

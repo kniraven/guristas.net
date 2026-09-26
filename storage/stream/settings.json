@@ -1,0 +1,23 @@
+{
+  "notifications_enabled": true,
+  "ambient_interval_min_ms": 8000,
+  "ambient_interval_max_ms": 15000,
+  "visible_duration_min_ms": 5600,
+  "visible_duration_max_ms": 8200,
+  "enter_duration_min_ms": 90,
+  "enter_duration_max_ms": 180,
+  "exit_duration_min_ms": 220,
+  "exit_duration_max_ms": 360,
+  "event_min_gap_ms": 5000,
+  "event_expiry_ms": 120000,
+  "max_active": 1,
+  "recent_message_memory": 12,
+  "intel_refresh_ms": 300000,
+  "message_refresh_ms": 60000,
+  "render_fps": 24,
+  "label_fps": 12,
+  "pixel_ratio_cap": 1.15,
+  "war_change_percent_threshold": 2.5,
+  "venal_kill_event_minimum": 2,
+  "kill_spike_delta": 3
+}

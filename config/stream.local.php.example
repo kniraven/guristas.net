@@ -1,0 +1,8 @@
+<?php
+
+return [
+    // Use a long random value in production. This file should be copied to
+    // stream.local.php, which the existing project .gitignore excludes.
+    'admin_key' => 'CHANGE-THIS-TO-A-LONG-RANDOM-SECRET',
+    'allow_local_without_key' => true,
+];

@@ -1,14 +1,17 @@
 <?php
 
 declare(strict_types=1);
+require dirname(__DIR__) . '/app/services/EveAuth.php';
+eve_session();
+$viewer = eve_current_user();
 
 /**
  * Guristas.net Command Deck
  *
- * The initial site uses local placeholder data.
- * Live Twitch, ESI, market, insurgency, corporation,
- * music, gallery, comic, and donation data will be
- * connected through backend services later.
+ * The command deck still contains several local placeholder feeds.
+ * Public ESI infrastructure and the Venal intelligence map are now
+ * connected through backend services; market, insurgency, corporation,
+ * music, gallery, comic, and donation systems will follow.
  */
 
 function escape(string $value): string
@@ -20,7 +23,7 @@ function escape(string $value): string
     );
 }
 
-$siteVersion = '0.2.0';
+$siteVersion = '0.3.0';
 
 $themes = [
     'commando' => 'Commando Guri',
@@ -59,6 +62,14 @@ $navigation = [
     [
         'label' => 'Command',
         'href' => '#command',
+    ],
+    [
+        'label' => 'Venal',
+        'href' => '/venal/',
+    ],
+    [
+        'label' => 'Ships',
+        'href' => '/ships/',
     ],
     [
         'label' => 'War',
@@ -213,6 +224,9 @@ $currentYear = (int) date('Y');
         src="assets/js/site.js?v=<?= filemtime(__DIR__ . '/assets/js/site.js') ?>"
         defer
     ></script>
+    <link rel="stylesheet" href="/assets/css/auth.css?v=<?= filemtime(__DIR__ . '/assets/css/auth.css') ?>">
+    
+    <script src="/assets/js/auth.js?v=<?= filemtime(__DIR__ . '/assets/js/auth.js') ?>" defer></script>
 </head>
 
 <body>
@@ -438,6 +452,7 @@ $currentYear = (int) date('Y');
                 >
                     Join the operation
                 </a>
+                <?php require dirname(__DIR__) . '/app/views/partials/account-nav.php'; ?>
             </nav>
         </div>
     </header>
@@ -678,6 +693,13 @@ $currentYear = (int) date('Y');
                     >
                         Live insurgency feed coming later
                     </button>
+
+                    <a
+                        class="secondary-button"
+                        href="/venal/"
+                    >
+                        Open Venal intelligence
+                    </a>
                 </div>
             </article>
 
@@ -1366,5 +1388,6 @@ $currentYear = (int) date('Y');
             </p>
         </div>
     </footer>
+<?php require dirname(__DIR__) . '/app/views/partials/login-modal.php'; ?>
 </body>
 </html>
