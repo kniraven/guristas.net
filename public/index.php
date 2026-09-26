@@ -58,36 +58,6 @@ $initialShipImage =
     $themeShipImages[$initialTheme]
     ?? $themeShipImages['cryptic'];
 
-$navigation = [
-    [
-        'label' => 'Command',
-        'href' => '#command',
-    ],
-    [
-        'label' => 'Venal',
-        'href' => '/venal/',
-    ],
-    [
-        'label' => 'Ships',
-        'href' => '/ships/',
-    ],
-    [
-        'label' => 'War',
-        'href' => '#war-room',
-    ],
-    [
-        'label' => 'Build',
-        'href' => '#industry-preview',
-    ],
-    [
-        'label' => 'Lore',
-        'href' => '#lore',
-    ],
-    [
-        'label' => 'Signals',
-        'href' => '#signals',
-    ],
-];
 
 $operations = [
     'raid' => [
@@ -434,26 +404,7 @@ $currentYear = (int) date('Y');
                 </span>
             </button>
 
-            <nav
-                id="site-navigation"
-                class="site-nav"
-                aria-label="Primary navigation"
-                data-navigation
-            >
-                <?php foreach ($navigation as $item): ?>
-                    <a href="<?= escape($item['href']) ?>">
-                        <?= escape($item['label']) ?>
-                    </a>
-                <?php endforeach; ?>
-
-                <a
-                    class="nav-cta"
-                    href="#join"
-                >
-                    Join the operation
-                </a>
-                <?php require dirname(__DIR__) . '/app/views/partials/account-nav.php'; ?>
-            </nav>
+            <?php $navActive = 'command'; require dirname(__DIR__) . '/app/views/partials/site-nav.php'; ?>
         </div>
     </header>
 

@@ -1,6 +1,9 @@
 <?php
 
 declare(strict_types=1);
+require dirname(__DIR__, 2) . '/app/services/EveAuth.php';
+eve_session();
+$viewer = eve_current_user();
 
 function escape(string $value): string
 {
@@ -37,6 +40,10 @@ $publicRoot = dirname(__DIR__);
 
     <script src="/assets/js/themes.js?v=<?= filemtime($publicRoot . '/assets/js/themes.js') ?>" defer></script>
     <script src="/assets/js/site.js?v=<?= filemtime($publicRoot . '/assets/js/site.js') ?>" defer></script>
+
+    <link rel="stylesheet" href="/assets/css/auth.css?v=<?= filemtime($publicRoot . '/assets/css/auth.css') ?>">
+    <script>window.guristasAccount = <?= json_encode(['signedIn' => (bool)$viewer, 'csrf' => $viewer ? eve_csrf() : null], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+    <script src="/assets/js/auth.js?v=<?= filemtime($publicRoot . '/assets/js/auth.js') ?>" defer></script>
 
     <script type="importmap">
     {
@@ -100,14 +107,7 @@ $publicRoot = dirname(__DIR__);
                 <span class="menu-lines" aria-hidden="true"><i></i><i></i><i></i></span>
             </button>
 
-            <nav id="site-navigation" class="site-nav" aria-label="Primary navigation" data-navigation>
-                <a href="/">Command</a>
-                <a href="/venal/" aria-current="page">Venal</a>
-                <a href="/#war-room">War</a>
-                <a href="/#fulcrum">Fulcrum</a>
-                <a href="/#lore">Lore</a>
-                <a class="nav-cta" href="/#join">Join the operation</a>
-            </nav>
+            <?php $navActive = 'venal'; require dirname(__DIR__, 2) . '/app/views/partials/site-nav.php'; ?>
         </div>
     </header>
 
@@ -245,5 +245,6 @@ $publicRoot = dirname(__DIR__);
     </main>
 
     <script type="module" src="/assets/js/venal-map.js?v=<?= filemtime($publicRoot . '/assets/js/venal-map.js') ?>"></script>
+<?php require dirname(__DIR__, 2) . '/app/views/partials/login-modal.php'; ?>
 </body>
 </html>

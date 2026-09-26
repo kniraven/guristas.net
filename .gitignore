@@ -1,4 +1,4 @@
-﻿# Secrets and environment files
+# Secrets and environment files
 .env
 .env.*
 !.env.example
@@ -15,6 +15,8 @@ config.local.php
 
 # Database files and exports
 *.sql
+!/sql/
+!/sql/*.sql
 *.sqlite
 *.sqlite3
 *.bak

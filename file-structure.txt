@@ -3,7 +3,6 @@ Volume serial number is F696-91E7
 K:.
 |   .gitignore
 |   AUTH_SETUP.md
-|   EveAppInfo.txt
 |   GITIGNORE_ADD.txt
 |   LOCAL_DEV_AND_PERMISSIONS.md
 |   update-file-structure.bat
@@ -29,11 +28,15 @@ K:.
 |       \---partials
 |               account-nav.php
 |               login-modal.php
+|               permission-reasons.php
 |               
 +---config
 |       .gitkeep
+|       auth.local.php
 |       auth.local.php.example
+|       esi-scopes.php
 |       esi.php
+|       EveAppInfo.txt
 |       stream.local.php.example
 |       stream.php
 |       
@@ -177,6 +180,7 @@ K:.
 |       
 +---sql
 |       001_eve_accounts.sql
+|       003_eve_character_tokens.sql
 |       
 \---storage
     |   .gitkeep

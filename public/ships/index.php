@@ -22,15 +22,6 @@ $initialTheme = $_COOKIE['guristas_theme'] ?? 'cryptic';
 if (!array_key_exists($initialTheme, $themes)) {
     $initialTheme = 'cryptic';
 }
-$navigation = [
-    ['label' => 'Command', 'href' => '/'],
-    ['label' => 'Venal', 'href' => '/venal/'],
-    ['label' => 'Ships', 'href' => '/ships/'],
-    ['label' => 'War', 'href' => '/#war-room'],
-    ['label' => 'Build', 'href' => '/#industry-preview'],
-    ['label' => 'Lore', 'href' => '/#lore'],
-    ['label' => 'Signals', 'href' => '/#signals'],
-];
 ?>
 <!doctype html>
 <html lang="en" data-operation="raid" data-theme="<?= escape($initialTheme) ?>">
@@ -151,26 +142,7 @@ $navigation = [
                 </span>
             </button>
 
-            <nav
-                id="site-navigation"
-                class="site-nav"
-                aria-label="Primary navigation"
-                data-navigation
-            >
-                <?php foreach ($navigation as $item): ?>
-                    <a href="<?= escape($item['href']) ?>">
-                        <?= escape($item['label']) ?>
-                    </a>
-                <?php endforeach; ?>
-
-                <a
-                    class="nav-cta"
-                    href="/#join"
-                >
-                    Join the operation
-                </a>
-                <?php require dirname(__DIR__, 2) . '/app/views/partials/account-nav.php'; ?>
-            </nav>
+            <?php $navActive = 'ships'; require dirname(__DIR__, 2) . '/app/views/partials/site-nav.php'; ?>
         </div>
     </header>
 
