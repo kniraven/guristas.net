@@ -19,7 +19,13 @@ try {
         'code_verifier' => $pending['verifier'],
     ]);
     $claims = eve_verify_token((string)($response['access_token'] ?? ''), $metadata, $c['client_id']);
+    $granted = $claims['scp'] ?? [];
+    if (is_string($granted)) $granted = preg_split('/\s+/', trim($granted));
+    if (!is_array($granted) || array_diff(eve_requested_scopes(), $granted)) {
+        throw new RuntimeException('EVE did not grant every requested scope. Check the registered scopes and current CCP scope list.');
+    }
     eve_store_character($claims['character_id'], $claims['name']);
+    eve_store_tokens($claims['character_id'], $response, $claims);
     session_regenerate_id(true);
     $_SESSION['eve_character_id'] = $claims['character_id'];
     unset($_SESSION['eve_csrf']);

@@ -6,4 +6,6 @@ return [
     'db_dsn' => 'mysql:host=127.0.0.1;dbname=guristas_net;charset=utf8mb4',
     'db_user' => 'YOUR_DB_USER',
     'db_password' => 'YOUR_DB_PASSWORD',
+    // Generate once: php -r 'echo base64_encode(random_bytes(32)), PHP_EOL;'
+    'token_encryption_key' => 'YOUR_RANDOM_BASE64_KEY',
 ];

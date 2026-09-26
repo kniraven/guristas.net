@@ -235,3 +235,94 @@ function eve_store_character(int $id, string $name): void
     $stmt = $db->prepare('INSERT IGNORE INTO eve_character_settings (character_id) VALUES (?)');
     $stmt->execute([$id]);
 }
+
+// Keep the key outside public/ and deployment artifacts. A 32-byte random key is required.
+function eve_token_key(): string
+{
+    $config = eve_config();
+    $key = base64_decode((string)($config['token_encryption_key'] ?? ''), true);
+    if ($key === false || strlen($key) !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES) {
+        throw new RuntimeException('Configure a 32-byte token encryption key before requesting scopes.');
+    }
+    return $key;
+}
+function eve_encrypt_token(string $token): string
+{
+    $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+    return base64_encode($nonce . sodium_crypto_secretbox($token, $nonce, eve_token_key()));
+}
+function eve_decrypt_token(string $sealed): string
+{
+    $raw = base64_decode($sealed, true);
+    if ($raw === false || strlen($raw) < SODIUM_CRYPTO_SECRETBOX_NONCEBYTES + SODIUM_CRYPTO_SECRETBOX_MACBYTES) {
+        throw new RuntimeException('Invalid encrypted token.');
+    }
+    $nonce = substr($raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+    $token = sodium_crypto_secretbox_open(substr($raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), $nonce, eve_token_key());
+    if ($token === false) throw new RuntimeException('Cannot decrypt EVE token.');
+    return $token;
+}
+function eve_requested_scopes(): array
+{
+    $scopes = require dirname(__DIR__, 2) . '/config/esi-scopes.php';
+    if (!is_array($scopes) || !$scopes || count($scopes) !== count(array_unique($scopes))) {
+        throw new RuntimeException('Invalid EVE scope list.');
+    }
+    foreach ($scopes as $scope) {
+        if (!is_string($scope) || !preg_match('/^[a-z0-9_.:-]+$/D', $scope)) {
+            throw new RuntimeException('Invalid EVE scope.');
+        }
+    }
+    return $scopes;
+}
+function eve_store_tokens(int $id, array $response, array $claims): void
+{
+    $refresh = $response['refresh_token'] ?? null;
+    $access = $response['access_token'] ?? null;
+    $expires = $response['expires_in'] ?? null;
+    if (!is_string($refresh) || $refresh === '' || !is_string($access) || $access === ''
+        || !is_numeric($expires) || (int)$expires < 1 || (int)$expires > 86400) {
+        throw new RuntimeException('SSO did not return renewable credentials.');
+    }
+    $granted = $claims['scp'] ?? [];
+    if (is_string($granted)) $granted = preg_split('/\s+/', trim($granted));
+    if (!is_array($granted)) throw new RuntimeException('Invalid granted scope list.');
+    $granted = array_values(array_filter($granted, 'is_string'));
+    $stmt = eve_db()->prepare('INSERT INTO eve_character_tokens (character_id, access_token_sealed, refresh_token_sealed, scopes_json, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? SECOND)) ON DUPLICATE KEY UPDATE access_token_sealed=VALUES(access_token_sealed), refresh_token_sealed=VALUES(refresh_token_sealed), scopes_json=VALUES(scopes_json), expires_at=VALUES(expires_at)');
+    $stmt->execute([$id, eve_encrypt_token($access), eve_encrypt_token($refresh), json_encode($granted, JSON_THROW_ON_ERROR), (int)$expires]);
+}
+function eve_access_token(int $id, string $scope): string
+{
+    $db = eve_db();
+    $db->beginTransaction();
+    try {
+        $q = $db->prepare('SELECT * FROM eve_character_tokens WHERE character_id = ? FOR UPDATE');
+        $q->execute([$id]);
+        $row = $q->fetch();
+        if (!$row) throw new RuntimeException('EVE authorization is missing. Sign in again.');
+        $granted = json_decode($row['scopes_json'], true, 32, JSON_THROW_ON_ERROR);
+        if (!is_array($granted) || !in_array($scope, $granted, true)) throw new RuntimeException('Required EVE permission was not granted.');
+        if (strtotime($row['expires_at'] . ' UTC') > time() + 90) {
+            $token = eve_decrypt_token($row['access_token_sealed']);
+            $db->commit();
+            return $token;
+        }
+        $config = eve_config();
+        $meta = eve_metadata();
+        $response = eve_http_json($meta['token_endpoint'], [
+            'grant_type' => 'refresh_token', 'refresh_token' => eve_decrypt_token($row['refresh_token_sealed']),
+            'client_id' => $config['client_id'],
+        ]);
+        $token = (string)($response['access_token'] ?? '');
+        $claims = eve_verify_token($token, $meta, $config['client_id']);
+        if ($claims['character_id'] !== $id) throw new RuntimeException('EVE token changed character.');
+        // Some refresh responses omit refresh_token; reuse the prior value only then.
+        if (empty($response['refresh_token'])) $response['refresh_token'] = eve_decrypt_token($row['refresh_token_sealed']);
+        eve_store_tokens($id, $response, $claims);
+        $db->commit();
+        return $token;
+    } catch (Throwable $error) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $error;
+    }
+}
