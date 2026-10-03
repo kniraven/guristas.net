@@ -9,18 +9,11 @@ header('Cache-Control: no-store');
 
 $root = dirname(__DIR__, 2);
 
-require_once $root . '/app/services/EsiCache.php';
-require_once $root . '/app/services/EsiClient.php';
-require_once $root . '/app/services/SourceService.php';
-require_once $root . '/app/services/UniverseService.php';
+require_once $root . '/app/services/DataServices.php';
 
 try {
-    $config = require $root . '/config/esi.php';
-
-    $cache = new GuristasEsiCache($config['cache_dir']);
-    $esi = new GuristasEsiClient($config, $cache);
-    $sourceService = new GuristasSourceService();
-    $universe = new GuristasUniverseService($esi, $sourceService);
+    $services = new GuristasDataServices();
+    $universe = $services->universe();
 
     $status = $universe->tranquilityStatus();
     $venal = $universe->venal();

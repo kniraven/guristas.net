@@ -11,24 +11,12 @@ if (PHP_SAPI !== 'cli') {
 
 $root = dirname(__DIR__);
 
-require_once $root . '/app/services/EsiCache.php';
-require_once $root . '/app/services/EsiClient.php';
-require_once $root . '/app/services/SourceService.php';
-require_once $root . '/app/services/VenalService.php';
-require_once $root . '/app/services/VenalActivityHistory.php';
+require_once $root . '/app/services/DataServices.php';
 
 try {
-    $config = require $root . '/config/esi.php';
-
-    $esiCache = new GuristasEsiCache($config['cache_dir']);
-    $derivedCache = new GuristasEsiCache($config['derived_cache_dir']);
-    $esi = new GuristasEsiClient($config, $esiCache);
-    $sourceService = new GuristasSourceService();
-    $venal = new GuristasVenalService($esi, $sourceService, $derivedCache);
-    $history = new GuristasVenalActivityHistory(
-        $root . '/storage/history/venal',
-        720
-    );
+    $services = new GuristasDataServices();
+    $venal = $services->venal();
+    $history = $services->history();
 
     $payload = $venal->map();
     $result = $history->record(

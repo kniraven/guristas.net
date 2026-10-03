@@ -9,18 +9,11 @@ header('Cache-Control: public, max-age=60, stale-while-revalidate=240');
 
 $root = dirname(__DIR__, 3);
 
-require_once $root . '/app/services/EsiCache.php';
-require_once $root . '/app/services/EsiClient.php';
-require_once $root . '/app/services/SourceService.php';
-require_once $root . '/app/services/ZarzakhService.php';
+require_once $root . '/app/services/DataServices.php';
 
 try {
-    $config = require $root . '/config/esi.php';
-    $esiCache = new GuristasEsiCache($config['cache_dir']);
-    $derivedCache = new GuristasEsiCache($config['derived_cache_dir']);
-    $esi = new GuristasEsiClient($config, $esiCache);
-    $sources = new GuristasSourceService();
-    $zarzakh = new GuristasZarzakhService($esi, $sources, $derivedCache);
+    $services = new GuristasDataServices();
+    $zarzakh = $services->zarzakh();
     $result = $zarzakh->overlay();
 
     http_response_code(200);

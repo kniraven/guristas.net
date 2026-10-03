@@ -9,9 +9,10 @@ header('Cache-Control: public, max-age=60, stale-while-revalidate=240');
 
 $root = dirname(__DIR__, 3);
 
-require_once $root . '/app/services/VenalActivityHistory.php';
+require_once $root . '/app/services/DataServices.php';
 
 try {
+    $services = new GuristasDataServices();
     $metric = isset($_GET['metric']) ? (string) $_GET['metric'] : 'ship_kills';
     $hours = isset($_GET['hours']) ? (int) $_GET['hours'] : 1;
 
@@ -20,10 +21,7 @@ try {
         throw new InvalidArgumentException('Unsupported time window.');
     }
 
-    $history = new GuristasVenalActivityHistory(
-        $root . '/storage/history/venal',
-        720
-    );
+    $history = $services->history();
 
     $data = $history->aggregate($metric, $hours);
     $esiEndpoint = $metric === 'ship_jumps'

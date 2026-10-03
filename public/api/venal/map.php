@@ -9,29 +9,17 @@ header('Cache-Control: public, max-age=60, stale-while-revalidate=240');
 
 $root = dirname(__DIR__, 3);
 
-require_once $root . '/app/services/EsiCache.php';
-require_once $root . '/app/services/EsiClient.php';
-require_once $root . '/app/services/SourceService.php';
-require_once $root . '/app/services/VenalService.php';
-require_once $root . '/app/services/VenalActivityHistory.php';
+require_once $root . '/app/services/DataServices.php';
 
 try {
-    $config = require $root . '/config/esi.php';
-
-    $esiCache = new GuristasEsiCache($config['cache_dir']);
-    $derivedCache = new GuristasEsiCache($config['derived_cache_dir']);
-    $esi = new GuristasEsiClient($config, $esiCache);
-    $sourceService = new GuristasSourceService();
-    $venal = new GuristasVenalService($esi, $sourceService, $derivedCache);
+    $services = new GuristasDataServices();
+    $venal = $services->venal();
 
     $payload = $venal->map();
 
     $historyWarning = null;
     try {
-        $history = new GuristasVenalActivityHistory(
-            $root . '/storage/history/venal',
-            720
-        );
+        $history = $services->history();
         $history->record(
             $payload['data'],
             isset($payload['meta']['activity_updated_at'])
@@ -45,7 +33,7 @@ try {
     }
 
     $responseMeta = $payload['meta'];
-    $responseMeta['activity_history_retention_hours'] = 720;
+    $responseMeta['activity_history_retention_hours'] = GuristasDataServices::HISTORY_RETENTION_HOURS;
     $responseMeta['activity_history_warning'] = $historyWarning;
 
     http_response_code(200);

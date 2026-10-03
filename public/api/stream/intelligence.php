@@ -9,23 +9,11 @@ header('Cache-Control: public, max-age=30, stale-while-revalidate=240');
 
 $root = dirname(__DIR__, 3);
 
-require_once $root . '/app/services/EsiCache.php';
-require_once $root . '/app/services/EsiClient.php';
-require_once $root . '/app/services/SourceService.php';
-require_once $root . '/app/services/VenalService.php';
-require_once $root . '/app/services/FrontlinesService.php';
-require_once $root . '/app/services/StreamIntelligenceService.php';
+require_once $root . '/app/services/DataServices.php';
 
 try {
-    $config = require $root . '/config/esi.php';
-    $esiCache = new GuristasEsiCache($config['cache_dir']);
-    $derivedCache = new GuristasEsiCache($config['derived_cache_dir']);
-    $frontlinesCache = new GuristasEsiCache($root . '/storage/cache/frontlines');
-    $esi = new GuristasEsiClient($config, $esiCache);
-    $sources = new GuristasSourceService();
-    $venal = new GuristasVenalService($esi, $sources, $derivedCache);
-    $frontlines = new GuristasFrontlinesService($esi, $frontlinesCache, $derivedCache, $config);
-    $stream = new GuristasStreamIntelligenceService($esi, $venal, $frontlines);
+    $services = new GuristasDataServices();
+    $stream = $services->stream();
     $result = $stream->snapshot();
 
     http_response_code(200);
