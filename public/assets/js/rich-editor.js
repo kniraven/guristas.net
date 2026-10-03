@@ -33,7 +33,6 @@
     if(wrapper.dataset.enhanced)return;const source=wrapper.querySelector('[data-rich-source]');if(!source)return;wrapper.dataset.enhanced='1';
     const toolbar=document.createElement('div');toolbar.className='g-rich-toolbar';toolbar.setAttribute('role','toolbar');toolbar.setAttribute('aria-label','Text formatting');
     const area=document.createElement('div');area.className='g-rich-content';area.contentEditable='true';area.setAttribute('role','textbox');area.setAttribute('aria-multiline','true');area.setAttribute('aria-label',wrapper.querySelector('label').textContent);area.id=source.id+'-visual';
-    const preview=document.createElement('div');preview.className='g-rich-content g-rich-render';preview.hidden=true;preview.setAttribute('aria-label','Formatted text preview');
     if(source.dataset.format==='html')area.append(clean(source.value));else area.textContent=source.value;
     source.hidden=true;source.classList.add('g-rich-source');
     const flag=wrapper.querySelector('[data-rich-format]')||document.createElement('input');flag.type='hidden';flag.name=source.name+'_format';flag.value='html';if(!flag.parentNode)wrapper.append(flag);
@@ -56,19 +55,31 @@
     }
     function quoteAt(node){const el=node?.nodeType===Node.ELEMENT_NODE?node:node?.parentElement;const quote=el?.closest('blockquote');return quote&&area.contains(quote)?quote:null;}
     function toggleQuote(){
-      const selection=getSelection(),range=selection.getRangeAt(0);
-      const quotes=[...area.querySelectorAll('blockquote')].filter(q=>range.collapsed?q.contains(range.startContainer):range.intersectsNode(q));
+      const selection=getSelection(),range=selection.getRangeAt(0).cloneRange();
+      const collapsed=range.collapsed;
+      // Temporary boundary markers keep the exact caret/selection through DOM moves.
+      const start=document.createElement('span'),end=document.createElement('span');
+      start.dataset.editorBoundary='start';end.dataset.editorBoundary='end';
+      if(!collapsed){const tail=range.cloneRange();tail.collapse(false);tail.insertNode(end);}
+      const head=range.cloneRange();head.collapse(true);head.insertNode(start);
+      const marked=document.createRange();marked.setStartAfter(start);
+      if(collapsed)marked.collapse(true);else marked.setEndBefore(end);
+      const quotes=[...area.querySelectorAll('blockquote')].filter(q=>q.contains(start)||(!collapsed&&marked.intersectsNode(q)));
       if(quotes.length){
-        // Unwrap from inside out, including old nested quotes, preserving their content.
         for(const q of quotes.reverse())q.replaceWith(...q.childNodes);
       }else{
-        const blocks=[...area.childNodes].filter(node=>range.collapsed?(node===range.startContainer||node.contains(range.startContainer)):range.intersectsNode(node));
-        if(!blocks.length){const paragraph=document.createElement('p');paragraph.append(document.createElement('br'));area.append(paragraph);blocks.push(paragraph);}
-        const quote=document.createElement('blockquote');blocks[0].before(quote);quote.append(...blocks);
-        const selected=document.createRange();selected.selectNodeContents(quote);if(range.collapsed)selected.collapse(false);selection.removeAllRanges();selection.addRange(selected);
+        let first=start;while(first.parentNode!==area)first=first.parentNode;
+        let last=collapsed?first:end;while(last.parentNode!==area)last=last.parentNode;
+        const isBlock=node=>node.nodeType===Node.ELEMENT_NODE&&['P','DIV','UL','OL','BLOCKQUOTE','H2','H3','PRE'].includes(node.tagName);
+        // Raw text at the editor root is one line/block too. Include its inline siblings.
+        if(!isBlock(first))while(first.previousSibling&&!isBlock(first.previousSibling))first=first.previousSibling;
+        if(!isBlock(last))while(last.nextSibling&&!isBlock(last.nextSibling))last=last.nextSibling;
+        const blocks=[];for(let node=first;node;node=node.nextSibling){blocks.push(node);if(node===last)break;}
+        const quote=document.createElement('blockquote');first.before(quote);quote.append(...blocks);
       }
-      // DOM changes can collapse the old range: retain a usable caret in the editor.
-      if(!selectionInside(selection)){const caret=document.createRange();caret.selectNodeContents(area);caret.collapse(false);selection.removeAllRanges();selection.addRange(caret);}
+      const restored=document.createRange();restored.setStartBefore(start);
+      if(collapsed)restored.collapse(true);else restored.setEndBefore(end);
+      start.remove();end.remove();selection.removeAllRanges();selection.addRange(restored);
     }
     function run(command,value){if(mode!=='edit')return;restore();if(command==='quote')toggleQuote();else document.execCommand(command,false,value);remember();sync();states();}
     function preserve(event){remember();event.preventDefault();}
@@ -104,18 +115,17 @@
     function setMode(next){
       if(next===mode)return;sync();closeLink();
       if(mode==='html'&&next==='edit'){area.replaceChildren(clean(source.value));source.value=area.innerHTML;savedRange=null;}
-      mode=next;area.hidden=mode!=='edit';source.hidden=mode!=='html';preview.hidden=mode!=='preview';
-      if(mode==='preview')preview.replaceChildren(clean(source.value));
+      mode=next;area.hidden=mode!=='edit';source.hidden=mode!=='html';
       wrapper.querySelector('label').htmlFor=mode==='html'?source.id:area.id;
       modeButtons.forEach(({button,key})=>button.setAttribute('aria-pressed',String(key===mode)));states();
     }
-    // If returning through preview to edit, always apply current source changes.
+    // Apply HTML changes when returning to Edit.
     const originalSetMode=setMode;
-    [['Edit','edit'],['HTML','html'],['Preview','preview']].forEach(([label,key])=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.setAttribute('aria-pressed',String(key==='edit'));b.addEventListener('click',()=>{
+    [['Edit','edit'],['HTML','html']].forEach(([label,key])=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.setAttribute('aria-pressed',String(key==='edit'));b.addEventListener('click',()=>{
       if(key==='edit'&&mode!=='edit'){area.replaceChildren(clean(source.value));savedRange=null;}
       originalSetMode(key);
     });modeButtons.push({button:b,key});modes.append(b);});
-    wrapper.insertBefore(modes,source);wrapper.insertBefore(toolbar,source);wrapper.insertBefore(linkPanel,source);wrapper.insertBefore(area,source);wrapper.insertBefore(preview,source);wrapper.querySelector('label').htmlFor=area.id;
+    wrapper.insertBefore(modes,source);wrapper.insertBefore(toolbar,source);wrapper.insertBefore(linkPanel,source);wrapper.insertBefore(area,source);wrapper.querySelector('label').htmlFor=area.id;
     document.addEventListener('selectionchange',()=>{if(mode==='edit'&&selectionInside(getSelection())){remember();states();}});
     area.addEventListener('keydown',event=>{
       if(event.key!=='Enter'||event.shiftKey||event.isComposing)return;
