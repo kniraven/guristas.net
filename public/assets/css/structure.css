@@ -1912,17 +1912,10 @@ input[type="range"]::-moz-range-thumb {
 
 @media (min-width: 1200px) {
     .header-inner {
-        grid-template-columns:
-            auto
-            minmax(0, 1fr)
-            auto;
-
-        grid-template-areas:
-            "brand nav themes";
-
-        gap: 18px;
-
-        padding-block: 0;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "brand nav themes";
+        gap: 12px;
+        padding-block: 10px;
     }
 
     .menu-button {

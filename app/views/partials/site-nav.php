@@ -1,19 +1,29 @@
 <?php
-// Shared primary navigation. Set $navActive on each page before including this partial.
+// Shared primary navigation.
+$isCommandPage = ($navActive ?? '') === 'command';
+
 $navItems = [
-    ['command', 'Command', '/'],
+    ['command', 'Command', $isCommandPage ? '#command' : '/#command'],
     ['venal', 'Venal', '/venal/'],
     ['ships', 'Ships', '/ships/'],
-    ['war', 'War', '/#war-room'],
-    ['build', 'Build', '/#industry-preview'],
-    ['lore', 'Lore', '/#lore'],
-    ['signals', 'Signals', '/#signals'],
+    ['war', 'War', $isCommandPage ? '#war-room' : '/#war-room'],
+    ['build', 'Build', $isCommandPage ? '#industry-preview' : '/#industry-preview'],
+    ['lore', 'Lore', $isCommandPage ? '#lore' : '/#lore'],
+    ['signals', 'Signals', $isCommandPage ? '#signals' : '/#signals'],
 ];
 ?>
-<nav id="site-navigation" class="site-nav" aria-label="Primary navigation" data-navigation>
+<nav id="site-navigation"
+     class="site-nav"
+     aria-label="Primary navigation"
+     data-navigation>
     <?php foreach ($navItems as [$id, $label, $href]): ?>
-        <a href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>"<?= ($navActive ?? '') === $id ? ' aria-current="page"' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></a>
+        <a href="<?= eve_e($href) ?>"<?= ($navActive ?? '') === $id
+            ? ' aria-current="page"'
+            : '' ?>><?= eve_e($label) ?></a>
     <?php endforeach; ?>
-    <a class="nav-cta" href="/#join">Join the operation</a>
+
+    <a class="nav-cta"
+       href="<?= $isCommandPage ? '#join' : '/#join' ?>">Join</a>
+
     <?php require __DIR__ . '/account-nav.php'; ?>
 </nav>
