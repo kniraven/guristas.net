@@ -10,15 +10,14 @@ $initialTheme=$_COOKIE['guristas_theme']??'cryptic'; if (!isset($themes[$initial
 function escape(string $v):string { return eve_e($v); }
 function age(string $time):string { $s=max(0,time()-strtotime($time.' UTC')); return $s<3600 ? floor($s/60).'m' : ($s<86400 ? floor($s/3600).'h' : floor($s/86400).'d'); }
 if ($_SERVER['REQUEST_METHOD']==='POST') {
+ if (!$_POST && (int)($_SERVER['CONTENT_LENGTH']??0)>0) { http_response_code(413); exit('Submission exceeds the server limit. Reduce attachments and try again.'); }
  eve_require_csrf(is_string($_POST['csrf']??null)?$_POST['csrf']:null);
  try {
   $action=$_POST['action']??'';
-  if ($action==='save') $id=tickets_write($_POST,$actor);
+  if ($action==='save') $id=tickets_write($_POST,$actor,tickets_upload_prepare($_FILES['attachments']??[]));
   elseif ($action==='comment') {
-   $id=(int)($_POST['id']??0); $body=trim((string)($_POST['body']??''));
-   if ($body==='' || strlen($body)>10000) throw new InvalidArgumentException('Enter a comment under 10,000 bytes.');
-   $q=eve_db()->prepare('SELECT id FROM guristas_tickets WHERE id=?'); $q->execute([$id]); if (!$q->fetch()) throw new InvalidArgumentException('Ticket not found.');
-   eve_db()->beginTransaction(); try { $q=eve_db()->prepare("INSERT INTO guristas_ticket_activity(ticket_id,author_id,kind,body,created_at) VALUES (?,?,'comment',?,UTC_TIMESTAMP())"); $q->execute([$id,$actor,$body]); $q=eve_db()->prepare('UPDATE guristas_tickets SET updated_at=UTC_TIMESTAMP() WHERE id=?'); $q->execute([$id]); eve_db()->commit(); } catch(Throwable $e) { eve_db()->rollBack(); throw $e; }
+   $id=(int)($_POST['id']??0);
+   tickets_comment($id,(string)($_POST['body']??''),(string)($_POST['body_format']??'plain'),$actor,tickets_upload_prepare($_FILES['attachments']??[]));
   } elseif ($action==='grant' || $action==='revoke') {
    if (!$owner) { http_response_code(403); exit('Owner access required.'); }
    $person=(int)($_POST['character_id']??0);
@@ -37,8 +36,8 @@ $statuses=['Backlog','To Do','In Progress','Review','Done','Cancelled'];
 ?>
 <!doctype html><html lang="en" data-operation="raid" data-theme="<?= eve_e($initialTheme) ?>"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Staff Tickets // Guristas.net</title>
-<?php foreach (['structure','themes','auth','tickets'] as $asset): ?><link rel="stylesheet" href="/assets/css/<?= $asset ?>.css?v=<?= filemtime($root.'/public/assets/css/'.$asset.'.css') ?>"><?php endforeach; ?>
-<?php foreach (['themes','site','auth'] as $asset): ?><script defer src="/assets/js/<?= $asset ?>.js?v=<?= filemtime($root.'/public/assets/js/'.$asset.'.js') ?>"></script><?php endforeach; ?>
+<?php foreach (['structure','themes','auth','tickets','rich-editor'] as $asset): ?><link rel="stylesheet" href="/assets/css/<?= $asset ?>.css?v=<?= filemtime($root.'/public/assets/css/'.$asset.'.css') ?>"><?php endforeach; ?>
+<?php foreach (['themes','site','auth','rich-editor','tickets'] as $asset): ?><script defer src="/assets/js/<?= $asset ?>.js?v=<?= filemtime($root.'/public/assets/js/'.$asset.'.js') ?>"></script><?php endforeach; ?>
 <script>window.guristasAccount=<?= json_encode(['signedIn'=>true,'csrf'=>eve_csrf()],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;</script></head>
 <body>
 <a class="skip-link" href="#tickets">Skip to tickets</a>
@@ -155,19 +154,35 @@ $statuses=['Backlog','To Do','In Progress','Review','Done','Cancelled'];
 <form method="post"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="grant"><label>Character <select name="character_id" required><?php foreach(eve_db()->query('SELECT character_id,character_name FROM eve_characters ORDER BY character_name') as $c): ?><option value="<?= (int)$c['character_id'] ?>"><?= eve_e($c['character_name']) ?> (<?= (int)$c['character_id'] ?>)</option><?php endforeach; ?></select></label><button class="button">Grant staff access</button></form>
 <?php foreach($people as $c): ?><div class="ticket-toolbar"><strong><?= eve_e($c['character_name']) ?></strong><?php if((int)$c['character_id']===tickets_owner()): ?>Owner<?php else: ?><form method="post"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="revoke"><input type="hidden" name="character_id" value="<?= (int)$c['character_id'] ?>"><button class="button">Remove access</button></form><?php endif; ?></div><?php endforeach; ?></section>
 <?php elseif(isset($_GET['new']) || $ticket):
- $t=$ticket?:['id'=>0,'version'=>0,'title'=>'','summary'=>'','status'=>'Backlog','priority'=>'Normal','category'=>'Feature','assignee_id'=>'','due_date'=>'','blocked_reason'=>'','subtasks_json'=>'[]'];
+ $t=$ticket?:['id'=>0,'version'=>0,'title'=>'','summary'=>'','status'=>'Backlog','priority'=>'Normal','category'=>'Feature','assignee_id'=>'','due_date'=>'','blocked_reason'=>'','subtasks_json'=>'[]','summary_format'=>'plain'];
  if($error && ($_POST['action']??'')==='save') { foreach(['title','summary','status','priority','category','assignee_id','due_date','blocked_reason'] as $k) $t[$k]=(string)($_POST[$k]??''); }
 ?>
 <section class="ticket-panel"><h2><?= $ticket?'GURI-'.str_pad((string)$id,3,'0',STR_PAD_LEFT):'New ticket' ?></h2>
 <?php if($ticket): ?><p class="ticket-meta">Opened <?= age($ticket['created_at']) ?> ago · In <?= eve_e($ticket['status']) ?> for <?= age($ticket['status_since']) ?> · Updated <?= age($ticket['updated_at']) ?> ago</p><?php endif; ?>
-<form method="post" class="ticket-form"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>"><input type="hidden" name="version" value="<?= (int)$t['version'] ?>">
-<label class="wide">Title<input name="title" required maxlength="180" value="<?= eve_e($t['title']) ?>"></label><label class="wide">Summary / definition of done<textarea name="summary" rows="5" maxlength="20000"><?= eve_e($t['summary']) ?></textarea></label>
+<form method="post" enctype="multipart/form-data" class="ticket-form"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>"><input type="hidden" name="version" value="<?= (int)$t['version'] ?>">
+<label class="wide">Title<input name="title" required maxlength="180" value="<?= eve_e($t['title']) ?>"></label><div class="wide"><?php
+$editorId='ticket-summary';$editorName='summary';$editorLabel='Summary / definition of done';$editorValue=$t['summary'];$editorFormat=$error && ($_POST['action']??'')==='save' ? (string)($_POST['summary_format']??'plain') : ($t['summary_format']??'plain');
+require $root.'/app/views/partials/rich-editor.php';
+?></div>
 <?php foreach(['status'=>$statuses,'priority'=>['Low','Normal','High','Urgent'],'category'=>['Feature','Bug','Improvement','Research']] as $key=>$opts): ?><label><?= ucfirst($key) ?><select name="<?= $key ?>"><?php foreach($opts as $opt): ?><option <?= $t[$key]===$opt?'selected':'' ?>><?= $opt ?></option><?php endforeach; ?></select></label><?php endforeach; ?>
 <label>Assigned to<select name="assignee_id"><option value="">Unassigned</option><?php if($t['assignee_id'] && !isset($names[$t['assignee_id']])): ?><option selected value="">Previous assignee no longer staff — unassign on save</option><?php endif; ?><?php foreach($people as $c): ?><option value="<?= (int)$c['character_id'] ?>" <?= (string)$t['assignee_id']===(string)$c['character_id']?'selected':'' ?>><?= eve_e($c['character_name']) ?></option><?php endforeach; ?></select></label>
 <label>Due date (optional)<input name="due_date" type="date" value="<?= eve_e($t['due_date']??'') ?>"></label><label>Blocked reason (optional)<input name="blocked_reason" maxlength="500" value="<?= eve_e($t['blocked_reason']) ?>"></label>
-<label class="wide">Subtasks — one per line; mark completed items with [x]<textarea name="subtasks" rows="5"><?= eve_e($error && ($_POST['action']??'')==='save' ? (string)$_POST['subtasks'] : implode("\n",array_map(fn($s)=>($s['done']?'[x] ':'[ ] ').$s['text'],json_decode($t['subtasks_json'],true)))) ?></textarea></label><button class="button">Save ticket</button><a href="?id=<?= $id ?>">Reload saved version</a></form></section>
-<?php if($ticket): ?><section class="ticket-panel"><h2>Comments & activity</h2><form method="post"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="comment"><input type="hidden" name="id" value="<?= $id ?>"><label>Add comment<textarea name="body" required maxlength="10000" rows="3"></textarea></label><button class="button">Post comment</button></form>
-<?php $q=eve_db()->prepare('SELECT a.*,c.character_name FROM guristas_ticket_activity a LEFT JOIN eve_characters c ON c.character_id=a.author_id WHERE ticket_id=? ORDER BY a.id DESC'); $q->execute([$id]); foreach($q as $a): ?><article class="ticket-activity"><strong><?= eve_e($a['character_name']??'Former character') ?></strong> · <?= eve_e($a['kind']) ?> · <time><?= eve_e($a['created_at']) ?> UTC</time><p><?= nl2br(eve_e($a['body'])) ?></p></article><?php endforeach; ?></section><?php endif; ?>
+<?php
+$subtaskItems=json_decode($t['subtasks_json'],true)?:[];
+if($error && ($_POST['action']??'')==='save') {
+ if(($_POST['subtasks_format']??'')==='json') $subtaskItems=json_decode((string)($_POST['subtasks']??'[]'),true)?:[];
+ else { $subtaskItems=[];foreach(explode("\n",(string)($_POST['subtasks']??'')) as $line) {if(trim($line)!=='')$subtaskItems[]=['text'=>preg_replace('/^\[(?:x| )\]\s*/i','',trim($line)),'done'=>preg_match('/^\[x\]/i',trim($line))===1];} }
+}
+$subtaskItems=array_values(array_filter(is_array($subtaskItems)?$subtaskItems:[],fn($s)=>is_array($s)&&is_string($s['text']??null)&&is_bool($s['done']??null)));
+?>
+<section class="wide" data-subtasks data-items="<?= eve_e(json_encode($subtaskItems,JSON_THROW_ON_ERROR)) ?>"><h3>Subtasks</h3><textarea name="subtasks" rows="5"><?= eve_e(implode("\n",array_map(fn($s)=>($s['done']?'[x] ':'[ ] ').$s['text'],$subtaskItems))) ?></textarea><noscript>One item per line. Prefix completed items with [x].</noscript></section>
+<div class="wide"><h3>Ticket attachments</h3><?php if($ticket) tickets_attachment_links($id); ?><label>Add files<input type="file" name="attachments[]" multiple data-attachments accept=".csv,.xls,.xlsx,.xlsm,.png,.jpeg,.jpg,.gif,.doc,.docx,.txt,.md,.json,.pdf"></label><p class="ticket-meta">Up to 5 files · 10 MB each · 25 MB total. Saved with the ticket. Files must be selected again if saving fails.</p></div>
+<button class="button">Save ticket</button><a href="?id=<?= $id ?>">Reload saved version</a></form></section>
+<?php if($ticket): ?><section class="ticket-panel"><h2>Comments & activity</h2><form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="comment"><input type="hidden" name="id" value="<?= $id ?>"><?php
+$editorId='ticket-comment';$editorName='body';$editorLabel='Add comment';$editorValue=$error && ($_POST['action']??'')==='comment' ? (string)($_POST['body']??'') : '';$editorFormat=$error && ($_POST['action']??'')==='comment' ? (string)($_POST['body_format']??'plain') : 'plain';
+require $root.'/app/views/partials/rich-editor.php';
+?><label>Comment attachments<input type="file" name="attachments[]" multiple data-attachments accept=".csv,.xls,.xlsx,.xlsm,.png,.jpeg,.jpg,.gif,.doc,.docx,.txt,.md,.json,.pdf"></label><p class="ticket-meta">Up to 5 files · 10 MB each · 25 MB total. You can post files without a message.</p><button class="button">Post comment</button></form>
+<?php $q=eve_db()->prepare('SELECT a.*,c.character_name FROM guristas_ticket_activity a LEFT JOIN eve_characters c ON c.character_id=a.author_id WHERE ticket_id=? ORDER BY a.id DESC'); $q->execute([$id]); foreach($q as $a): ?><article class="ticket-activity"><strong><?= eve_e($a['character_name']??'Former character') ?></strong> · <?= eve_e($a['kind']) ?> · <time><?= eve_e($a['created_at']) ?> UTC</time><div class="g-rich-render"><?= guristas_rich_show($a['body'],$a['body_format']??'plain') ?></div><?php tickets_attachment_links($id,(int)$a['id']); ?></article><?php endforeach; ?></section><?php endif; ?>
 <?php else:
  $search=trim((string)($_GET['q']??'')); $status=(string)($_GET['status']??''); $assigned=(string)($_GET['assigned']??''); $priority=(string)($_GET['priority']??'');
  $list=($_GET['view']??'board')==='list';
