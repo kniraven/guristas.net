@@ -210,46 +210,13 @@ let themeChanging =
     false;
 
 /* =========================================================
-   SAFE STORAGE
+   THEME PREFERENCE
    ========================================================= */
-
-function safeStorageGet(key) {
-    try {
-        return window.localStorage.getItem(
-            key
-        );
-    } catch (error) {
-        console.warn(
-            "Unable to read the saved theme.",
-            error
-        );
-
-        return null;
-    }
-}
-
-function safeStorageSet(
-    key,
-    value
-) {
-    try {
-        window.localStorage.setItem(
-            key,
-            value
-        );
-    } catch (error) {
-        console.warn(
-            "Unable to save the theme preference.",
-            error
-        );
-    }
-}
 
 function getInitialTheme() {
     const documentTheme = document.documentElement.dataset.theme;
 
     if (validThemes.includes(documentTheme)) {
-        safeStorageSet("guristas.theme", documentTheme);
         return documentTheme;
     }
 
@@ -257,11 +224,6 @@ function getInitialTheme() {
 }
 
 function saveTheme(themeKey) {
-    safeStorageSet(
-        "guristas.theme",
-        themeKey
-    );
-
     document.cookie = [
         `guristas_theme=${encodeURIComponent(themeKey)}`,
         "path=/",
