@@ -185,21 +185,26 @@ $q->execute([$ticketId]);$activity=$q->fetchAll();
 $commentCount=count(array_filter($activity,fn($a)=>$a['kind']==='comment'));
 $historyCount=count($activity)-$commentCount;
 ?><section class="ticket-panel"><h2>Discussion & history</h2>
-<div class="ticket-discussion-tabs" role="tablist" aria-label="Ticket discussion">
-<a id="comments-tab" role="tab" aria-selected="<?= $discussionTab==='comments'?'true':'false' ?>" aria-controls="discussion-panel" href="?id=<?= $ticketId ?>&amp;tab=comments#discussion-panel">Comments (<?= $commentCount ?>)</a>
-<a id="history-tab" role="tab" aria-selected="<?= $discussionTab==='history'?'true':'false' ?>" aria-controls="discussion-panel" href="?id=<?= $ticketId ?>&amp;tab=history#discussion-panel">History (<?= $historyCount ?>)</a>
-</div><div id="discussion-panel" role="tabpanel" aria-labelledby="<?= $discussionTab ?>-tab">
-<?php if($discussionTab==='comments'): ?><form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="comment"><input type="hidden" name="id" value="<?= $ticketId ?>"><?php
+<div class="ticket-discussion-tabs" role="tablist" aria-label="Ticket discussion" data-discussion-tabs>
+<a id="comments-tab" role="tab" aria-selected="<?= $discussionTab==='comments'?'true':'false' ?>" aria-controls="comments-panel" data-discussion-tab="comments" href="?id=<?= $ticketId ?>&amp;tab=comments#comments-panel">Comments (<?= $commentCount ?>)</a>
+<a id="history-tab" role="tab" aria-selected="<?= $discussionTab==='history'?'true':'false' ?>" aria-controls="history-panel" data-discussion-tab="history" href="?id=<?= $ticketId ?>&amp;tab=history#history-panel">History (<?= $historyCount ?>)</a>
+</div><div id="comments-panel" role="tabpanel" aria-labelledby="comments-tab" <?= $discussionTab==='comments'?'':'hidden' ?>>
+<form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="comment"><input type="hidden" name="id" value="<?= $ticketId ?>"><?php
 $editorId='ticket-comment';$editorName='body';$editorLabel='Add comment';$editorValue=$error && ($_POST['action']??'')==='comment' ? (string)($_POST['body']??'') : '';$editorFormat=$error && ($_POST['action']??'')==='comment' ? (string)($_POST['body_format']??'plain') : 'plain';
 require $root.'/app/views/partials/rich-editor.php';
 ?><label>Comment attachments<input type="file" name="attachments[]" multiple data-attachments accept=".csv,.xls,.xlsx,.xlsm,.png,.jpeg,.jpg,.gif,.doc,.docx,.txt,.md,.json,.pdf"></label><p class="ticket-meta">Up to 5 files · 10 MB each · 25 MB total. You can post files without a message.</p><button class="button">Post comment</button></form>
-<?php endif;
+<?php
 $shown=0;
 foreach($activity as $a):
-if (($discussionTab==='comments') !== ($a['kind']==='comment')) continue;
+if ($a['kind']!=='comment') continue;
 $shown++;
 ?><article class="ticket-activity"><strong><?= eve_e($a['character_name']??'Former character') ?></strong> · <time><?= eve_e($a['created_at']) ?> UTC</time><div class="g-rich-render"><?= guristas_rich_show($a['body'],$a['body_format']??'plain') ?></div><?php if($a['kind']==='comment') tickets_attachment_links($ticketId,(int)$a['id']); ?></article><?php endforeach;
-if(!$shown): ?><p class="ticket-meta"><?= $discussionTab==='comments'?'No comments yet. Start the discussion above.':'No history recorded yet.' ?></p><?php endif; ?></div></section><?php endif; ?>
+if(!$shown): ?><p class="ticket-meta">No comments yet. Start the discussion above.</p><?php endif; ?></div>
+<div id="history-panel" role="tabpanel" aria-labelledby="history-tab" <?= $discussionTab==='history'?'':'hidden' ?>>
+<?php foreach($activity as $a): if($a['kind']==='comment') continue; ?>
+<article class="ticket-activity"><strong><?= eve_e($a['character_name']??'Former character') ?></strong> · <time><?= eve_e($a['created_at']) ?> UTC</time><div class="g-rich-render"><?= guristas_rich_show($a['body'],$a['body_format']??'plain') ?></div></article>
+<?php endforeach; if(!$historyCount): ?><p class="ticket-meta">No history recorded yet.</p><?php endif; ?>
+</div></section><?php endif; ?>
 
 <?php else:
  $search=trim((string)($_GET['q']??'')); $status=(string)($_GET['status']??''); $assigned=(string)($_GET['assigned']??''); $priority=(string)($_GET['priority']??'');

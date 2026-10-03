@@ -1,4 +1,29 @@
 document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('[data-discussion-tabs]').forEach(tablist=>{
+    const tabs=[...tablist.querySelectorAll('[data-discussion-tab]')];
+    const activate=(tab,focus=false)=>{
+      tabs.forEach(item=>{
+        const selected=item===tab;
+        item.setAttribute('aria-selected',String(selected));item.tabIndex=selected?0:-1;
+        const panel=document.getElementById(item.getAttribute('aria-controls'));
+        if(panel)panel.hidden=!selected;
+      });
+      if(focus)tab.focus();
+    };
+    tabs.forEach((tab,index)=>{
+      tab.addEventListener('click',event=>{event.preventDefault();activate(tab);});
+      tab.addEventListener('keydown',event=>{
+        let next;
+        if(event.key==='ArrowRight')next=(index+1)%tabs.length;
+        else if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;
+        else if(event.key==='Home')next=0;
+        else if(event.key==='End')next=tabs.length-1;
+        else return;
+        event.preventDefault();activate(tabs[next],true);
+      });
+    });
+    activate(tabs.find(tab=>tab.getAttribute('aria-selected')==='true')||tabs[0]);
+  });
   document.querySelectorAll('[data-subtasks]').forEach(box=>{
     const source=box.querySelector('textarea');let items=[];
     try {items=JSON.parse(box.dataset.items);}catch{}
