@@ -69,7 +69,7 @@ function tickets_attachment_links(int $ticket,?int $activity=null): void {
     foreach($files as $file) {
         echo '<li>';
         if(in_array($file['mime_type'],['image/png','image/jpeg','image/gif'],true)) echo '<button type="button" class="ticket-image-button" data-image-preview="/admin/tickets/download.php?id='.(int)$file['id'].'&amp;preview=1" aria-label="Preview '.eve_e($file['original_name']).'"><img loading="lazy" src="/admin/tickets/download.php?id='.(int)$file['id'].'&amp;preview=1" alt="'.eve_e($file['original_name']).'"></button>';
-        echo '<a href="/admin/tickets/download.php?id='.(int)$file['id'].'">'.eve_e($file['original_name']).'</a><span>'.number_format($file['size_bytes']/1024,1).' KB</span></li>';
+        echo '<a href="/admin/tickets/download.php?id='.(int)$file['id'].'" download target="_blank" rel="noopener">'.eve_e($file['original_name']).'</a><span>'.number_format($file['size_bytes']/1024,1).' KB</span></li>';
     }
     echo '</ul>';
 }
