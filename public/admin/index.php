@@ -15,17 +15,10 @@ if (!tickets_staff($actor)) {
     exit('Staff access required. Contact the site owner.');
 }
 
-$themes = [
-    'commando' => 'Commando Guri',
-    'cryptic' => 'Cryptic Ecdysis',
-    'cozen' => 'Cozen Corp',
-    'kniraven' => 'Galnet',
-];
+require_once $root . '/app/services/SiteTheme.php';
+$themes = SiteTheme::LABELS;
 
-$initialTheme = $_COOKIE['guristas_theme'] ?? 'cryptic';
-if (!is_string($initialTheme) || !isset($themes[$initialTheme])) {
-    $initialTheme = 'cryptic';
-}
+$initialTheme = SiteTheme::initial();
 
 function escape(string $value): string
 {

@@ -246,25 +246,10 @@ function safeStorageSet(
 }
 
 function getInitialTheme() {
-    const storedTheme =
-        safeStorageGet(
-            "guristas.theme"
-        );
+    const documentTheme = document.documentElement.dataset.theme;
 
-    if (
-        storedTheme &&
-        validThemes.includes(storedTheme)
-    ) {
-        return storedTheme;
-    }
-
-    const documentTheme =
-        document.documentElement.dataset.theme;
-
-    if (
-        documentTheme &&
-        validThemes.includes(documentTheme)
-    ) {
+    if (validThemes.includes(documentTheme)) {
+        safeStorageSet("guristas.theme", documentTheme);
         return documentTheme;
     }
 

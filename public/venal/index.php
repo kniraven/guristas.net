@@ -10,17 +10,10 @@ function escape(string $value): string
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-$themes = [
-    'commando' => 'Commando Guri',
-    'cryptic' => 'Cryptic Ecdysis',
-    'cozen' => 'Cozen Corp',
-    'kniraven' => 'Galnet',
-];
+require_once dirname(__DIR__, 2) . '/app/services/SiteTheme.php';
+$themes = SiteTheme::LABELS;
 
-$initialTheme = $_COOKIE['guristas_theme'] ?? 'cryptic';
-if (!array_key_exists($initialTheme, $themes)) {
-    $initialTheme = 'cryptic';
-}
+$initialTheme = SiteTheme::initial();
 
 $publicRoot = dirname(__DIR__);
 ?>

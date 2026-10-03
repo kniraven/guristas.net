@@ -181,11 +181,13 @@ button:disabled,
    GLOBAL WIDTH
    ========================================================= */
 
+:root { --shell: calc(100% - 32px); }
+@media (min-width: 768px) { :root { --shell: 720px; } }
+@media (min-width: 992px) { :root { --shell: 960px; } }
+@media (min-width: 1200px) { :root { --shell: 1180px; } }
+
 .shell {
-    width: min(
-        calc(100% - 32px),
-        var(--shell, 1180px)
-    );
+    width: var(--shell);
 
     margin-inline: auto;
 }
@@ -218,7 +220,7 @@ button:disabled,
  * This decorative stage has the same center-column width as
  * every .shell element:
  *
- *     min(calc(100% - 32px), var(--shell, 1180px))
+ *     var(--shell)
  *
  * The left and right rails receive only the remaining viewport
  * width. Because each rail clips its own contents, artwork placed
@@ -236,12 +238,7 @@ button:disabled,
     display: grid;
 
     grid-template-columns:
-        minmax(0, 1fr)
-        min(
-            calc(100% - 32px),
-            var(--shell, 1180px)
-        )
-        minmax(0, 1fr);
+        minmax(0, 1fr) var(--shell) minmax(0, 1fr);
 
     min-width: 320px;
 
@@ -1855,7 +1852,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* =========================================================
-   RESPONSIVE — 600PX
+   RESPONSIVE — 768PX
    ========================================================= */
 
 @media (min-width: 768px) {
@@ -1881,7 +1878,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* =========================================================
-   RESPONSIVE — 800PX
+   RESPONSIVE — 992PX
    ========================================================= */
 
 @media (min-width: 992px) {
@@ -2046,29 +2043,4 @@ input[type="range"]::-moz-range-thumb {
     .theme-fx-layer {
         display: none;
     }
-}
-
-/* Shared container breakpoints */
-:root {
-    --shell: calc(100% - 32px);
-}
-
-.shell {
-    width: var(--shell);
-}
-
-.theme-side-stage {
-    grid-template-columns: minmax(0, 1fr) var(--shell) minmax(0, 1fr);
-}
-
-@media (min-width: 768px) {
-    :root { --shell: 720px; }
-}
-
-@media (min-width: 992px) {
-    :root { --shell: 960px; }
-}
-
-@media (min-width: 1200px) {
-    :root { --shell: 1180px; }
 }

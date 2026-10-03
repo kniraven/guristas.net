@@ -25,22 +25,14 @@ function escape(string $value): string
 
 $siteVersion = '0.3.0';
 
-$themes = [
-    'commando' => 'Commando Guri',
-    'cryptic' => 'Cryptic Ecdysis',
-    'cozen' => 'Cozen Corp',
-    'kniraven' => 'Galnet',
-];
+require_once dirname(__DIR__) . '/app/services/SiteTheme.php';
+$themes = SiteTheme::LABELS;
 
 /**
  * The cookie allows PHP to render the visitor's last theme
  * before JavaScript loads, preventing an incorrect-theme flash.
  */
-$initialTheme = $_COOKIE['guristas_theme'] ?? 'cryptic';
-
-if (!array_key_exists($initialTheme, $themes)) {
-    $initialTheme = 'cryptic';
-}
+$initialTheme = SiteTheme::initial();
 
 /**
  * The server renders the correct Gila image for the initial theme.

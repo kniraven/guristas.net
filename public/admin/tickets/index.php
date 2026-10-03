@@ -5,8 +5,9 @@ $viewer=eve_require_user(); $actor=(int)$viewer['character_id'];
 header('Cache-Control: no-store'); header('X-Content-Type-Options: nosniff');
 if (!tickets_staff($actor)) { http_response_code(403); exit('Staff access required. Contact the site owner.'); }
 $owner=$actor===tickets_owner(); $error=''; $ticketId=(int)($_POST['id']??$_GET['id']??0);
-$themes=['commando'=>'Commando Guri','cryptic'=>'Cryptic Ecdysis','cozen'=>'Cozen Corp','kniraven'=>'Galnet'];
-$initialTheme=$_COOKIE['guristas_theme']??'cryptic'; if (!isset($themes[$initialTheme])) $initialTheme='cryptic';
+require_once $root . '/app/services/SiteTheme.php';
+$themes = SiteTheme::LABELS;
+$initialTheme = SiteTheme::initial();
 function escape(string $v):string { return eve_e($v); }
 function age(string $time):string { $s=max(0,time()-strtotime($time.' UTC')); return $s<3600 ? floor($s/60).'m' : ($s<86400 ? floor($s/3600).'h' : floor($s/86400).'d'); }
 if ($_SERVER['REQUEST_METHOD']==='POST') {

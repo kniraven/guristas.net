@@ -12,16 +12,9 @@ function escape(string $value): string
 }
 $siteVersion = '0.3.0';
 $currentYear = (int) date('Y');
-$themes = [
-    'commando' => 'Commando Guri',
-    'cryptic' => 'Cryptic Ecdysis',
-    'cozen' => 'Cozen Corp',
-    'kniraven' => 'Galnet',
-];
-$initialTheme = $_COOKIE['guristas_theme'] ?? 'cryptic';
-if (!array_key_exists($initialTheme, $themes)) {
-    $initialTheme = 'cryptic';
-}
+require_once dirname(__DIR__, 2) . '/app/services/SiteTheme.php';
+$themes = SiteTheme::LABELS;
+$initialTheme = SiteTheme::initial();
 $shipsFile = dirname(__DIR__) . '/assets/data/ships.json';
 $shipData = is_file($shipsFile) ? json_decode((string)file_get_contents($shipsFile), true) : [];
 $shipOptions = [];

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__, 2) . '/app/services/EveAuth.php';
+require_once dirname(__DIR__, 2) . '/app/services/SiteTheme.php';
 eve_session();
 try {
     $pending = $_SESSION['eve_oauth'] ?? null;
@@ -30,7 +31,7 @@ try {
     $_SESSION['eve_character_id'] = $claims['character_id'];
     unset($_SESSION['eve_csrf']);
     $user = eve_current_user();
-    if ($user && in_array($user['preferred_theme'], ['commando','cryptic','cozen','kniraven'], true)) {
+    if ($user && SiteTheme::valid($user['preferred_theme'])) {
         setcookie('guristas_theme', $user['preferred_theme'], [
             'expires' => time() + 31536000, 'path' => '/', 'samesite' => 'Lax',
             'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
