@@ -103,9 +103,6 @@ function safePercent(value) {
     const n = Number(value);
     return Number.isFinite(n) ? `${Math.round(n)}%` : "?";
 }
-function clearChildren(element) {
-    while (element.firstChild) element.removeChild(element.firstChild);
-}
 function showError(message) {
     console.error(message);
     if (!dom.error) return;
