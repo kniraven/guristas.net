@@ -1,2 +1,0 @@
-# Add these lines to the existing .gitignore (do not replace it):
-/config/auth.local.php

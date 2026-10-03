@@ -47,3 +47,8 @@ desktop.ini
 # Local backup copies
 *.backup-*
 /config/auth.local.php
+*.bak-*
+/config/EveAppInfo.txt
+/storage/ticket-attachments/
+/storage/ticket-transfer-nonces/
+/storage/uploads/
