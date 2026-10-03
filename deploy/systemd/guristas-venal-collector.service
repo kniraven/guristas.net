@@ -1,0 +1,12 @@
+[Unit]
+Description=Guristas Venal activity collection
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=apache
+Group=apache
+WorkingDirectory=/var/www/sites/guristas.net
+ExecStart=/usr/bin/php /var/www/sites/guristas.net/scripts/collect_venal_activity.php
+TimeoutStartSec=300

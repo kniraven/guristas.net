@@ -1,3 +1,5 @@
+deploy/systemd/guristas-venal-collector.service
+deploy/systemd/guristas-venal-collector.timer
 .gitignore
 README.md
 app/.gitkeep

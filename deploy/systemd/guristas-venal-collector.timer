@@ -1,0 +1,10 @@
+[Unit]
+Description=Collect Guristas Venal activity hourly
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+Unit=guristas-venal-collector.service
+
+[Install]
+WantedBy=timers.target

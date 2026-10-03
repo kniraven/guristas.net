@@ -122,3 +122,24 @@ Check affected routes and API responses, login/logout, preferences, all four the
 - EC2 PHP-FPM: `/var/log/php-fpm/www-error.log`
 
 `storage/cache/` is generated data; `storage/history/venal/` contains collected historical snapshots. Treat their retention separately. `scripts/collect_venal_activity.php` collects history; `scripts/update_ship_data.py` generates public ship data.
+
+## Scheduled maintenance
+
+Venal activity runs hourly on EC2 using the units in `deploy/systemd/`. The collector runs as `apache`, preserves existing hourly snapshots, and retains 720 hours (30 days). Missed runs trigger collection when the timer resumes but cannot reconstruct missing historical hours.
+
+Install or update from the EC2 site root:
+
+    sudo install -m 0644 deploy/systemd/guristas-venal-collector.service /etc/systemd/system/
+    sudo install -m 0644 deploy/systemd/guristas-venal-collector.timer /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now guristas-venal-collector.timer
+    sudo systemctl restart guristas-venal-collector.timer
+    sudo systemctl start guristas-venal-collector.service
+    sudo systemctl list-timers guristas-venal-collector.timer --no-pager
+    sudo journalctl -u guristas-venal-collector.service -n 20 --no-pager
+
+Apache needs write access to the site's cache and history directories.
+
+Apache and PHP-FPM logs rotate weekly with four archives, verified on 2026-10-03. Compression is disabled. Inactive services may leave older archives; review these separately before deleting them.
+
+Ship and theme artwork without current references is intentionally retained for future use.
