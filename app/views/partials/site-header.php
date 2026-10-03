@@ -6,7 +6,7 @@
         <div class="shell header-inner">
             <a
                 class="brand"
-                href="#command"
+                href="/"
                 aria-label="Guristas.net command deck"
             >
                 <span
