@@ -1,5 +1,4 @@
-deploy/systemd/guristas-venal-collector.service
-deploy/systemd/guristas-venal-collector.timer
+.gitattributes
 .gitignore
 README.md
 app/.gitkeep
@@ -37,6 +36,8 @@ config/stream.local.php.example
 config/stream.php
 config/ticket-storage.local.php.example
 config/tickets.local.php.example
+deploy/systemd/guristas-venal-collector.service
+deploy/systemd/guristas-venal-collector.timer
 file-structure.txt
 public/account/index.php
 public/admin/index.php
