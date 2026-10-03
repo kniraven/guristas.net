@@ -95,8 +95,8 @@ Work on a branch named after the ticket, such as `GURI-034`. Prefix every commit
 
 1. Verify the branch locally and review the complete changes, including removed files.
 2. Back up the shared database and EC2 runtime data before applying migrations or moving tracked runtime files.
-3. Deploy source and intentional deletions together. Preserve environment configuration, attachments, stream data, and history.
-4. Apply any required migration once, initialize missing stream files, and check Apache ownership/permissions on runtime directories.
+3. Apply required migrations in the order specified by each update. GURI-034 requires `sql/007_ticket_summary_html.sql` before deploying the HTML-only ticket code. The shared EC2 database was converted and verified on 2026-10-03; do not repeat it for the local environment using that same database.
+4. Deploy source and intentional deletions together. Preserve environment configuration, attachments, stream data, and history. Initialize missing stream files and check Apache ownership/permissions on runtime directories.
 5. Reload PHP-FPM and verify the affected features in production.
 
 **GURI-034 transition:** Git records the old `storage/stream/*.json` files as moving into `config/stream-defaults/`. A checkout/pull can remove the originals. Before that transition on EC2, preserve its current three stream JSON files outside the checkout and restore them to `storage/stream/` afterward. Preserve `config/EveAppInfo.txt` separately too if needed; it is being removed from tracking. Do not restore obsolete source backups into the application tree.
