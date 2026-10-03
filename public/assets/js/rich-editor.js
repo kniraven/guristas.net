@@ -50,11 +50,27 @@
     function states(){
       controls.forEach(({button,command,value,toggle})=>{
         button.disabled=mode!=='edit';if(!toggle)return;
-        let active=false;if(mode==='edit')try{active=command==='formatBlock'?String(document.queryCommandValue(command)).replace(/[<>]/g,'').toLowerCase()===value:document.queryCommandState(command);}catch{}
+        let active=false;if(mode==='edit')try{active=command==='quote'?!!quoteAt(getSelection()?.anchorNode):command==='formatBlock'?String(document.queryCommandValue(command)).replace(/[<>]/g,'').toLowerCase()===value:document.queryCommandState(command);}catch{}
         button.setAttribute('aria-pressed',String(active));
       });
     }
-    function run(command,value){if(mode!=='edit')return;restore();document.execCommand(command,false,value);remember();sync();states();}
+    function quoteAt(node){const el=node?.nodeType===Node.ELEMENT_NODE?node:node?.parentElement;const quote=el?.closest('blockquote');return quote&&area.contains(quote)?quote:null;}
+    function toggleQuote(){
+      const selection=getSelection(),range=selection.getRangeAt(0);
+      const quotes=[...area.querySelectorAll('blockquote')].filter(q=>range.collapsed?q.contains(range.startContainer):range.intersectsNode(q));
+      if(quotes.length){
+        // Unwrap from inside out, including old nested quotes, preserving their content.
+        for(const q of quotes.reverse())q.replaceWith(...q.childNodes);
+      }else{
+        const blocks=[...area.childNodes].filter(node=>range.collapsed?(node===range.startContainer||node.contains(range.startContainer)):range.intersectsNode(node));
+        if(!blocks.length){const paragraph=document.createElement('p');paragraph.append(document.createElement('br'));area.append(paragraph);blocks.push(paragraph);}
+        const quote=document.createElement('blockquote');blocks[0].before(quote);quote.append(...blocks);
+        const selected=document.createRange();selected.selectNodeContents(quote);if(range.collapsed)selected.collapse(false);selection.removeAllRanges();selection.addRange(selected);
+      }
+      // DOM changes can collapse the old range: retain a usable caret in the editor.
+      if(!selectionInside(selection)){const caret=document.createRange();caret.selectNodeContents(area);caret.collapse(false);selection.removeAllRanges();selection.addRange(caret);}
+    }
+    function run(command,value){if(mode!=='edit')return;restore();if(command==='quote')toggleQuote();else document.execCommand(command,false,value);remember();sync();states();}
     function preserve(event){remember();event.preventDefault();}
     function button(label,command,value,toggle=false){
       const b=document.createElement('button');b.type='button';b.textContent=label;b.title=label;b.setAttribute('aria-label',label);if(toggle)b.setAttribute('aria-pressed','false');
@@ -62,7 +78,7 @@
     }
     button('Bold','bold',null,true);button('Italic','italic',null,true);button('Underline','underline',null,true);
     button('Bullets','insertUnorderedList',null,true);button('Numbered list','insertOrderedList',null,true);
-    button('Quote','formatBlock','blockquote',true);button('Heading','formatBlock','h2',true);button('Paragraph','formatBlock','p',true);
+    button('Quote','quote',null,true);button('Heading','formatBlock','h2',true);button('Paragraph','formatBlock','p',true);
     const clear=button('Clear formatting','removeFormat');clear.addEventListener('click',()=>{run('unlink');});
     button('Undo','undo');button('Redo','redo');
     const linkButton=document.createElement('button');linkButton.type='button';linkButton.textContent='Link';toolbar.append(linkButton);controls.push({button:linkButton});linkButton.addEventListener('mousedown',preserve);
@@ -71,16 +87,19 @@
     const apply=document.createElement('button');apply.type='button';apply.textContent='Apply link';
     const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancel';
     const linkError=document.createElement('span');linkError.className='g-rich-link-error';linkError.setAttribute('role','alert');
-    linkPanel.append(url,apply,cancel,linkError);
-    function closeLink(){url.value='';url.setCustomValidity('');url.disabled=true;linkError.textContent='';linkPanel.hidden=true;}
-    linkButton.addEventListener('click',()=>{linkPanel.hidden=false;url.disabled=false;linkError.textContent='';url.focus();});
+    const linkText=document.createElement('input');linkText.type='text';linkText.placeholder='Text to display';linkText.setAttribute('aria-label','Link text');linkText.hidden=true;linkText.disabled=true;
+    let needsLinkText=false;
+    linkPanel.append(url,linkText,apply,cancel,linkError);
+    function closeLink(){linkText.value='';linkText.disabled=true;linkText.hidden=true;url.value='';url.setCustomValidity('');url.disabled=true;linkError.textContent='';linkPanel.hidden=true;}
+    linkButton.addEventListener('click',()=>{restore();remember();needsLinkText=getSelection().isCollapsed;linkText.hidden=!needsLinkText;linkText.disabled=!needsLinkText;linkPanel.hidden=false;url.disabled=false;linkError.textContent='';url.focus();});
     cancel.addEventListener('click',()=>{closeLink();restore();states();});
     apply.addEventListener('click',()=>{
       let parsed;try{parsed=new URL(url.value.trim());if(!['http:','https:'].includes(parsed.protocol))throw new Error();}catch{linkError.textContent='Enter a complete http:// or https:// URL.';url.focus();return;}
-      restore();if(getSelection().isCollapsed){const a=document.createElement('a');a.href=parsed.href;a.textContent=parsed.href;document.execCommand('insertHTML',false,a.outerHTML);}else document.execCommand('createLink',false,parsed.href);
+      if(needsLinkText&&!linkText.value.trim()){linkError.textContent='Enter the text to display for this link.';linkText.focus();return;}
+      restore();if(needsLinkText){const a=document.createElement('a');a.href=parsed.href;a.textContent=linkText.value.trim();document.execCommand('insertHTML',false,a.outerHTML);}else document.execCommand('createLink',false,parsed.href);
       closeLink();remember();sync();states();
     });
-    url.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();cancel.click();}else if(event.key==='Enter'){event.preventDefault();apply.click();}});
+    [url,linkText].forEach(input=>input.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();cancel.click();}else if(event.key==='Enter'){event.preventDefault();apply.click();}}));
     const modes=document.createElement('div');modes.className='g-rich-modes';modes.setAttribute('role','group');modes.setAttribute('aria-label','Editor view');
     function setMode(next){
       if(next===mode)return;sync();closeLink();
@@ -98,6 +117,21 @@
     });modeButtons.push({button:b,key});modes.append(b);});
     wrapper.insertBefore(modes,source);wrapper.insertBefore(toolbar,source);wrapper.insertBefore(linkPanel,source);wrapper.insertBefore(area,source);wrapper.insertBefore(preview,source);wrapper.querySelector('label').htmlFor=area.id;
     document.addEventListener('selectionchange',()=>{if(mode==='edit'&&selectionInside(getSelection())){remember();states();}});
+    area.addEventListener('keydown',event=>{
+      if(event.key!=='Enter'||event.shiftKey||event.isComposing)return;
+      const selection=getSelection();if(!selectionInside(selection)||!selection.isCollapsed)return;
+      const quote=quoteAt(selection.anchorNode);if(!quote)return;
+      let block=selection.anchorNode.nodeType===Node.ELEMENT_NODE?selection.anchorNode:selection.anchorNode.parentElement;
+      while(block!==quote&&!['P','DIV','LI'].includes(block.tagName))block=block.parentElement;
+      if(block.textContent.replace(/\u200b/g,'').trim())return;
+      event.preventDefault();const paragraph=document.createElement('p');paragraph.append(document.createElement('br'));
+      // Exit all quote levels, so legacy nested quotes cannot trap the caret.
+      let outer=quote;while(quoteAt(outer.parentElement))outer=quoteAt(outer.parentElement);
+      outer.after(paragraph);if(block!==outer)block.remove();
+      for(const list of outer.querySelectorAll('ul,ol'))if(!list.children.length)list.remove();
+      if(!outer.textContent.trim())outer.remove();
+      const caret=document.createRange();caret.selectNodeContents(paragraph);caret.collapse(true);selection.removeAllRanges();selection.addRange(caret);remember();sync();states();
+    });
     area.addEventListener('input',()=>{remember();sync();states();});['keyup','mouseup'].forEach(event=>area.addEventListener(event,()=>{remember();states();}));
     area.addEventListener('paste',event=>{event.preventDefault();document.execCommand('insertText',false,event.clipboardData.getData('text/plain'));remember();sync();states();});
     area.addEventListener('drop',event=>event.preventDefault());source.form?.addEventListener('submit',sync);sync();states();
