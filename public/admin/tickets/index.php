@@ -4,7 +4,7 @@ $root=dirname(__DIR__,3); require_once $root.'/app/services/TicketService.php';
 $viewer=eve_require_user(); $actor=(int)$viewer['character_id'];
 header('Cache-Control: no-store'); header('X-Content-Type-Options: nosniff');
 if (!tickets_staff($actor)) { http_response_code(403); exit('Staff access required. Contact the site owner.'); }
-$owner=$actor===tickets_owner(); $error=''; $id=(int)($_POST['id']??$_GET['id']??0);
+$owner=$actor===tickets_owner(); $error=''; $ticketId=(int)($_POST['id']??$_GET['id']??0);
 $themes=['commando'=>'Commando Guri','cryptic'=>'Cryptic Ecdysis','cozen'=>'Cozen Corp','kniraven'=>'Galnet'];
 $initialTheme=$_COOKIE['guristas_theme']??'cryptic'; if (!isset($themes[$initialTheme])) $initialTheme='cryptic';
 function escape(string $v):string { return eve_e($v); }
@@ -14,24 +14,24 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
  eve_require_csrf(is_string($_POST['csrf']??null)?$_POST['csrf']:null);
  try {
   $action=$_POST['action']??'';
-  if ($action==='save') $id=tickets_write($_POST,$actor,tickets_upload_prepare($_FILES['attachments']??[]));
+  if ($action==='save') $ticketId=tickets_write($_POST,$actor,tickets_upload_prepare($_FILES['attachments']??[]));
   elseif ($action==='comment') {
-   $id=(int)($_POST['id']??0);
-   tickets_comment($id,(string)($_POST['body']??''),(string)($_POST['body_format']??'plain'),$actor,tickets_upload_prepare($_FILES['attachments']??[]));
+   $ticketId=(int)($_POST['id']??0);
+   tickets_comment($ticketId,(string)($_POST['body']??''),(string)($_POST['body_format']??'plain'),$actor,tickets_upload_prepare($_FILES['attachments']??[]));
   } elseif ($action==='grant' || $action==='revoke') {
    if (!$owner) { http_response_code(403); exit('Owner access required.'); }
    $person=(int)($_POST['character_id']??0);
    if ($person===tickets_owner()) throw new InvalidArgumentException('Owner access is managed in configuration.');
    $q=eve_db()->prepare('SELECT character_id FROM eve_characters WHERE character_id=?'); $q->execute([$person]); if (!$q->fetch()) throw new InvalidArgumentException('That character must log in to Guristas.net first.');
-   $q=eve_db()->prepare($action==='grant' ? 'INSERT IGNORE INTO guristas_staff(character_id,granted_by) VALUES (?,?)' : 'DELETE FROM guristas_staff WHERE character_id=?'); $q->execute($action==='grant'?[$person,$actor]:[$person]); $id=0;
+   $q=eve_db()->prepare($action==='grant' ? 'INSERT IGNORE INTO guristas_staff(character_id,granted_by) VALUES (?,?)' : 'DELETE FROM guristas_staff WHERE character_id=?'); $q->execute($action==='grant'?[$person,$actor]:[$person]); $ticketId=0;
   } else throw new InvalidArgumentException('Unknown action.');
-  header('Location: /admin/tickets/'.($id?'?id='.$id:'?staff=1'),true,303); exit;
+  header('Location: /admin/tickets/'.($ticketId?'?id='.$ticketId:'?staff=1'),true,303); exit;
  } catch (InvalidArgumentException $e) { $error=$e->getMessage(); }
  catch (Throwable $e) { error_log('Tickets: '.$e->getMessage()); $error='Unable to save. Please retry or contact the owner.'; }
 }
 $people=tickets_people(); $names=array_column($people,'character_name','character_id');
-$q=eve_db()->prepare('SELECT * FROM guristas_tickets WHERE id=?'); $q->execute([$id]); $ticket=$q->fetch();
-if ($id && !$ticket) { http_response_code(404); exit('Ticket not found.'); }
+$q=eve_db()->prepare('SELECT * FROM guristas_tickets WHERE id=?'); $q->execute([$ticketId]); $ticket=$q->fetch();
+if ($ticketId && !$ticket) { http_response_code(404); exit('Ticket not found.'); }
 $statuses=['Backlog','To Do','In Progress','Review','Done','Cancelled'];
 ?>
 <!doctype html><html lang="en" data-operation="raid" data-theme="<?= eve_e($initialTheme) ?>"><head>
@@ -157,7 +157,7 @@ $statuses=['Backlog','To Do','In Progress','Review','Done','Cancelled'];
  $t=$ticket?:['id'=>0,'version'=>0,'title'=>'','summary'=>'','status'=>'Backlog','priority'=>'Normal','category'=>'Feature','assignee_id'=>'','due_date'=>'','blocked_reason'=>'','subtasks_json'=>'[]','summary_format'=>'plain'];
  if($error && ($_POST['action']??'')==='save') { foreach(['title','summary','status','priority','category','assignee_id','due_date','blocked_reason'] as $k) $t[$k]=(string)($_POST[$k]??''); }
 ?>
-<section class="ticket-panel"><h2><?= $ticket?'GURI-'.str_pad((string)$id,3,'0',STR_PAD_LEFT):'New ticket' ?></h2>
+<section class="ticket-panel"><h2><?= $ticket?'GURI-'.str_pad((string)$ticketId,3,'0',STR_PAD_LEFT):'New ticket' ?></h2>
 <?php if($ticket): ?><p class="ticket-meta">Opened <?= age($ticket['created_at']) ?> ago · In <?= eve_e($ticket['status']) ?> for <?= age($ticket['status_since']) ?> · Updated <?= age($ticket['updated_at']) ?> ago</p><?php endif; ?>
 <form method="post" enctype="multipart/form-data" class="ticket-form"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>"><input type="hidden" name="version" value="<?= (int)$t['version'] ?>">
 <label class="wide">Title<input name="title" required maxlength="180" value="<?= eve_e($t['title']) ?>"></label><div class="wide"><?php
@@ -176,13 +176,31 @@ if($error && ($_POST['action']??'')==='save') {
 $subtaskItems=array_values(array_filter(is_array($subtaskItems)?$subtaskItems:[],fn($s)=>is_array($s)&&is_string($s['text']??null)&&is_bool($s['done']??null)));
 ?>
 <section class="wide" data-subtasks data-items="<?= eve_e(json_encode($subtaskItems,JSON_THROW_ON_ERROR)) ?>"><h3>Subtasks</h3><textarea name="subtasks" rows="5"><?= eve_e(implode("\n",array_map(fn($s)=>($s['done']?'[x] ':'[ ] ').$s['text'],$subtaskItems))) ?></textarea><noscript>One item per line. Prefix completed items with [x].</noscript></section>
-<div class="wide"><h3>Ticket attachments</h3><?php if($ticket) tickets_attachment_links($id); ?><label>Add files<input type="file" name="attachments[]" multiple data-attachments accept=".csv,.xls,.xlsx,.xlsm,.png,.jpeg,.jpg,.gif,.doc,.docx,.txt,.md,.json,.pdf"></label><p class="ticket-meta">Up to 5 files · 10 MB each · 25 MB total. Saved with the ticket. Files must be selected again if saving fails.</p></div>
-<button class="button">Save ticket</button><a href="?id=<?= $id ?>">Reload saved version</a></form></section>
-<?php if($ticket): ?><section class="ticket-panel"><h2>Comments & activity</h2><form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="comment"><input type="hidden" name="id" value="<?= $id ?>"><?php
+<div class="wide"><h3>Ticket attachments</h3><?php if($ticket) tickets_attachment_links($ticketId); ?><label>Add files<input type="file" name="attachments[]" multiple data-attachments accept=".csv,.xls,.xlsx,.xlsm,.png,.jpeg,.jpg,.gif,.doc,.docx,.txt,.md,.json,.pdf"></label><p class="ticket-meta">Up to 5 files · 10 MB each · 25 MB total. Saved with the ticket. Files must be selected again if saving fails.</p></div>
+<button class="button">Save ticket</button><a href="?id=<?= $ticketId ?>">Reload saved version</a></form></section>
+<?php if($ticket):
+$discussionTab=($_GET['tab']??'comments')==='history'?'history':'comments';
+$q=eve_db()->prepare('SELECT a.*,c.character_name FROM guristas_ticket_activity a LEFT JOIN eve_characters c ON c.character_id=a.author_id WHERE ticket_id=? ORDER BY a.id DESC');
+$q->execute([$ticketId]);$activity=$q->fetchAll();
+$commentCount=count(array_filter($activity,fn($a)=>$a['kind']==='comment'));
+$historyCount=count($activity)-$commentCount;
+?><section class="ticket-panel"><h2>Discussion & history</h2>
+<div class="ticket-discussion-tabs" role="tablist" aria-label="Ticket discussion">
+<a id="comments-tab" role="tab" aria-selected="<?= $discussionTab==='comments'?'true':'false' ?>" aria-controls="discussion-panel" href="?id=<?= $ticketId ?>&amp;tab=comments#discussion-panel">Comments (<?= $commentCount ?>)</a>
+<a id="history-tab" role="tab" aria-selected="<?= $discussionTab==='history'?'true':'false' ?>" aria-controls="discussion-panel" href="?id=<?= $ticketId ?>&amp;tab=history#discussion-panel">History (<?= $historyCount ?>)</a>
+</div><div id="discussion-panel" role="tabpanel" aria-labelledby="<?= $discussionTab ?>-tab">
+<?php if($discussionTab==='comments'): ?><form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="comment"><input type="hidden" name="id" value="<?= $ticketId ?>"><?php
 $editorId='ticket-comment';$editorName='body';$editorLabel='Add comment';$editorValue=$error && ($_POST['action']??'')==='comment' ? (string)($_POST['body']??'') : '';$editorFormat=$error && ($_POST['action']??'')==='comment' ? (string)($_POST['body_format']??'plain') : 'plain';
 require $root.'/app/views/partials/rich-editor.php';
 ?><label>Comment attachments<input type="file" name="attachments[]" multiple data-attachments accept=".csv,.xls,.xlsx,.xlsm,.png,.jpeg,.jpg,.gif,.doc,.docx,.txt,.md,.json,.pdf"></label><p class="ticket-meta">Up to 5 files · 10 MB each · 25 MB total. You can post files without a message.</p><button class="button">Post comment</button></form>
-<?php $q=eve_db()->prepare('SELECT a.*,c.character_name FROM guristas_ticket_activity a LEFT JOIN eve_characters c ON c.character_id=a.author_id WHERE ticket_id=? ORDER BY a.id DESC'); $q->execute([$id]); foreach($q as $a): ?><article class="ticket-activity"><strong><?= eve_e($a['character_name']??'Former character') ?></strong> · <?= eve_e($a['kind']) ?> · <time><?= eve_e($a['created_at']) ?> UTC</time><div class="g-rich-render"><?= guristas_rich_show($a['body'],$a['body_format']??'plain') ?></div><?php tickets_attachment_links($id,(int)$a['id']); ?></article><?php endforeach; ?></section><?php endif; ?>
+<?php endif;
+$shown=0;
+foreach($activity as $a):
+if (($discussionTab==='comments') !== ($a['kind']==='comment')) continue;
+$shown++;
+?><article class="ticket-activity"><strong><?= eve_e($a['character_name']??'Former character') ?></strong> · <time><?= eve_e($a['created_at']) ?> UTC</time><div class="g-rich-render"><?= guristas_rich_show($a['body'],$a['body_format']??'plain') ?></div><?php if($a['kind']==='comment') tickets_attachment_links($ticketId,(int)$a['id']); ?></article><?php endforeach;
+if(!$shown): ?><p class="ticket-meta"><?= $discussionTab==='comments'?'No comments yet. Start the discussion above.':'No history recorded yet.' ?></p><?php endif; ?></div></section><?php endif; ?>
+
 <?php else:
  $search=trim((string)($_GET['q']??'')); $status=(string)($_GET['status']??''); $assigned=(string)($_GET['assigned']??''); $priority=(string)($_GET['priority']??'');
  $list=($_GET['view']??'board')==='list';

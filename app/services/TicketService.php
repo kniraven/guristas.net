@@ -61,7 +61,7 @@ function tickets_write(array $b, int $actor, array $uploads = []): int {
    $q=$db->prepare('UPDATE guristas_tickets SET title=?,summary=?,status=?,priority=?,category=?,assignee_id=?,due_date=?,blocked_reason=?,subtasks_json=?,status_since=IF(? <> ?,UTC_TIMESTAMP(),status_since),updated_at=UTC_TIMESTAMP(),version=version+1 WHERE id=?');
    $q->execute([...$values,$old['status'],$b['status'],$id]);
    $changes=[]; foreach (['title','summary','status','priority','category','assignee_id','due_date','blocked_reason'] as $k) { $new=match($k) {'title'=>$title,'summary'=>$summary,'assignee_id'=>$assignee,'due_date'=>$due?:null,'blocked_reason'=>$blocked,default=>$b[$k]}; if ((string)$old[$k] !== (string)$new) $changes[]=in_array($k,['summary','blocked_reason']) ? $k.' changed' : $k.': '.($old[$k]?:'none').' → '.($new?:'none'); }
-   if ($old['subtasks_json']!==$values[8]) $changes[]='Subtasks updated';
+   if ($old['subtasks_json']!==$values[8]) $changes=array_merge($changes,tickets_subtask_changes(json_decode($old['subtasks_json'],true)?:[],$tasks));
    if (($old['summary_format']??'plain')!==$format) $changes[]='Summary formatting updated';
    $body=$changes ? implode("\n",$changes) : 'Ticket saved';
   } else {
@@ -87,4 +87,18 @@ function tickets_comment(int $id,string $body,string $format,int $actor,array $u
   tickets_upload_store($uploads,$id,$activity,$actor,$moved);
   $q=$db->prepare('UPDATE guristas_tickets SET updated_at=UTC_TIMESTAMP() WHERE id=?');$q->execute([$id]);$db->commit();
  } catch(Throwable $e) {$db->rollBack();tickets_upload_cleanup($moved);throw $e;}
+}
+
+/** Match descriptions (including duplicates) to distinguish completion from additions. */
+function tickets_subtask_changes(array $before,array $after):array {
+ $changes=[];$matched=[];
+ foreach($after as $task) {
+  $found=null;
+  foreach($before as $i=>$previous) if(!isset($matched[$i]) && $previous['text']===$task['text']) {$found=$i;break;}
+  if($found===null) {$changes[]='Subtask added: '.$task['text'];if($task['done'])$changes[]='Subtask completed: '.$task['text'];}
+  else {$matched[$found]=true;if((bool)$before[$found]['done']!==$task['done'])$changes[]=($task['done']?'Subtask completed: ':'Subtask reopened: ').$task['text'];}
+ }
+ foreach($before as $i=>$task) if(!isset($matched[$i]))$changes[]='Subtask removed: '.$task['text'];
+ if(!$changes)$changes[]='Subtasks reordered';
+ return $changes;
 }
