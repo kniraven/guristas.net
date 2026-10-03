@@ -34,6 +34,3 @@ function guristas_rich_clean(string $html): string {
         libxml_clear_errors(); libxml_use_internal_errors($previous);
     }
 }
-function guristas_rich_show(string $value, string $format = 'plain'): string {
-    return $format === 'html' ? guristas_rich_clean($value) : nl2br(htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
-}

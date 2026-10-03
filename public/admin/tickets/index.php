@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
   if ($action==='save') $ticketId=tickets_write($_POST,$actor,tickets_upload_prepare($_FILES['attachments']??[]));
   elseif ($action==='comment') {
    $ticketId=(int)($_POST['id']??0);
-   tickets_comment($ticketId,(string)($_POST['body']??''),(string)($_POST['body_format']??'plain'),$actor,tickets_upload_prepare($_FILES['attachments']??[]));
+   tickets_comment($ticketId,(string)($_POST['body']??''),$actor,tickets_upload_prepare($_FILES['attachments']??[]));
   } elseif ($action==='grant' || $action==='revoke') {
    if (!$owner) { http_response_code(403); exit('Owner access required.'); }
    $person=(int)($_POST['character_id']??0);
@@ -62,14 +62,14 @@ require $root . '/app/views/partials/site-header.php';
 <form method="post"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="grant"><label>Character <select name="character_id" required><?php foreach(eve_db()->query('SELECT character_id,character_name FROM eve_characters ORDER BY character_name') as $c): ?><option value="<?= (int)$c['character_id'] ?>"><?= eve_e($c['character_name']) ?> (<?= (int)$c['character_id'] ?>)</option><?php endforeach; ?></select></label><button class="button">Grant staff access</button></form>
 <?php foreach($people as $c): ?><div class="ticket-toolbar"><strong><?= eve_e($c['character_name']) ?></strong><?php if((int)$c['character_id']===tickets_owner()): ?>Owner<?php else: ?><form method="post"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="revoke"><input type="hidden" name="character_id" value="<?= (int)$c['character_id'] ?>"><button class="button">Remove access</button></form><?php endif; ?></div><?php endforeach; ?></section>
 <?php elseif(isset($_GET['new']) || $ticket):
- $t=$ticket?:['id'=>0,'version'=>0,'title'=>'','summary'=>'','status'=>'Backlog','priority'=>'Normal','category'=>'Feature','assignee_id'=>'','due_date'=>'','blocked_reason'=>'','subtasks_json'=>'[]','summary_format'=>'plain'];
+ $t=$ticket?:['id'=>0,'version'=>0,'title'=>'','summary'=>'','status'=>'Backlog','priority'=>'Normal','category'=>'Feature','assignee_id'=>'','due_date'=>'','blocked_reason'=>'','subtasks_json'=>'[]'];
  if($error && ($_POST['action']??'')==='save') { foreach(['title','summary','status','priority','category','assignee_id','due_date','blocked_reason'] as $k) $t[$k]=(string)($_POST[$k]??''); }
 ?>
 <section class="ticket-panel"><h2><?= $ticket?'GURI-'.str_pad((string)$ticketId,3,'0',STR_PAD_LEFT):'New ticket' ?></h2>
 <?php if($ticket): ?><p class="ticket-meta">Opened <?= age($ticket['created_at']) ?> ago · In <?= eve_e($ticket['status']) ?> for <?= age($ticket['status_since']) ?> · Updated <?= age($ticket['updated_at']) ?> ago</p><?php endif; ?>
 <form method="post" enctype="multipart/form-data" class="ticket-form"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>"><input type="hidden" name="version" value="<?= (int)$t['version'] ?>">
 <label class="wide">Title<input name="title" required maxlength="180" value="<?= eve_e($t['title']) ?>"></label><div class="wide"><?php
-$editorId='ticket-summary';$editorName='summary';$editorLabel='Summary / definition of done';$editorValue=$t['summary'];$editorFormat=$error && ($_POST['action']??'')==='save' ? (string)($_POST['summary_format']??'plain') : ($t['summary_format']??'plain');
+$editorId='ticket-summary';$editorName='summary';$editorLabel='Summary / definition of done';$editorValue=$t['summary'];
 require $root.'/app/views/partials/rich-editor.php';
 ?></div>
 <?php foreach(['status'=>$statuses,'priority'=>['Low','Normal','High','Urgent'],'category'=>['Feature','Bug','Improvement','Research']] as $key=>$opts): ?><label><?= ucfirst($key) ?><select name="<?= $key ?>"><?php foreach($opts as $opt): ?><option <?= $t[$key]===$opt?'selected':'' ?>><?= $opt ?></option><?php endforeach; ?></select></label><?php endforeach; ?>
@@ -98,7 +98,7 @@ $historyCount=count($activity)-$commentCount;
 <a id="history-tab" role="tab" aria-selected="<?= $discussionTab==='history'?'true':'false' ?>" aria-controls="history-panel" data-discussion-tab="history" href="?id=<?= $ticketId ?>&amp;tab=history#history-panel">History (<?= $historyCount ?>)</a>
 </div><div id="comments-panel" role="tabpanel" aria-labelledby="comments-tab" <?= $discussionTab==='comments'?'':'hidden' ?>>
 <form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?= eve_csrf() ?>"><input type="hidden" name="action" value="comment"><input type="hidden" name="id" value="<?= $ticketId ?>"><?php
-$editorId='ticket-comment';$editorName='body';$editorLabel='Add comment';$editorValue=$error && ($_POST['action']??'')==='comment' ? (string)($_POST['body']??'') : '';$editorFormat=$error && ($_POST['action']??'')==='comment' ? (string)($_POST['body_format']??'plain') : 'plain';
+$editorId='ticket-comment';$editorName='body';$editorLabel='Add comment';$editorValue=$error && ($_POST['action']??'')==='comment' ? (string)($_POST['body']??'') : '';
 require $root.'/app/views/partials/rich-editor.php';
 ?><label>Comment attachments<input type="file" name="attachments[]" multiple data-attachments accept=".csv,.xls,.xlsx,.xlsm,.png,.jpeg,.jpg,.gif,.doc,.docx,.txt,.md,.json,.pdf"></label><p class="ticket-meta">Up to 5 files · 10 MB each · 25 MB total. You can post files without a message.</p><button class="button">Post comment</button></form>
 <?php
@@ -106,11 +106,11 @@ $shown=0;
 foreach($activity as $a):
 if ($a['kind']!=='comment') continue;
 $shown++;
-?><article class="ticket-activity"><strong><?= eve_e($a['character_name']??'Former character') ?></strong> · <time><?= eve_e($a['created_at']) ?> UTC</time><div class="g-rich-render"><?= guristas_rich_show($a['body'],$a['body_format']??'plain') ?></div><?php if($a['kind']==='comment') tickets_attachment_links($ticketId,(int)$a['id']); ?></article><?php endforeach;
+?><article class="ticket-activity"><strong><?= eve_e($a['character_name']??'Former character') ?></strong> · <time><?= eve_e($a['created_at']) ?> UTC</time><div class="g-rich-render"><?= guristas_rich_clean($a['body']) ?></div><?php if($a['kind']==='comment') tickets_attachment_links($ticketId,(int)$a['id']); ?></article><?php endforeach;
 if(!$shown): ?><p class="ticket-meta">No comments yet. Start the discussion above.</p><?php endif; ?></div>
 <div id="history-panel" role="tabpanel" aria-labelledby="history-tab" <?= $discussionTab==='history'?'':'hidden' ?>>
 <?php foreach($activity as $a): if($a['kind']==='comment') continue; ?>
-<article class="ticket-activity"><strong><?= eve_e($a['character_name']??'Former character') ?></strong> · <time><?= eve_e($a['created_at']) ?> UTC</time><div class="g-rich-render"><?= guristas_rich_show($a['body'],$a['body_format']??'plain') ?></div></article>
+<article class="ticket-activity"><strong><?= eve_e($a['character_name']??'Former character') ?></strong> · <time><?= eve_e($a['created_at']) ?> UTC</time><div class="g-rich-render"><?= nl2br(eve_e($a['body'])) ?></div></article>
 <?php endforeach; if(!$historyCount): ?><p class="ticket-meta">No history recorded yet.</p><?php endif; ?>
 </div></section><?php endif; ?>
 

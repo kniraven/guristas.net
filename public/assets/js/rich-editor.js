@@ -33,9 +33,8 @@
     if(wrapper.dataset.enhanced)return;const source=wrapper.querySelector('[data-rich-source]');if(!source)return;wrapper.dataset.enhanced='1';
     const toolbar=document.createElement('div');toolbar.className='g-rich-toolbar';toolbar.setAttribute('role','toolbar');toolbar.setAttribute('aria-label','Text formatting');
     const area=document.createElement('div');area.className='g-rich-content';area.contentEditable='true';area.setAttribute('role','textbox');area.setAttribute('aria-multiline','true');area.setAttribute('aria-label',wrapper.querySelector('label').textContent);area.id=source.id+'-visual';
-    if(source.dataset.format==='html')area.append(clean(source.value));else area.textContent=source.value;
+    area.append(clean(source.value));
     source.hidden=true;source.classList.add('g-rich-source');
-    const flag=wrapper.querySelector('[data-rich-format]')||document.createElement('input');flag.type='hidden';flag.name=source.name+'_format';flag.value='html';if(!flag.parentNode)wrapper.append(flag);
     let savedRange=null,mode='edit';const controls=[],modeButtons=[];
     const selectionInside=selection=>selection&&selection.rangeCount&&area.contains(selection.anchorNode)&&area.contains(selection.focusNode);
     function remember(){const sel=getSelection();if(mode==='edit'&&selectionInside(sel))savedRange=sel.getRangeAt(0).cloneRange();}

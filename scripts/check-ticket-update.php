@@ -16,5 +16,4 @@ foreach($cases as [$input,$present,$absent]) {
  foreach($present as $needle) if(!str_contains($clean,$needle)) {fwrite(STDERR,"Rich text check failed: missing $needle\n");exit(1);}
  foreach($absent as $needle) if(str_contains($clean,$needle)) {fwrite(STDERR,"Rich text check failed: retained $needle\n");exit(1);}
 }
-if(!str_contains(guristas_rich_show('<script>old plain text</script>','plain'),'&lt;script&gt;')) {fwrite(STDERR,"Plain text compatibility failed.\n");exit(1);}
 echo "PHP extensions and rich-text security checks passed.\n";
