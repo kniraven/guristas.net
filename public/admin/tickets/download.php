@@ -8,8 +8,9 @@ if(!$file || !preg_match('/^[a-f0-9]{48}$/',$file['storage_key'])) {http_respons
 $path=tickets_upload_dir().'/'.$file['storage_key'];
 if(!is_file($path)) {http_response_code(404);exit('Attachment not found.');}
 session_write_close();
-header('Content-Type: application/octet-stream');
-header('Content-Disposition: attachment; filename="attachment"; filename*=UTF-8\'\''.rawurlencode($file['original_name']));
+$preview=($_GET['preview']??'')==='1' && in_array($file['mime_type'],['image/png','image/jpeg','image/gif'],true);
+header('Content-Type: '.($preview?$file['mime_type']:'application/octet-stream'));
+header('Content-Disposition: '.($preview?'inline':'attachment').'; filename="attachment"; filename*=UTF-8\'\''.rawurlencode($file['original_name']));
 header('Content-Length: '.filesize($path));
 header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');header("Content-Security-Policy: default-src 'none'; sandbox");
 readfile($path);

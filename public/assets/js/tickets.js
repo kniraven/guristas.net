@@ -48,12 +48,34 @@ document.addEventListener('DOMContentLoaded',()=>{
     source.hidden=true;box.append(progress,bar,list,add);items.forEach(item=>make(item));sync();
     add.addEventListener('click',()=>make(undefined,true));source.form.addEventListener('submit',sync);
   });
+  let imageDialog;
+  document.addEventListener('click',event=>{
+    const trigger=event.target.closest('[data-image-preview]');if(!trigger)return;
+    event.preventDefault();
+    if(!imageDialog){
+      imageDialog=document.createElement('dialog');imageDialog.className='ticket-image-dialog';imageDialog.setAttribute('aria-label','Image preview');
+      const close=document.createElement('button');close.type='button';close.textContent='Close preview';close.className='button';close.addEventListener('click',()=>imageDialog.close());
+      const img=document.createElement('img');imageDialog.append(close,img);document.body.append(imageDialog);
+    }
+    const img=imageDialog.querySelector('img');img.src=trigger.dataset.imagePreview;img.alt=trigger.getAttribute('aria-label')||'Attachment preview';imageDialog.showModal();
+  });
   document.querySelectorAll('[data-attachments]').forEach(input=>{
     const output=document.createElement('div');output.className='ticket-file-list';output.setAttribute('aria-live','polite');input.after(output);
+    let objectUrls=[];
     input.addEventListener('change',()=>{
+      objectUrls.forEach(url=>URL.revokeObjectURL(url));objectUrls=[];
       input.setCustomValidity('');output.replaceChildren();const files=[...input.files];
       if(files.length>5||files.some(f=>f.size>10*1024*1024)||files.reduce((n,f)=>n+f.size,0)>25*1024*1024)input.setCustomValidity('Maximum five files, 10 MB each, 25 MB total.');
-      files.forEach(file=>{const line=document.createElement('p');line.textContent=`${file.name} · ${(file.size/1024/1024).toFixed(2)} MB`;output.append(line);});input.reportValidity();
+      files.forEach(file=>{
+        const item=document.createElement('div');item.className='ticket-selected-file';
+        if(['image/png','image/jpeg','image/gif'].includes(file.type)&&file.size<=10*1024*1024){
+          const src=URL.createObjectURL(file);objectUrls.push(src);
+          const button=document.createElement('button');button.type='button';button.className='ticket-image-button';button.dataset.imagePreview=src;button.setAttribute('aria-label','Preview '+file.name);
+          const img=document.createElement('img');img.src=src;img.alt=file.name;button.append(img);item.append(button);
+        }
+        const line=document.createElement('p');line.textContent=`${file.name} · ${(file.size/1024/1024).toFixed(2)} MB`;item.append(line);output.append(item);
+      });input.reportValidity();
     });
   });
+  queueMicrotask(()=>document.querySelectorAll('form').forEach(form=>window.GuristasDrafts?.watch(form)));
 });

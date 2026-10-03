@@ -60,12 +60,16 @@ function tickets_upload_store(array $files,int $ticket,?int $activity,int $actor
 }
 function tickets_upload_cleanup(array $paths):void { foreach($paths as $path) if(is_file($path)) unlink($path); }
 function tickets_attachment_list(int $ticket,?int $activity=null): array {
-    $q=eve_db()->prepare('SELECT id,original_name,size_bytes FROM guristas_ticket_attachments WHERE ticket_id=? AND '.($activity===null?'activity_id IS NULL':'activity_id=?').' ORDER BY id');
+    $q=eve_db()->prepare('SELECT id,original_name,size_bytes,mime_type FROM guristas_ticket_attachments WHERE ticket_id=? AND '.($activity===null?'activity_id IS NULL':'activity_id=?').' ORDER BY id');
     $q->execute($activity===null?[$ticket]:[$ticket,$activity]);return $q->fetchAll();
 }
 function tickets_attachment_links(int $ticket,?int $activity=null): void {
     $files=tickets_attachment_list($ticket,$activity);if(!$files)return;
     echo '<ul class="ticket-attachments" aria-label="Attachments">';
-    foreach($files as $file) echo '<li><a href="/admin/tickets/download.php?id='.(int)$file['id'].'">'.eve_e($file['original_name']).'</a><span>'.number_format($file['size_bytes']/1024,1).' KB</span></li>';
+    foreach($files as $file) {
+        echo '<li>';
+        if(in_array($file['mime_type'],['image/png','image/jpeg','image/gif'],true)) echo '<button type="button" class="ticket-image-button" data-image-preview="/admin/tickets/download.php?id='.(int)$file['id'].'&amp;preview=1" aria-label="Preview '.eve_e($file['original_name']).'"><img loading="lazy" src="/admin/tickets/download.php?id='.(int)$file['id'].'&amp;preview=1" alt="'.eve_e($file['original_name']).'"></button>';
+        echo '<a href="/admin/tickets/download.php?id='.(int)$file['id'].'">'.eve_e($file['original_name']).'</a><span>'.number_format($file['size_bytes']/1024,1).' KB</span></li>';
+    }
     echo '</ul>';
 }
