@@ -16,7 +16,7 @@ function tickets_people(): array {
  $q->execute([tickets_owner()]); return $q->fetchAll();
 }
 function tickets_write(array $b, int $actor): int {
- $statuses = ['Backlog','Ready','In Progress','Review','Done'];
+ $statuses = ['Backlog','To Do','In Progress','Review','Done','Cancelled'];
  $priorities = ['Low','Normal','High','Urgent'];
  $categories = ['Feature','Bug','Improvement','Research'];
  $title = trim((string)($b['title'] ?? ''));
