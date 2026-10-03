@@ -1,0 +1,132 @@
+[
+  {
+    "campaignId": 164,
+    "pirateFactionId": 500011,
+    "corruptionThresHold": 10,
+    "endDateTime": null,
+    "startDateTime": "2026-09-27T06:17:39.378Z",
+    "state": "ACTIVE",
+    "suppressionThresHold": 5,
+    "originSolarSystem": {
+      "id": 30002097,
+      "name": "Klogori",
+      "security": 0.298558007040742,
+      "securityBand": "Low-Sec"
+    },
+    "insurgencies": [
+      {
+        "corruptionDate": "2026-10-01T17:16:19.280Z",
+        "corruptionPercentage": 100,
+        "corruptionState": 5,
+        "suppressionDate": null,
+        "suppressionPercentage": 28.75,
+        "suppressionState": 2,
+        "solarSystem": {
+          "id": 30002057,
+          "name": "Hadozeko",
+          "occupierFactionId": 500002,
+          "ownerFactionId": 500002,
+          "security": 0.396071220581493,
+          "securityBand": "Low-Sec"
+        }
+      }
+    ]
+  },
+  {
+    "campaignId": 165,
+    "pirateFactionId": 500010,
+    "corruptionThresHold": 10,
+    "endDateTime": null,
+    "startDateTime": "2026-10-01T11:05:37.677Z",
+    "state": "ACTIVE",
+    "suppressionThresHold": 5,
+    "originSolarSystem": {
+      "id": 30045342,
+      "name": "Akidagi",
+      "security": 0.444938823903482,
+      "securityBand": "Low-Sec"
+    },
+    "insurgencies": [
+      {
+        "corruptionDate": null,
+        "corruptionPercentage": 10,
+        "corruptionState": 1,
+        "suppressionDate": null,
+        "suppressionPercentage": 2,
+        "suppressionState": 0,
+        "solarSystem": {
+          "id": 30045339,
+          "name": "Enaluri",
+          "occupierFactionId": 500001,
+          "ownerFactionId": 500001,
+          "security": 0.327798024861379,
+          "securityBand": "Low-Sec"
+        }
+      },
+      {
+        "corruptionDate": null,
+        "corruptionPercentage": 4,
+        "corruptionState": 0,
+        "suppressionDate": null,
+        "suppressionPercentage": 10.5,
+        "suppressionState": 1,
+        "solarSystem": {
+          "id": 30045340,
+          "name": "Aivonen",
+          "occupierFactionId": 500001,
+          "ownerFactionId": 500001,
+          "security": 0.377330251008162,
+          "securityBand": "Low-Sec"
+        }
+      },
+      {
+        "corruptionDate": null,
+        "corruptionPercentage": 17.5,
+        "corruptionState": 1,
+        "suppressionDate": null,
+        "suppressionPercentage": 0,
+        "suppressionState": 0,
+        "solarSystem": {
+          "id": 30045341,
+          "name": "Hallanen",
+          "occupierFactionId": 500001,
+          "ownerFactionId": 500001,
+          "security": 0.364361115347895,
+          "securityBand": "Low-Sec"
+        }
+      },
+      {
+        "corruptionDate": null,
+        "corruptionPercentage": 2.5,
+        "corruptionState": 0,
+        "suppressionDate": null,
+        "suppressionPercentage": 5.75,
+        "suppressionState": 0,
+        "solarSystem": {
+          "id": 30045342,
+          "name": "Akidagi",
+          "occupierFactionId": 500001,
+          "ownerFactionId": 500001,
+          "security": 0.444938823903482,
+          "securityBand": "Low-Sec"
+        }
+      },
+      {
+        "corruptionDate": null,
+        "corruptionPercentage": 3.75,
+        "corruptionState": 0,
+        "suppressionDate": null,
+        "suppressionPercentage": 5,
+        "suppressionState": 0,
+        "solarSystem": {
+          "id": 30045344,
+          "name": "Nennamaila",
+          "occupierFactionId": 500004,
+          "ownerFactionId": 500001,
+          "security": 0.274257774046926,
+          "securityBand": "Low-Sec"
+        }
+      }
+    ]
+  }
+]

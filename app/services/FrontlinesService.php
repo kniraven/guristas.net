@@ -41,7 +41,7 @@ final class GuristasFrontlinesService
      *
      * The War Report endpoint is official CCP/EVE Online web data, but it is an
      * undocumented web contract rather than a supported ESI route. The parser
-     * is deliberately tolerant and the API endpoint exposes parser diagnostics.
+     * accepts the campaign schema and the API endpoint exposes parser diagnostics.
      */
     public function guristasOverlay(): array
     {
@@ -87,7 +87,6 @@ final class GuristasFrontlinesService
             );
         }
 
-        $records = $this->resolveMissingSystemIds($records);
         $records = array_values(array_filter($records, static function (array $row): bool {
             return isset($row['system_id']) && (int) $row['system_id'] > 0;
         }));
@@ -369,274 +368,52 @@ final class GuristasFrontlinesService
 
     private function parseGuristasSystems(array $document): array
     {
-        /*
-         * Current Frontlines /api/warzone campaign schema (2026):
-         *
-         * [
-         *   {
-         *     "campaignId": 159,
-         *     "pirateFactionId": 500010,
-         *     "originSolarSystem": {"id": 30000000, "name": "..."},
-         *     "insurgencies": [
-         *       {
-         *         "corruptionPercentage": 93.03,
-         *         "corruptionState": 4,
-         *         "suppressionPercentage": 100,
-         *         "suppressionState": 5,
-         *         "solarSystem": {"id": 30000001, "name": "..."}
-         *       }
-         *     ]
-         *   }
-         * ]
-         *
-         * The endpoint is an official CCP web endpoint but not a documented ESI
-         * contract, so we first parse this known campaign shape and then retain
-         * the older recursive parser as a fallback.
-         */
-        $campaigns = [];
-        $this->findInsurgencyCampaigns($document, $campaigns, 0);
-
+        // Current insurgency feed: a top-level list of campaigns.
         $records = [];
+        $candidateCampaigns = 0;
         $guristasCampaigns = 0;
-
-        foreach ($campaigns as $campaign) {
-            $factionId = $this->extractPirateFactionId($campaign);
-            if ($factionId !== self::GURISTAS_FACTION_ID) {
-                continue;
-            }
-
+        foreach ($document as $campaign) {
+            if (!is_array($campaign) || !isset($campaign['pirateFactionId'], $campaign['insurgencies'])
+                || !is_array($campaign['insurgencies'])) continue;
+            $candidateCampaigns++;
+            if ((int) $campaign['pirateFactionId'] !== self::GURISTAS_FACTION_ID) continue;
             $guristasCampaigns++;
-            $origin = $this->extractSolarSystemContainer($campaign, [
-                'originSolarSystem',
-                'origin_system',
-                'originSystem',
-                'fobSolarSystem',
-                'fobSystem',
-            ]);
-            $originId = isset($origin['id']) ? (int) $origin['id'] : null;
-
-            $rows = $this->getArrayByNormalizedKey($campaign, [
-                'insurgencies',
-                'systems',
-                'solarSystems',
-            ]);
-
-            foreach ($rows as $row) {
-                if (!is_array($row)) {
-                    continue;
+            $originId = (int) ($campaign['originSolarSystem']['id'] ?? 0);
+            foreach ($campaign['insurgencies'] as $row) {
+                if (!is_array($row) || !isset($row['solarSystem']) || !is_array($row['solarSystem'])) continue;
+                $solar = $row['solarSystem'];
+                $systemId = (int) ($solar['id'] ?? 0);
+                if ($systemId <= 0) continue;
+                $metrics = [];
+                foreach (['corruptionState', 'corruptionPercentage', 'suppressionState', 'suppressionPercentage'] as $field) {
+                    $metrics[$field] = isset($row[$field]) && is_numeric($row[$field]) ? (float) $row[$field] : null;
                 }
-
-                $solar = $this->extractSolarSystemContainer($row, [
-                    'solarSystem',
-                    'system',
-                ]);
-
-                $systemId = isset($solar['id']) && is_numeric($solar['id'])
-                    ? (int) $solar['id']
-                    : $this->extractSystemId($row, null);
-                $name = isset($solar['name']) && is_string($solar['name'])
-                    ? trim((string) $solar['name'])
-                    : $this->extractSystemName($row);
-
-                if (($systemId === null || $systemId <= 0) && ($name === null || $name === '')) {
-                    continue;
-                }
-
-                $corruptionStage = $this->numericField($row, [
-                    'corruptionState',
-                    'corruptionStage',
-                    'corruptionLevel',
-                ]);
-                $corruptionPercent = $this->numericField($row, [
-                    'corruptionPercentage',
-                    'corruptionPercent',
-                    'corruptionProgress',
-                ]);
-                $suppressionStage = $this->numericField($row, [
-                    'suppressionState',
-                    'suppressionStage',
-                    'suppressionLevel',
-                ]);
-                $suppressionPercent = $this->numericField($row, [
-                    'suppressionPercentage',
-                    'suppressionPercent',
-                    'suppressionProgress',
-                ]);
-
-                if ($corruptionStage === null && $corruptionPercent === null) {
-                    $metric = $this->extractMetric($row, 'corruption');
-                    $corruptionStage = $metric['stage'];
-                    $corruptionPercent = $metric['percent'];
-                }
-                if ($suppressionStage === null && $suppressionPercent === null) {
-                    $metric = $this->extractMetric($row, 'suppression');
-                    $suppressionStage = $metric['stage'];
-                    $suppressionPercent = $metric['percent'];
-                }
-
-                $occupierFactionId = isset($solar['occupierFactionId']) && is_numeric($solar['occupierFactionId'])
-                    ? (int) $solar['occupierFactionId']
-                    : null;
-                $ownerFactionId = isset($solar['ownerFactionId']) && is_numeric($solar['ownerFactionId'])
-                    ? (int) $solar['ownerFactionId']
-                    : null;
-
+                if ($metrics['corruptionState'] === null && $metrics['corruptionPercentage'] === null
+                    && $metrics['suppressionState'] === null && $metrics['suppressionPercentage'] === null) continue;
                 $records[] = [
                     'system_id' => $systemId,
-                    'name' => $name,
-                    'corruption_stage' => $corruptionStage !== null ? (int) round($corruptionStage) : null,
-                    'corruption_percent' => $corruptionPercent !== null ? (float) $corruptionPercent : null,
-                    'suppression_stage' => $suppressionStage !== null ? (int) round($suppressionStage) : null,
-                    'suppression_percent' => $suppressionPercent !== null ? (float) $suppressionPercent : null,
-                    'occupier_faction_id' => $occupierFactionId,
-                    'owner_faction_id' => $ownerFactionId,
-                    'is_fob' => ($originId !== null && $systemId !== null && $systemId === $originId)
-                        || $this->isFobRecord($row),
+                    'name' => isset($solar['name']) && is_string($solar['name']) ? trim($solar['name']) : null,
+                    'corruption_stage' => $metrics['corruptionState'] !== null ? (int) round($metrics['corruptionState']) : null,
+                    'corruption_percent' => $metrics['corruptionPercentage'],
+                    'suppression_stage' => $metrics['suppressionState'] !== null ? (int) round($metrics['suppressionState']) : null,
+                    'suppression_percent' => $metrics['suppressionPercentage'],
+                    'occupier_faction_id' => isset($solar['occupierFactionId']) && is_numeric($solar['occupierFactionId']) ? (int) $solar['occupierFactionId'] : null,
+                    'owner_faction_id' => isset($solar['ownerFactionId']) && is_numeric($solar['ownerFactionId']) ? (int) $solar['ownerFactionId'] : null,
+                    'is_fob' => $originId > 0 && $systemId === $originId,
                 ];
             }
         }
-
-        if ($records !== []) {
-            $records = $this->mergeSystemRecords($records);
-
-            return [
-                'systems' => $records,
-                'diagnostics' => [
-                    'candidate_campaigns' => count($campaigns),
-                    'guristas_campaigns' => $guristasCampaigns,
-                    'unique_systems' => count($records),
-                    'parser_version' => 2,
-                    'parser_mode' => 'frontlines_campaign_schema',
-                ],
-            ];
-        }
-
-        // Fallback for older/alternate versions of the undocumented response.
-        $candidates = [];
-        $this->walkWarReport($document, false, null, $candidates, 0);
-        $systems = $this->mergeSystemRecords($candidates);
-
+        $records = $this->mergeSystemRecords($records);
         return [
-            'systems' => $systems,
+            'systems' => $records,
             'diagnostics' => [
-                'candidate_campaigns' => count($campaigns),
+                'candidate_campaigns' => $candidateCampaigns,
                 'guristas_campaigns' => $guristasCampaigns,
-                'candidate_records' => count($candidates),
-                'unique_systems' => count($systems),
-                'parser_version' => 2,
-                'parser_mode' => 'recursive_fallback',
+                'unique_systems' => count($records),
+                'parser_version' => 3,
+                'parser_mode' => 'frontlines_campaign_schema',
             ],
         ];
-    }
-
-    private function findInsurgencyCampaigns($node, array &$campaigns, int $depth): void
-    {
-        if ($depth > 18 || !is_array($node)) {
-            return;
-        }
-
-        $hasInsurgencies = $this->hasNormalizedKey($node, 'insurgencies');
-        $hasFaction = $this->hasNormalizedKey($node, 'piratefactionid')
-            || $this->hasNormalizedKey($node, 'piratefaction')
-            || $this->hasNormalizedKey($node, 'factionid');
-
-        if ($hasInsurgencies && $hasFaction) {
-            $campaigns[] = $node;
-        }
-
-        foreach ($node as $value) {
-            if (is_array($value)) {
-                $this->findInsurgencyCampaigns($value, $campaigns, $depth + 1);
-            }
-        }
-    }
-
-    private function extractPirateFactionId(array $node): ?int
-    {
-        foreach ($node as $key => $value) {
-            $normalized = $this->normalizeKey((string) $key);
-            if (!in_array($normalized, ['piratefactionid', 'factionid', 'insurgentfactionid'], true)) {
-                continue;
-            }
-            if (is_numeric($value)) {
-                return (int) $value;
-            }
-        }
-
-        foreach ($node as $key => $value) {
-            $normalized = $this->normalizeKey((string) $key);
-            if (strpos($normalized, 'faction') === false || !is_array($value)) {
-                continue;
-            }
-            foreach ($value as $subKey => $subValue) {
-                if ($this->normalizeKey((string) $subKey) === 'id' && is_numeric($subValue)) {
-                    return (int) $subValue;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private function extractSolarSystemContainer(array $node, array $keys): array
-    {
-        $wanted = array_map(function (string $key): string {
-            return $this->normalizeKey($key);
-        }, $keys);
-
-        foreach ($node as $key => $value) {
-            if (!is_array($value)) {
-                continue;
-            }
-            if (in_array($this->normalizeKey((string) $key), $wanted, true)) {
-                return $value;
-            }
-        }
-
-        return [];
-    }
-
-    private function getArrayByNormalizedKey(array $node, array $keys): array
-    {
-        $wanted = array_map(function (string $key): string {
-            return $this->normalizeKey($key);
-        }, $keys);
-
-        foreach ($node as $key => $value) {
-            if (in_array($this->normalizeKey((string) $key), $wanted, true) && is_array($value)) {
-                return $value;
-            }
-        }
-
-        return [];
-    }
-
-    private function hasNormalizedKey(array $node, string $wanted): bool
-    {
-        foreach ($node as $key => $_value) {
-            if ($this->normalizeKey((string) $key) === $wanted) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private function numericField(array $node, array $keys): ?float
-    {
-        $wanted = array_map(function (string $key): string {
-            return $this->normalizeKey($key);
-        }, $keys);
-
-        foreach ($node as $key => $value) {
-            if (!in_array($this->normalizeKey((string) $key), $wanted, true)) {
-                continue;
-            }
-            if (is_numeric($value)) {
-                return (float) $value;
-            }
-        }
-
-        return null;
     }
 
     private function mergeSystemRecords(array $records): array
@@ -677,310 +454,6 @@ final class GuristasFrontlinesService
         });
 
         return $systems;
-    }
-
-    private function walkWarReport($node, bool $guristasContext, $parentKey, array &$out, int $depth): void
-    {
-        if ($depth > 18 || !is_array($node)) {
-            return;
-        }
-
-        $localGuristas = $guristasContext || $this->containsGuristasMarker($node);
-        $systemId = $this->extractSystemId($node, $parentKey);
-        $name = $this->extractSystemName($node);
-        $corruption = $this->extractMetric($node, 'corruption');
-        $suppression = $this->extractMetric($node, 'suppression');
-        $hasInsurgencyMetric = $corruption['found'] || $suppression['found'];
-
-        if ($localGuristas && $hasInsurgencyMetric && ($systemId !== null || $name !== null)) {
-            $out[] = [
-                'system_id' => $systemId,
-                'name' => $name,
-                'corruption_stage' => $corruption['stage'],
-                'corruption_percent' => $corruption['percent'],
-                'suppression_stage' => $suppression['stage'],
-                'suppression_percent' => $suppression['percent'],
-                'is_fob' => $this->isFobRecord($node),
-            ];
-        }
-
-        foreach ($node as $key => $value) {
-            if (is_array($value)) {
-                $this->walkWarReport($value, $localGuristas, $key, $out, $depth + 1);
-            }
-        }
-    }
-
-    private function containsGuristasMarker(array $node): bool
-    {
-        foreach ($node as $key => $value) {
-            $normalizedKey = $this->normalizeKey((string) $key);
-
-            if (is_scalar($value) || $value === null) {
-                $stringValue = strtolower((string) $value);
-                if (strpos($stringValue, 'guristas') !== false || strpos($stringValue, 'commando guri') !== false) {
-                    return true;
-                }
-
-                if (strpos($normalizedKey, 'faction') !== false && (int) $value === self::GURISTAS_FACTION_ID) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private function extractSystemId(array $node, $parentKey): ?int
-    {
-        if (is_string($parentKey) && preg_match('/^30\\d{6}$/', $parentKey)) {
-            return (int) $parentKey;
-        }
-
-        $preferred = [
-            'solarsystemid',
-            'systemid',
-            'solarsystem',
-        ];
-
-        foreach ($node as $key => $value) {
-            $normalized = $this->normalizeKey((string) $key);
-            if (!in_array($normalized, $preferred, true)) {
-                continue;
-            }
-
-            if (is_numeric($value)) {
-                $id = (int) $value;
-                if ($id >= 30000000 && $id <= 31999999) {
-                    return $id;
-                }
-            }
-
-            if (is_array($value)) {
-                foreach ($value as $subKey => $subValue) {
-                    $subNormalized = $this->normalizeKey((string) $subKey);
-                    if (($subNormalized === 'id' || $subNormalized === 'systemid' || $subNormalized === 'solarsystemid') && is_numeric($subValue)) {
-                        $id = (int) $subValue;
-                        if ($id >= 30000000 && $id <= 31999999) {
-                            return $id;
-                        }
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private function extractSystemName(array $node): ?string
-    {
-        $preferred = ['solarsystemname', 'systemname'];
-        foreach ($node as $key => $value) {
-            $normalized = $this->normalizeKey((string) $key);
-            if (in_array($normalized, $preferred, true) && is_string($value) && trim($value) !== '') {
-                return trim($value);
-            }
-        }
-
-        foreach (['solarSystem', 'system'] as $containerKey) {
-            if (!isset($node[$containerKey]) || !is_array($node[$containerKey])) {
-                continue;
-            }
-            if (isset($node[$containerKey]['name']) && is_string($node[$containerKey]['name'])) {
-                return trim($node[$containerKey]['name']);
-            }
-        }
-
-        return null;
-    }
-
-    private function extractMetric(array $node, string $metricName): array
-    {
-        $result = [
-            'found' => false,
-            'stage' => null,
-            'percent' => null,
-        ];
-
-        foreach ($node as $key => $value) {
-            $normalized = $this->normalizeKey((string) $key);
-            if (strpos($normalized, $metricName) === false) {
-                continue;
-            }
-
-            $result['found'] = true;
-            $this->applyMetricValue($result, $value, $normalized);
-        }
-
-        return $result;
-    }
-
-    private function applyMetricValue(array &$result, $value, string $keyHint): void
-    {
-        if (is_numeric($value)) {
-            $number = (float) $value;
-            if (strpos($keyHint, 'stage') !== false || strpos($keyHint, 'level') !== false) {
-                $result['stage'] = (int) round($number);
-                if ($result['percent'] === null && $number >= 0 && $number <= 5) {
-                    $result['percent'] = $number * 20.0;
-                }
-                return;
-            }
-
-            if ($number >= 0 && $number <= 1) {
-                $result['percent'] = $number * 100.0;
-            } elseif ($number >= 0 && $number <= 5 && floor($number) === $number) {
-                $result['stage'] = (int) $number;
-                $result['percent'] = $number * 20.0;
-            } elseif ($number >= 0 && $number <= 100) {
-                $result['percent'] = $number;
-            }
-            return;
-        }
-
-        if (!is_array($value)) {
-            return;
-        }
-
-        foreach ($value as $subKey => $subValue) {
-            $normalized = $this->normalizeKey((string) $subKey);
-            if (!is_numeric($subValue)) {
-                continue;
-            }
-
-            $number = (float) $subValue;
-            if (strpos($normalized, 'stage') !== false || strpos($normalized, 'level') !== false) {
-                $result['stage'] = (int) round($number);
-            } elseif (
-                strpos($normalized, 'percent') !== false
-                || strpos($normalized, 'progress') !== false
-                || strpos($normalized, 'value') !== false
-                || strpos($normalized, 'score') !== false
-            ) {
-                $result['percent'] = ($number >= 0 && $number <= 1)
-                    ? $number * 100.0
-                    : $number;
-            }
-        }
-
-        if ($result['percent'] === null && $result['stage'] !== null) {
-            $result['percent'] = max(0.0, min(100.0, (float) $result['stage'] * 20.0));
-        }
-    }
-
-    private function isFobRecord(array $node): bool
-    {
-        foreach ($node as $key => $value) {
-            $normalized = $this->normalizeKey((string) $key);
-            if (strpos($normalized, 'fob') === false && strpos($normalized, 'forwardoperatingbase') === false) {
-                continue;
-            }
-
-            if (is_bool($value)) {
-                return $value;
-            }
-            if (is_numeric($value)) {
-                return (int) $value !== 0;
-            }
-            if (is_string($value)) {
-                $lower = strtolower(trim($value));
-                return in_array($lower, ['true', 'yes', 'active', 'fob'], true);
-            }
-        }
-
-        return false;
-    }
-
-    private function resolveMissingSystemIds(array $records): array
-    {
-        $names = [];
-        foreach ($records as $record) {
-            if (!empty($record['system_id']) || empty($record['name'])) {
-                continue;
-            }
-            $names[] = (string) $record['name'];
-        }
-
-        $names = array_values(array_unique($names));
-        if ($names === []) {
-            return $records;
-        }
-
-        $resolved = $this->resolveNamesViaEsi($names);
-        foreach ($records as &$record) {
-            if (!empty($record['system_id']) || empty($record['name'])) {
-                continue;
-            }
-            $key = strtolower((string) $record['name']);
-            if (isset($resolved[$key])) {
-                $record['system_id'] = $resolved[$key]['id'];
-                $record['name'] = $resolved[$key]['name'];
-            }
-        }
-        unset($record);
-
-        return $records;
-    }
-
-    private function resolveNamesViaEsi(array $names): array
-    {
-        $cacheKey = 'frontlines-name-resolution|' . implode('|', array_map('strtolower', $names));
-        $cached = $this->derivedCache->read($cacheKey);
-        $now = time();
-        if ($cached !== null && $this->derivedCache->isFresh($cached, $now)) {
-            return isset($cached['data']) && is_array($cached['data']) ? $cached['data'] : [];
-        }
-
-        $url = rtrim((string) $this->config['base_url'], '/')
-            . '/universe/ids/?datasource=' . rawurlencode((string) ($this->config['datasource'] ?? 'tranquility'));
-
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_CONNECTTIMEOUT => (int) ($this->config['connect_timeout_seconds'] ?? 5),
-            CURLOPT_TIMEOUT => (int) ($this->config['request_timeout_seconds'] ?? 15),
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode(array_values($names), JSON_THROW_ON_ERROR),
-            CURLOPT_HTTPHEADER => [
-                'Accept: application/json',
-                'Content-Type: application/json',
-                'X-Compatibility-Date: ' . (string) $this->config['compatibility_date'],
-                'User-Agent: ' . (string) $this->config['user_agent'],
-            ],
-        ]);
-
-        $body = curl_exec($ch);
-        $error = curl_error($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
-
-        if ($body === false || $status < 200 || $status >= 300) {
-            throw new RuntimeException(
-                'Unable to resolve Frontlines solar-system names through ESI: '
-                . ($error !== '' ? $error : ('HTTP ' . $status))
-            );
-        }
-
-        $decoded = json_decode((string) $body, true);
-        $resolved = [];
-        foreach ((array) ($decoded['systems'] ?? []) as $row) {
-            if (!isset($row['id'], $row['name'])) {
-                continue;
-            }
-            $resolved[strtolower((string) $row['name'])] = [
-                'id' => (int) $row['id'],
-                'name' => (string) $row['name'],
-            ];
-        }
-
-        $this->derivedCache->write($cacheKey, [
-            'data' => $resolved,
-            'fetched_at' => $now,
-            'expires_at' => $now + 86400,
-        ]);
-
-        return $resolved;
     }
 
     private function topology(array $records): array
@@ -1193,8 +666,4 @@ final class GuristasFrontlinesService
         return $fallback;
     }
 
-    private function normalizeKey(string $key): string
-    {
-        return strtolower((string) preg_replace('/[^a-zA-Z0-9]/', '', $key));
-    }
 }
