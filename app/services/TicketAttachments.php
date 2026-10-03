@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/TicketStorageBridge.php';
 function tickets_upload_dir(): string { return dirname(__DIR__,2).'/storage/ticket-attachments'; }
 function tickets_upload_prepare(array $files): array {
     if (!$files || !isset($files['error'])) return [];
@@ -48,17 +49,31 @@ function tickets_upload_prepare(array $files): array {
 /** Called inside the ticket transaction. Caller removes moved files on rollback. */
 function tickets_upload_store(array $files,int $ticket,?int $activity,int $actor,array &$moved): void {
     if (!$files) return;
+    $remote=tickets_storage_remote();
     $dir=tickets_upload_dir();
-    if (!is_dir($dir) && !mkdir($dir,0750,true) && !is_dir($dir)) throw new RuntimeException('Cannot create private attachment directory.');
+    if (!$remote && (!is_dir($dir) && !mkdir($dir,0750,true) && !is_dir($dir))) throw new RuntimeException('Cannot create private attachment directory.');
     foreach ($files as $file) {
         $key=bin2hex(random_bytes(24));$path=$dir.'/'.$key;
-        if (!move_uploaded_file($file['tmp'],$path)) throw new RuntimeException('Unable to store attachment.');
-        $moved[]=$path;chmod($path,0640);
+        if ($remote) {
+            $moved[]='remote:'.$actor.':'.$key;
+            $reply=json_decode(tickets_storage_request('put',$actor,$key,0,$file),true,16,JSON_THROW_ON_ERROR);
+            if (($reply['key']??'')!==$key || ($reply['size']??0)!==$file['size'] || ($reply['mime']??'')!==$file['mime']) throw new RuntimeException('EC2 attachment verification failed.');
+        } else {
+            if (!move_uploaded_file($file['tmp'],$path)) throw new RuntimeException('Unable to store attachment.');
+            $moved[]=$path;chmod($path,0640);
+        }
         $q=eve_db()->prepare('INSERT INTO guristas_ticket_attachments(ticket_id,activity_id,author_id,original_name,storage_key,mime_type,size_bytes,created_at) VALUES (?,?,?,?,?,?,?,UTC_TIMESTAMP())');
         $q->execute([$ticket,$activity,$actor,$file['name'],$key,$file['mime'],$file['size']]);
     }
 }
-function tickets_upload_cleanup(array $paths):void { foreach($paths as $path) if(is_file($path)) unlink($path); }
+function tickets_upload_cleanup(array $paths):void {
+    foreach ($paths as $path) {
+        try {
+            if (preg_match('/^remote:([0-9]+):([a-f0-9]{48})$/D',$path,$m)) tickets_storage_request('delete',(int)$m[1],$m[2]);
+            elseif (is_file($path)) unlink($path);
+        } catch (Throwable $error) {error_log('Ticket attachment cleanup failed: '.$error->getMessage());}
+    }
+}
 function tickets_attachment_list(int $ticket,?int $activity=null): array {
     $q=eve_db()->prepare('SELECT id,original_name,size_bytes,mime_type FROM guristas_ticket_attachments WHERE ticket_id=? AND '.($activity===null?'activity_id IS NULL':'activity_id=?').' ORDER BY id');
     $q->execute($activity===null?[$ticket]:[$ticket,$activity]);return $q->fetchAll();

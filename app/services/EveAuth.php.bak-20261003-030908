@@ -275,13 +275,6 @@ function eve_requested_scopes(): array
     }
     return $scopes;
 }
-function eve_token_table(): string
-{
-    return (eve_config()['token_environment'] ?? 'production') === 'local'
-        ? 'eve_character_tokens_local'
-        : 'eve_character_tokens';
-}
-
 function eve_store_tokens(int $id, array $response, array $claims): void
 {
     $refresh = $response['refresh_token'] ?? null;
@@ -295,7 +288,7 @@ function eve_store_tokens(int $id, array $response, array $claims): void
     if (is_string($granted)) $granted = preg_split('/\s+/', trim($granted));
     if (!is_array($granted)) throw new RuntimeException('Invalid granted scope list.');
     $granted = array_values(array_filter($granted, 'is_string'));
-    $stmt = eve_db()->prepare('INSERT INTO ' . eve_token_table() . ' (character_id, access_token_sealed, refresh_token_sealed, scopes_json, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? SECOND)) ON DUPLICATE KEY UPDATE access_token_sealed=VALUES(access_token_sealed), refresh_token_sealed=VALUES(refresh_token_sealed), scopes_json=VALUES(scopes_json), expires_at=VALUES(expires_at)');
+    $stmt = eve_db()->prepare('INSERT INTO eve_character_tokens (character_id, access_token_sealed, refresh_token_sealed, scopes_json, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? SECOND)) ON DUPLICATE KEY UPDATE access_token_sealed=VALUES(access_token_sealed), refresh_token_sealed=VALUES(refresh_token_sealed), scopes_json=VALUES(scopes_json), expires_at=VALUES(expires_at)');
     $stmt->execute([$id, eve_encrypt_token($access), eve_encrypt_token($refresh), json_encode($granted, JSON_THROW_ON_ERROR), (int)$expires]);
 }
 function eve_access_token(int $id, string $scope): string
@@ -303,7 +296,7 @@ function eve_access_token(int $id, string $scope): string
     $db = eve_db();
     $db->beginTransaction();
     try {
-        $q = $db->prepare('SELECT * FROM ' . eve_token_table() . ' WHERE character_id = ? FOR UPDATE');
+        $q = $db->prepare('SELECT * FROM eve_character_tokens WHERE character_id = ? FOR UPDATE');
         $q->execute([$id]);
         $row = $q->fetch();
         if (!$row) throw new RuntimeException('EVE authorization is missing. Sign in again.');

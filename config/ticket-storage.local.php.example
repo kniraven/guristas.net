@@ -1,0 +1,8 @@
+<?php
+// EC2: set bridge_secret only. Local Windows: set both values.
+// Generate once with bin2hex(random_bytes(32)); use the same secret on both.
+// Never commit the actual config file or put it under public/.
+return [
+    'bridge_secret' => 'REPLACE_WITH_64_HEX_CHARACTERS',
+    // 'remote_url' => 'https://guristas.net/admin/tickets/storage.php',
+];
