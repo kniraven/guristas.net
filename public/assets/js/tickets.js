@@ -77,5 +77,91 @@ document.addEventListener('DOMContentLoaded',()=>{
       });input.reportValidity();
     });
   });
-  queueMicrotask(()=>document.querySelectorAll('form').forEach(form=>window.GuristasDrafts?.watch(form)));
+  queueMicrotask(()=>document.querySelectorAll('form[method="post"]').forEach(form=>window.GuristasDrafts?.watch(form)));
+});
+
+/* Filter tickets without navigating away from the page. */
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('form.ticket-toolbar[method="get"]');
+  if (!form) return;
+  let summary = form.nextElementSibling;
+  let results = summary?.nextElementSibling;
+  if (!summary?.matches('.ticket-meta') || !results?.matches('.ticket-board, .ticket-list')) return;
+
+  const message = document.createElement('p');
+  message.className = 'ticket-meta';
+  message.setAttribute('role', 'status');
+  message.setAttribute('aria-live', 'polite');
+  message.hidden = true;
+  form.after(message);
+  form.querySelector('button[type="submit"], button:not([type])')?.remove();
+  let controller, timer, requestNumber = 0;
+
+  function currentURL() {
+    const url = new URL(form.action || location.href);
+    url.search = new URLSearchParams(new FormData(form)).toString();
+    url.hash = '';
+    return url;
+  }
+
+  async function update() {
+    clearTimeout(timer);
+    controller?.abort();
+    controller = new AbortController();
+    const number = ++requestNumber;
+    const url = currentURL();
+    message.hidden = false;
+    message.className = 'ticket-meta';
+    message.textContent = 'Updating tickets…';
+    results.setAttribute('aria-busy', 'true');
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
+      if (!response.ok || response.redirected) throw new Error('Request failed');
+      const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+      const nextForm = page.querySelector('form.ticket-toolbar[method="get"]');
+      const nextSummary = nextForm?.nextElementSibling;
+      const nextResults = nextSummary?.nextElementSibling;
+      if (!nextSummary?.matches('.ticket-meta') || !nextResults?.matches('.ticket-board, .ticket-list')) {
+        throw new Error('Ticket results missing');
+      }
+      if (number !== requestNumber) return;
+      summary.replaceWith(nextSummary);
+      results.replaceWith(nextResults);
+      summary = nextSummary;
+      results = nextResults;
+      history.replaceState(history.state, '', url);
+      message.textContent = summary.textContent;
+    } catch (error) {
+      if (error.name === 'AbortError' || number !== requestNumber) return;
+      message.className = 'ticket-error';
+      message.textContent = 'Could not update tickets. Previous results are still shown. Change a filter or press Enter to retry.';
+    } finally {
+      if (number === requestNumber) results.removeAttribute('aria-busy');
+    }
+  }
+
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    update();
+  });
+  form.addEventListener('change', event => {
+    if (event.target.matches('select')) update();
+  });
+  form.querySelector('[name="q"]')?.addEventListener('input', () => {
+    clearTimeout(timer);
+    // Invalidate an older response immediately, even while the search debounce runs.
+    controller?.abort();
+    ++requestNumber;
+    timer = setTimeout(update, 250);
+  });
+  form.querySelector('a')?.addEventListener('click', event => {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    for (const name of ['q', 'status', 'priority', 'assigned']) form.elements.namedItem(name).value = '';
+    update();
+  });
 });
