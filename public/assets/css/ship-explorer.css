@@ -1,6 +1,6 @@
 /* Ship Explorer layout; palette comes from the site's themes.css. */
 .ships-page{position:relative;z-index:1;min-height:72vh;padding:clamp(28px,5vw,72px) 0 96px;color:var(--text)}
-.ships-content{width:min(calc(100% - 32px),1560px);margin-inline:auto}
+.ships-content{width:var(--shell);margin-inline:auto}
 .ships-page h1{margin:0 0 8px;font-size:clamp(2.2rem,5vw,4rem);line-height:1.1;text-transform:uppercase;color:var(--text)}
 .ships-page .lead{max-width:850px;margin:0 0 24px;color:var(--muted)}
 .ships-page .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;padding:18px;margin-bottom:14px;border:1px solid var(--line-strong);border-radius:var(--panel-radius);background:var(--panel-background,var(--panel));box-shadow:var(--shadow)}

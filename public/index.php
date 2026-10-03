@@ -222,22 +222,7 @@ $currentYear = (int) date('Y');
         aria-hidden="true"
     ></div>
 
-    <div
-        class="theme-side-stage"
-        aria-hidden="true"
-    >
-        <div
-            class="theme-side-rail theme-side-rail-left"
-        ></div>
-
-        <div
-            class="theme-side-clearance"
-        ></div>
-
-        <div
-            class="theme-side-rail theme-side-rail-right"
-        ></div>
-    </div>
+    
 
     <section
         class="boot-screen"

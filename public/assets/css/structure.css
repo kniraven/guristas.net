@@ -888,7 +888,7 @@ body > footer {
 
     margin: 0;
 
-    font-size: clamp(3.4rem, 16vw, 8.8rem);
+    font-size: clamp(2.5rem, 10vw, 4rem);
     line-height: 0.82;
     letter-spacing: -0.075em;
 
@@ -1858,7 +1858,7 @@ input[type="range"]::-moz-range-thumb {
    RESPONSIVE — 600PX
    ========================================================= */
 
-@media (min-width: 600px) {
+@media (min-width: 768px) {
     .operation-grid,
     .signals-grid {
         grid-template-columns:
@@ -1884,7 +1884,7 @@ input[type="range"]::-moz-range-thumb {
    RESPONSIVE — 800PX
    ========================================================= */
 
-@media (min-width: 800px) {
+@media (min-width: 992px) {
     .hero {
         grid-template-columns:
             minmax(0, 1.08fr)
@@ -1910,7 +1910,7 @@ input[type="range"]::-moz-range-thumb {
    RESPONSIVE — DESKTOP
    ========================================================= */
 
-@media (min-width: 1050px) {
+@media (min-width: 1200px) {
     .header-inner {
         grid-template-columns:
             auto
@@ -2018,9 +2018,9 @@ input[type="range"]::-moz-range-thumb {
    RESPONSIVE — LARGE DESKTOP
    ========================================================= */
 
-@media (min-width: 1300px) {
+@media (min-width: 1200px) {
     .hero h1 {
-        font-size: 7.7rem;
+        font-size: 5.5rem;
     }
 
     .ship-frame {
@@ -2053,4 +2053,29 @@ input[type="range"]::-moz-range-thumb {
     .theme-fx-layer {
         display: none;
     }
+}
+
+/* Shared container breakpoints */
+:root {
+    --shell: calc(100% - 32px);
+}
+
+.shell {
+    width: var(--shell);
+}
+
+.theme-side-stage {
+    grid-template-columns: minmax(0, 1fr) var(--shell) minmax(0, 1fr);
+}
+
+@media (min-width: 768px) {
+    :root { --shell: 720px; }
+}
+
+@media (min-width: 992px) {
+    :root { --shell: 960px; }
+}
+
+@media (min-width: 1200px) {
+    :root { --shell: 1180px; }
 }

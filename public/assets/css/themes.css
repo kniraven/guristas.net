@@ -24,7 +24,7 @@
 html[data-theme="cryptic"] {
     color-scheme: dark;
 
-    --shell: 1180px;
+    
     --header-height: 78px;
 
     --void: #010101;

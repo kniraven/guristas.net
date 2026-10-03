@@ -2,7 +2,24 @@
 // Set $navActive, $headerClass and $headerSubtitle before including this partial.
 // Uses the page theme choices and initial theme, plus the signed-in viewer.
 ?>
-    <header class="<?= eve_e($headerClass) ?>">
+    
+<div
+        class="theme-side-stage"
+        aria-hidden="true"
+    >
+        <div
+            class="theme-side-rail theme-side-rail-left"
+        ></div>
+
+        <div
+            class="theme-side-clearance"
+        ></div>
+
+        <div
+            class="theme-side-rail theme-side-rail-right"
+        ></div>
+    </div>
+<header class="<?= eve_e($headerClass) ?>">
         <div class="shell header-inner">
             <a
                 class="brand"
