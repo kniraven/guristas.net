@@ -162,3 +162,9 @@ After deploying, install and enable the daily timer from the EC2 site root:
 Check results with:
 
     sudo journalctl -u guristas-cache-cleanup.service -n 20 --no-pager
+
+### Guristas log review
+
+Verified on 2026-10-03: the HTTPS virtual host uses `guristas_ssl_error.log` and `guristas_ssl_access.log`. Apache's main configuration also references `guristas_error.log` and `guristas_access.log`; these remain configured and must not be treated as obsolete.
+
+Existing logrotate settings rotate nonempty logs weekly and retain four archives. The daily logrotate timer is enabled. Empty logs can retain older archives because `notifempty` skips rotation. No log deletion or shared Apache configuration changes were needed for GURI-036.
