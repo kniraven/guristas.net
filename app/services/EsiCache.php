@@ -14,7 +14,7 @@ final class GuristasEsiCache
         $this->directory = $directory;
 
         if (!is_dir($this->directory)) {
-            if (!mkdir($this->directory, 0775, true) && !is_dir($this->directory)) {
+            if (!mkdir($this->directory, 02750, true) && !is_dir($this->directory)) {
                 throw new RuntimeException('Unable to create ESI cache directory: ' . $this->directory);
             }
         }
@@ -68,8 +68,21 @@ final class GuristasEsiCache
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR
         );
 
-        if (file_put_contents($temp, $json, LOCK_EX) === false) {
+        $previousMask = umask(0027);
+        try {
+            $written = file_put_contents($temp, $json, LOCK_EX);
+        } finally {
+            umask($previousMask);
+        }
+
+        if ($written === false) {
+            @unlink($temp);
             throw new RuntimeException('Unable to write ESI cache file: ' . $temp);
+        }
+
+        if (PHP_OS_FAMILY !== 'Windows' && !chmod($temp, 0640)) {
+            @unlink($temp);
+            throw new RuntimeException('Unable to set ESI cache file permissions.');
         }
 
         if (!rename($temp, $path)) {

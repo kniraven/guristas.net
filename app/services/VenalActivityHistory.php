@@ -25,7 +25,7 @@ final class GuristasVenalActivityHistory
         $this->retentionHours = max(24, $retentionHours);
 
         if (!is_dir($this->directory)) {
-            if (!mkdir($this->directory, 0775, true) && !is_dir($this->directory)) {
+            if (!mkdir($this->directory, 02750, true) && !is_dir($this->directory)) {
                 throw new RuntimeException(
                     'Unable to create Venal history directory: ' . $this->directory
                 );
@@ -248,8 +248,21 @@ final class GuristasVenalActivityHistory
                 | JSON_THROW_ON_ERROR
         );
 
-        if (file_put_contents($temporary, $json, LOCK_EX) === false) {
+        $previousMask = umask(0027);
+        try {
+            $written = file_put_contents($temporary, $json, LOCK_EX);
+        } finally {
+            umask($previousMask);
+        }
+
+        if ($written === false) {
+            @unlink($temporary);
             throw new RuntimeException('Unable to write Venal history snapshot.');
+        }
+
+        if (PHP_OS_FAMILY !== 'Windows' && !chmod($temporary, 0640)) {
+            @unlink($temporary);
+            throw new RuntimeException('Unable to set Venal history file permissions.');
         }
 
         if (!rename($temporary, $path)) {
