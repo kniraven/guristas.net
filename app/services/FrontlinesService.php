@@ -64,35 +64,12 @@ final class GuristasFrontlinesService
             $parsed = $this->parseGuristasSystems($report['data']);
             $records = $parsed['systems'];
 
-            if ($records === []) {
-                $primaryWarning =
-                    'EVE Online Frontlines returned JSON, but its current undocumented schema '
-                    . 'did not expose recognizable Guristas campaign records.';
-            }
         } catch (Throwable $e) {
             $primaryWarning = 'EVE Online Frontlines unavailable: ' . $e->getMessage();
-        }
-
-        if ($records === []) {
             $sourceMode = 'everef_fallback';
             $report = $this->eveRefWarzoneReport();
             $parsed = $this->parseGuristasSystems($report['data']);
             $records = $parsed['systems'];
-        }
-
-        if ($records === []) {
-            throw new RuntimeException(
-                'Neither the EVE Online Frontlines response nor the EVE Ref warzone-insurgency '
-                . 'mirror contained recognizable Guristas insurgency systems.'
-            );
-        }
-
-        $records = array_values(array_filter($records, static function (array $row): bool {
-            return isset($row['system_id']) && (int) $row['system_id'] > 0;
-        }));
-
-        if ($records === []) {
-            throw new RuntimeException('Guristas insurgency systems were found, but none could be resolved to EVE solar-system IDs.');
         }
 
         $topology = $this->topology($records);
@@ -188,97 +165,16 @@ final class GuristasFrontlinesService
 
     private function warReport(): array
     {
-        $cacheKey = 'eve-frontlines-insurgency-v1';
-        $cached = $this->webCache->read($cacheKey);
-        $now = time();
-
-        if ($cached !== null && $this->webCache->isFresh($cached, $now)) {
-            return $this->warReportFromCache($cached, 'HIT', false);
-        }
-
-        $headers = [];
-        $requestHeaders = [
-            'Accept: application/json',
-            'User-Agent: ' . (string) ($this->config['user_agent'] ?? 'Guristas.net'),
-        ];
-
-        if ($cached !== null && !empty($cached['etag'])) {
-            $requestHeaders[] = 'If-None-Match: ' . $cached['etag'];
-        }
-        if ($cached !== null && !empty($cached['last_modified'])) {
-            $requestHeaders[] = 'If-Modified-Since: ' . $cached['last_modified'];
-        }
-
-        $ch = curl_init(self::WAR_REPORT_URL);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS => 3,
-            CURLOPT_CONNECTTIMEOUT => (int) ($this->config['connect_timeout_seconds'] ?? 5),
-            CURLOPT_TIMEOUT => (int) ($this->config['request_timeout_seconds'] ?? 15),
-            CURLOPT_HTTPHEADER => $requestHeaders,
-            CURLOPT_ENCODING => '',
-            CURLOPT_HEADERFUNCTION => static function ($curl, string $line) use (&$headers): int {
-                $length = strlen($line);
-                $line = trim($line);
-                if ($line === '' || strpos($line, ':') === false) {
-                    return $length;
-                }
-                list($name, $value) = explode(':', $line, 2);
-                $headers[strtolower(trim($name))] = trim($value);
-                return $length;
-            },
-        ]);
-
-        $body = curl_exec($ch);
-        $error = curl_error($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
-
-        if ($status === 304 && $cached !== null) {
-            $entry = $cached;
-            $entry['fetched_at'] = $now;
-            $entry['expires_at'] = $now + 300;
-            $this->webCache->write($cacheKey, $entry);
-            return $this->warReportFromCache($entry, 'REVALIDATED', false);
-        }
-
-        if ($body === false || $status < 200 || $status >= 300) {
-            if ($cached !== null && $this->webCache->isUsableStale($cached, 3600, $now)) {
-                $result = $this->warReportFromCache($cached, 'STALE', true);
-                $result['meta']['warning'] = $error !== ''
-                    ? $error
-                    : ('Frontlines War Report returned HTTP ' . $status . '.');
-                return $result;
-            }
-
-            throw new RuntimeException(
-                'Unable to retrieve the EVE Frontlines War Report: '
-                . ($error !== '' ? $error : ('HTTP ' . $status))
-            );
-        }
-
-        $decoded = json_decode((string) $body, true);
-        if (!is_array($decoded)) {
-            throw new RuntimeException('The EVE Frontlines War Report did not return valid JSON.');
-        }
-
-        $ttl = $this->cacheTtlFromHeaders($headers, 300);
-        $entry = [
-            'data' => $decoded,
-            'fetched_at' => $now,
-            'expires_at' => $now + $ttl,
-            'etag' => $headers['etag'] ?? null,
-            'last_modified' => $headers['last-modified'] ?? null,
-        ];
-        $this->webCache->write($cacheKey, $entry);
-
-        return $this->warReportFromCache($entry, 'MISS', false);
+        return $this->fetchCampaignReport(self::WAR_REPORT_URL, 'eve-frontlines-insurgency-v1');
     }
 
     private function eveRefWarzoneReport(): array
     {
-        $cacheKey = 'everef-warzone-insurgency-current-v1';
+        return $this->fetchCampaignReport(self::EVE_REF_WARZONE_URL, 'everef-warzone-insurgency-current-v1');
+    }
+
+    private function fetchCampaignReport(string $url, string $cacheKey): array
+    {
         $cached = $this->webCache->read($cacheKey);
         $now = time();
 
@@ -299,7 +195,7 @@ final class GuristasFrontlinesService
             $requestHeaders[] = 'If-Modified-Since: ' . $cached['last_modified'];
         }
 
-        $ch = curl_init(self::EVE_REF_WARZONE_URL);
+        $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
@@ -328,7 +224,7 @@ final class GuristasFrontlinesService
         if ($status === 304 && $cached !== null) {
             $entry = $cached;
             $entry['fetched_at'] = $now;
-            $entry['expires_at'] = $now + 300;
+            $entry['expires_at'] = $now + $this->cacheTtlFromHeaders($headers, 300);
             $this->webCache->write($cacheKey, $entry);
             return $this->warReportFromCache($entry, 'REVALIDATED', false);
         }
@@ -338,21 +234,23 @@ final class GuristasFrontlinesService
                 $result = $this->warReportFromCache($cached, 'STALE', true);
                 $result['meta']['warning'] = $error !== ''
                     ? $error
-                    : ('EVE Ref warzone-insurgency returned HTTP ' . $status . '.');
+                    : ('Insurgency feed returned HTTP ' . $status . '.');
                 return $result;
             }
 
             throw new RuntimeException(
-                'Unable to retrieve the EVE Ref warzone-insurgency dataset: '
+                'Unable to retrieve insurgency feed: '
                 . ($error !== '' ? $error : ('HTTP ' . $status))
             );
         }
 
         $decoded = json_decode((string) $body, true);
         if (!is_array($decoded)) {
-            throw new RuntimeException('EVE Ref warzone-insurgency did not return valid JSON.');
+            throw new RuntimeException('Insurgency feed did not return valid JSON.');
         }
 
+        // Reject unsupported payloads before replacing the last valid cache entry.
+        $this->parseGuristasSystems($decoded);
         $ttl = $this->cacheTtlFromHeaders($headers, 300);
         $entry = [
             'data' => $decoded,
@@ -368,13 +266,19 @@ final class GuristasFrontlinesService
 
     private function parseGuristasSystems(array $document): array
     {
-        // Current insurgency feed: a top-level list of campaigns.
+        // An empty list is a valid feed between campaigns; other schemas are errors.
+        if ($document !== [] && array_keys($document) !== range(0, count($document) - 1)) {
+            throw new RuntimeException('Insurgency feed must be a list of campaigns.');
+        }
         $records = [];
         $candidateCampaigns = 0;
         $guristasCampaigns = 0;
         foreach ($document as $campaign) {
             if (!is_array($campaign) || !isset($campaign['pirateFactionId'], $campaign['insurgencies'])
-                || !is_array($campaign['insurgencies'])) continue;
+                || !is_numeric($campaign['pirateFactionId'])
+                || !is_array($campaign['insurgencies'])) {
+                throw new RuntimeException('Unsupported insurgency campaign schema.');
+            }
             $candidateCampaigns++;
             if ((int) $campaign['pirateFactionId'] !== self::GURISTAS_FACTION_ID) continue;
             $guristasCampaigns++;
@@ -458,6 +362,9 @@ final class GuristasFrontlinesService
 
     private function topology(array $records): array
     {
+        if ($records === []) {
+            return ['data' => ['systems' => [], 'edges' => []], 'meta' => ['cache' => 'EMPTY']];
+        }
         $ids = [];
         foreach ($records as $record) {
             $id = (int) ($record['system_id'] ?? 0);

@@ -24,8 +24,22 @@ try {
     }
     if ($expected!==[]) throw new RuntimeException('A Guristas system was lost.');
     $empty=$method->invoke($service,[]);
-    $warzone=$method->invoke($service,[['solarsystemID'=>30045342,'ownerFaction'=>500001,'contestedAmount'=>0.1]]);
-    $old=$method->invoke($service,[['factionId'=>500010,'systems'=>[['systemId'=>30045342,'corruptionLevel'=>5]]]]);
-    if ($empty['systems']!==[] || $warzone['systems']!==[] || $old['systems']!==[]) throw new RuntimeException('Unsupported data must not be interpreted as insurgency metrics.');
+    if ($empty['systems']!==[]) throw new RuntimeException('Empty campaign list must be accepted.');
+    $angelOnly=$method->invoke($service,[['pirateFactionId'=>500011,'insurgencies'=>[]]]);
+    $noSystems=$method->invoke($service,[['pirateFactionId'=>500010,'insurgencies'=>[]]]);
+    if ($angelOnly['systems']!==[] || $noSystems['systems']!==[]) throw new RuntimeException('Valid feeds with no Guristas systems must be accepted.');
+    foreach ([
+        [['solarsystemID'=>30045342,'ownerFaction'=>500001,'contestedAmount'=>0.1]],
+        [['factionId'=>500010,'systems'=>[['systemId'=>30045342,'corruptionLevel'=>5]]]],
+        ['error'=>'unavailable'],
+    ] as $unsupported) {
+        try { $method->invoke($service,$unsupported); }
+        catch (RuntimeException $expectedError) { continue; }
+        throw new RuntimeException('Unsupported feed was accepted.');
+    }
+    $topology=$reflection->getMethod('topology');
+    $topology->setAccessible(true);
+    $emptyTopology=$topology->invoke($service,[]);
+    if ($emptyTopology['data']!==['systems'=>[],'edges'=>[]]) throw new RuntimeException('Empty topology changed.');
     echo "Frontlines parser checks passed: campaign values, faction filtering, FOB, zero metrics, empty and unsupported feeds.\n";
 } catch (Throwable $error) {fwrite(STDERR,$error->getMessage().PHP_EOL);exit(1);}
