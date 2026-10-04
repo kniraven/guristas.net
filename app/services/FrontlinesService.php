@@ -126,6 +126,9 @@ final class GuristasFrontlinesService
                 'topology_cache' => $topology['meta']['cache'],
                 'source_mode' => $sourceMode,
                 'primary_warning' => $primaryWarning,
+                'stale' => $report['meta']['stale'],
+                'last_success_at' => $report['meta']['retrieved_at'],
+                'warning' => $report['meta']['warning'] ?? $primaryWarning,
                 'parser' => $parsed['diagnostics'],
             ],
             'sources' => array_merge(
@@ -221,6 +224,11 @@ final class GuristasFrontlinesService
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         curl_close($ch);
 
+        return $this->campaignResponse($cacheKey, $cached, $now, $status, $body, $error, $headers);
+    }
+
+    private function campaignResponse(string $cacheKey, ?array $cached, int $now, int $status, $body, string $error, array $headers): array
+    {
         if ($status === 304 && $cached !== null) {
             $entry = $cached;
             $entry['fetched_at'] = $now;
@@ -229,28 +237,26 @@ final class GuristasFrontlinesService
             return $this->warReportFromCache($entry, 'REVALIDATED', false);
         }
 
-        if ($body === false || $status < 200 || $status >= 300) {
+        try {
+            if ($body === false || $status < 200 || $status >= 300) {
+                throw new RuntimeException($error !== '' ? $error : 'Insurgency feed returned HTTP ' . $status . '.');
+            }
+            $decoded = json_decode((string) $body, true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($decoded) || substr(ltrim((string) $body), 0, 1) !== '[') {
+                throw new RuntimeException('Insurgency feed must return a JSON campaign list.');
+            }
+            // Never overwrite a valid cache with an unsupported or damaged response.
+            $this->parseGuristasSystems($decoded);
+        } catch (Throwable $failure) {
             if ($cached !== null && $this->webCache->isUsableStale($cached, 3600, $now)) {
+                $this->parseGuristasSystems($cached['data']);
                 $result = $this->warReportFromCache($cached, 'STALE', true);
-                $result['meta']['warning'] = $error !== ''
-                    ? $error
-                    : ('Insurgency feed returned HTTP ' . $status . '.');
+                $result['meta']['warning'] = $failure->getMessage();
                 return $result;
             }
-
-            throw new RuntimeException(
-                'Unable to retrieve insurgency feed: '
-                . ($error !== '' ? $error : ('HTTP ' . $status))
-            );
+            throw new RuntimeException('Unable to retrieve insurgency feed: ' . $failure->getMessage(), 0, $failure);
         }
 
-        $decoded = json_decode((string) $body, true);
-        if (!is_array($decoded)) {
-            throw new RuntimeException('Insurgency feed did not return valid JSON.');
-        }
-
-        // Reject unsupported payloads before replacing the last valid cache entry.
-        $this->parseGuristasSystems($decoded);
         $ttl = $this->cacheTtlFromHeaders($headers, 300);
         $entry = [
             'data' => $decoded,

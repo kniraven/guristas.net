@@ -114,6 +114,9 @@ final class GuristasStreamIntelligenceService
                     }, $warSystems))))),
                     'updated_at' => $warzone['data']['updated_at'] ?? null,
                     'source_mode' => $warzone['meta']['source_mode'] ?? null,
+                    'stale' => $warzone['meta']['stale'],
+                    'last_success_at' => $warzone['meta']['last_success_at'],
+                    'warning' => $warzone['meta']['warning'],
                 ],
                 'zarzakh' => [
                     'id' => self::ZARZAKH_SYSTEM_ID,
