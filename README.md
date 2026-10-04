@@ -143,3 +143,22 @@ Apache needs write access to the site's cache and history directories.
 Apache and PHP-FPM logs rotate weekly with four archives, verified on 2026-10-03. Compression is disabled. Inactive services may leave older archives; review these separately before deleting them.
 
 Ship and theme artwork without current references is intentionally retained for future use.
+
+### Daily cache cleanup
+
+Preview: `php scripts/cleanup-cache.php`
+Apply: `php scripts/cleanup-cache.php --apply`
+
+Cleanup examines recognized cache JSON files directly inside `storage/cache/esi`, `derived`, and `frontlines`. Entries remain for at least 24 hours after expiry, or longer if the configured stale-error window exceeds 24 hours. Unknown files, links, and entries without valid expiry information are skipped. History, attachments, sessions, and stream settings are outside its scope.
+
+After deploying, install and enable the daily timer from the EC2 site root:
+
+    sudo install -m 0644 deploy/systemd/guristas-cache-cleanup.service /etc/systemd/system/
+    sudo install -m 0644 deploy/systemd/guristas-cache-cleanup.timer /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now guristas-cache-cleanup.timer
+    sudo systemctl list-timers guristas-cache-cleanup.timer --no-pager
+
+Check results with:
+
+    sudo journalctl -u guristas-cache-cleanup.service -n 20 --no-pager

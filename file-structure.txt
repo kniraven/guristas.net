@@ -1,3 +1,5 @@
+deploy/systemd/guristas-cache-cleanup.service
+deploy/systemd/guristas-cache-cleanup.timer
 .gitattributes
 .gitignore
 README.md
@@ -117,9 +119,11 @@ public/venal/index.php
 public/venal/overlay/index.php
 public/war/guristas/overlay/index.php
 public/zarzakh/overlay/index.php
+scripts/check-frontlines-cache.php
 scripts/check-frontlines-parser.php
 scripts/check-ticket-storage.php
 scripts/check-ticket-update.php
+scripts/cleanup-cache.php
 scripts/collect_venal_activity.php
 scripts/initialize-stream-storage.php
 scripts/update_ship_data.py

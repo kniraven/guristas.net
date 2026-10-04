@@ -1,0 +1,10 @@
+[Unit]
+Description=Guristas expired cache cleanup
+
+[Service]
+Type=oneshot
+User=apache
+Group=apache
+WorkingDirectory=/var/www/sites/guristas.net
+ExecStart=/usr/bin/php /var/www/sites/guristas.net/scripts/cleanup-cache.php --apply
+TimeoutStartSec=300

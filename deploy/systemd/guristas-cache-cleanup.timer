@@ -1,0 +1,11 @@
+[Unit]
+Description=Clean Guristas expired cache daily
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=15m
+Persistent=true
+Unit=guristas-cache-cleanup.service
+
+[Install]
+WantedBy=timers.target
