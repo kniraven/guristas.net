@@ -521,3 +521,21 @@ body { color: white; }
     .zarzakh-mark::before,
     .zarzakh-mark::after { animation: none !important; }
 }
+
+/* Source health remains visible after temporary error notifications disappear. */
+.war-feed-status {
+    position: absolute;
+    left: 16px;
+    bottom: 8px;
+    max-width: 530px;
+    z-index: 20;
+    color: #b9d9ce;
+    background: rgba(5, 12, 16, .85);
+    border-left: 2px solid #56ff8a;
+    padding: 7px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    letter-spacing: .03em;
+    pointer-events: auto;
+}
+.war-feed-status.is-warning { color: #ffd49b; border-color: #ffac55; }

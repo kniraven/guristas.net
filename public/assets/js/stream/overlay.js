@@ -111,6 +111,35 @@ function showError(message) {
     window.setTimeout(() => dom.error.classList.remove("is-visible"), 6500);
 }
 
+let lastWarzoneStatus = null;
+let intelligenceRefreshFailed = false;
+
+function updateFeedStatus(warzone = lastWarzoneStatus, failed = intelligenceRefreshFailed) {
+    lastWarzoneStatus = warzone;
+    intelligenceRefreshFailed = failed;
+    let element = document.getElementById("warFeedStatus");
+    if (!element) {
+        element = document.createElement("div");
+        element.id = "warFeedStatus";
+        element.className = "war-feed-status";
+        element.setAttribute("role", "status");
+        dom.overlay.appendChild(element);
+    }
+    const source = warzone?.source_mode === "eve_online_frontlines" ? "CCP" :
+        warzone?.source_mode === "everef_fallback" ? "EVE Ref backup" : "Source unavailable";
+    const successAt = Date.parse(warzone?.last_success_at || "");
+    const ageMinutes = Number.isFinite(successAt) ? Math.max(0, Math.floor((Date.now() - successAt) / 60000)) : null;
+    const stale = failed || warzone?.stale === true || (ageMinutes !== null && ageMinutes >= 20);
+    const state = !warzone ? "Unavailable" : stale ? "Saved data" : "Current";
+    element.textContent = `Insurgency: ${source} · ${state}` +
+        (ageMinutes !== null ? ` · Checked ${ageMinutes < 1 ? "just now" : `${ageMinutes}m ago`}` : "");
+    element.classList.toggle("is-warning", stale || !warzone || warzone?.source_mode === "everef_fallback");
+    element.title = failed ? "Intelligence refresh failed. Displayed data has not been refreshed." :
+        warzone?.stale ? "The source could not be refreshed. Showing the last saved response." :
+        warzone?.source_mode === "everef_fallback" ? "The primary source is unavailable. Using the EVE Ref mirror." :
+        "Time of the last successful source check; game data may update on a different schedule.";
+}
+
 function ensurePanelTitle(id, className, options) {
     let element = document.getElementById(id);
     if (!element) {
@@ -914,6 +943,7 @@ async function refreshIntel() {
     try {
         const payload = await fetchJson(INTEL_URL);
         const next = payload.data;
+        updateFeedStatus(next.warzone, false);
         const warSignature = (next.warzone?.systems || []).map(row => Number(row.id)).sort((a,b) => a-b).join(",");
         const venalSignature = (next.venal?.systems || []).map(row => Number(row.id)).sort((a,b) => a-b).join(",");
 
@@ -927,6 +957,7 @@ async function refreshIntel() {
         compareIntel(app.previousIntel, next);
         app.previousIntel = typeof structuredClone === "function" ? structuredClone(next) : JSON.parse(JSON.stringify(next));
     } catch (error) {
+        updateFeedStatus(lastWarzoneStatus, true);
         showError(`Stream intelligence refresh failed: ${error.message}`);
     } finally {
         app.refreshingIntel = false;
@@ -1138,5 +1169,7 @@ document.addEventListener("visibilitychange", () => {
     app.renderPaused = document.hidden;
     if (!document.hidden && clock) clock.getDelta();
 });
+
+window.setInterval(() => updateFeedStatus(), 30000);
 
 main().catch(error => showError(`Stream overlay initialization failed: ${error.message}`));
