@@ -7,7 +7,7 @@ declare(strict_types=1);
 final class GuristasFrontlinesService
 {
     public const GURISTAS_FACTION_ID = 500010;
-    public const WAR_REPORT_URL = 'https://www.eveonline.com/api/warzone';
+    public const WAR_REPORT_URL = 'https://www.eveonline.com/api/warzone/insurgency';
     public const EVE_REF_WARZONE_URL = 'https://data.everef.net/warzone-insurgency/warzone-insurgency-latest.json';
 
     /** @var GuristasEsiClient */
@@ -188,7 +188,7 @@ final class GuristasFrontlinesService
 
     private function warReport(): array
     {
-        $cacheKey = 'eve-frontlines-war-report-v1';
+        $cacheKey = 'eve-frontlines-insurgency-v1';
         $cached = $this->webCache->read($cacheKey);
         $now = time();
 
