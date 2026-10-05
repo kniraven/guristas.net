@@ -1,17 +1,41 @@
 <?php
 declare(strict_types=1);
+$root = dirname(__DIR__, 3);
+require_once $root . '/app/services/EveAuth.php';
+eve_session();
+$viewer = eve_current_user();
+require_once $root . '/app/services/SiteTheme.php';
+$themes = SiteTheme::LABELS;
+$initialTheme = SiteTheme::initial();
+header('Cache-Control: no-store');
+function escape(string $value): string
+{
+    return eve_e($value);
+}
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="<?= eve_e($initialTheme) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Guristas.net // Stream Messages</title>
+    <?php foreach (['structure', 'themes', 'auth'] as $asset): ?>
+        <link rel="stylesheet" href="/assets/css/<?= $asset ?>.css?v=<?= filemtime($root . '/public/assets/css/' . $asset . '.css') ?>">
+        <script defer src="/assets/js/<?= $asset === 'structure' ? 'site' : $asset ?>.js?v=<?= filemtime($root . '/public/assets/js/' . ($asset === 'structure' ? 'site' : $asset) . '.js') ?>"></script>
+    <?php endforeach; ?>
+    <script>window.guristasAccount = <?= json_encode(['signedIn' => $viewer !== null, 'csrf' => eve_csrf()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
     <link rel="stylesheet" href="/assets/css/stream-notifications.css?v=<?= filemtime(dirname(__DIR__, 2) . '/assets/css/stream-notifications.css') ?>">
     <link rel="stylesheet" href="/assets/css/stream-messages-admin.css?v=<?= filemtime(dirname(__DIR__, 2) . '/assets/css/stream-messages-admin.css') ?>">
 </head>
 <body>
-<main class="admin-shell">
+<a class="skip-link" href="#messages-admin">Skip to message editor</a>
+<?php
+$navActive = 'stream-messages';
+$headerClass = 'site-header';
+$headerSubtitle = 'Pirate Command Network';
+require $root . '/app/views/partials/site-header.php';
+?>
+<main class="admin-shell" id="messages-admin">
     <header class="admin-header">
         <div>
             <div class="eyebrow">GURISTAS.NET // STREAM CONTROL</div>
@@ -117,5 +141,6 @@ declare(strict_types=1);
     </section>
 </main>
 <script type="module" src="/assets/js/stream/messages-admin.js?v=<?= filemtime(dirname(__DIR__, 2) . '/assets/js/stream/messages-admin.js') ?>"></script>
+<?php require $root . '/app/views/partials/login-modal.php'; ?>
 </body>
 </html>

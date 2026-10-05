@@ -17,7 +17,11 @@ $navItems = [
      aria-label="Primary navigation"
      data-navigation>
     <?php foreach ($navItems as [$id, $label, $href]): ?>
-        <a href="<?= eve_e($href) ?>"<?= ($navActive ?? '') === $id
+        <?php $isSectionLink = strpos($href, '#') !== false; ?>
+        <a href="<?= eve_e($href) ?>"
+           title="<?= eve_e($isSectionLink
+               ? ($isCommandPage ? 'Jump to ' . $label . ' on this page' : 'Open ' . $label . ' on the homepage')
+               : 'Open ' . $label) ?>"<?= ($navActive ?? '') === $id
             ? ' aria-current="page"'
             : '' ?>><?= eve_e($label) ?></a>
     <?php endforeach; ?>

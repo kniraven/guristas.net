@@ -80,6 +80,16 @@ function escape(string $value): string
             </div>
         </section>
 
+        <section class="ticket-panel" aria-labelledby="stream-heading">
+            <h2 id="stream-heading">Stream tools</h2>
+            <p>Open the overlay for your broadcast or manage its notification messages.</p>
+            <div class="ticket-toolbar">
+                <a class="button" href="/stream/overlay/" target="_blank" rel="noopener noreferrer">Stream overlay</a>
+                <a class="button" href="/stream/messages/">Message editor</a>
+            </div>
+            <p>The overlay is a public browser source. The message editor requires the stream admin key to load or change settings.</p>
+        </section>
+
         <?php if ($actor === tickets_owner()): ?>
             <section class="ticket-panel" aria-labelledby="staff-heading">
                 <h2 id="staff-heading">Staff access</h2>

@@ -9,7 +9,7 @@
     require_once dirname(__DIR__, 2) . '/services/TicketService.php';
     if (tickets_staff((int) $viewer['character_id'])):
     ?>
-        <a href="/admin/"<?= ($navActive ?? '') === 'admin'
+        <a href="/admin/"<?= in_array(($navActive ?? ''), ['admin', 'tickets', 'stream-messages'], true)
             ? ' aria-current="page"'
             : '' ?>>Admin</a>
     <?php endif; ?>

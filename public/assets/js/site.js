@@ -548,7 +548,12 @@ document.addEventListener(
     "keydown",
     event => {
         if (event.key === "Escape") {
+            const returnFocus = navigation?.classList.contains("is-open") &&
+                navigation.contains(document.activeElement);
             setNavigationState(false);
+            if (returnFocus) {
+                menuButton?.focus();
+            }
         }
     }
 );
