@@ -91,6 +91,12 @@ final class GuristasEsiCache
         }
     }
 
+    public function forget(string $key): void
+    {
+        $path = $this->pathForKey($key);
+        if (is_file($path) && !unlink($path)) throw new RuntimeException('Unable to remove rejected private cache.');
+    }
+
     private function pathForKey(string $key): string
     {
         return rtrim($this->directory, '/\\') . DIRECTORY_SEPARATOR . hash('sha256', $key) . '.json';

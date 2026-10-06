@@ -12,12 +12,15 @@ final class GuristasEsiClient
     /** @var GuristasEsiCache */
     private $cache;
 
-    public function __construct(array $config, GuristasEsiCache $cache)
+    private $transport;
+
+    public function __construct(array $config, GuristasEsiCache $cache, ?callable $transport = null)
     {
         $this->config = $config;
         $this->cache = $cache;
+        $this->transport = $transport;
 
-        if (!extension_loaded('curl')) {
+        if ($transport === null && !extension_loaded('curl')) {
             throw new RuntimeException('PHP cURL extension is required for ESI requests.');
         }
     }
@@ -33,6 +36,27 @@ final class GuristasEsiClient
             return $prepared['fresh_result'];
         }
 
+        return $this->executeSinglePreparedRequest($prepared);
+    }
+
+    /** Private cache identity includes environment, character and grant fingerprint.
+     * Call only after validating the signed-in character and required scope.
+     */
+    public function getCharacterJson(int $characterId, string $route, string $token, string $authorizationIdentity): array
+    {
+        if ($characterId < 1 || !in_array($route, ['standings', 'fw/stats', 'skills'], true)
+            || $token === '' || preg_match('/[\r\n]/', $token) || $authorizationIdentity === '') {
+            throw new InvalidArgumentException('Invalid private ESI request.');
+        }
+        if (($this->config['base_url'] ?? '') !== 'https://esi.evetech.net') {
+            throw new RuntimeException('Private ESI requests require the trusted HTTPS origin.');
+        }
+        $path = '/characters/' . $characterId . '/' . $route;
+        $identity = 'PRIVATE|' . $characterId . '|' . hash('sha256', $authorizationIdentity);
+        $prepared = $this->prepareRequest($path, [], 3600, $identity);
+        $prepared['private'] = true;
+        if ($prepared['fresh_result'] !== null) return $prepared['fresh_result'];
+        $prepared['request_headers'][] = 'Authorization: Bearer ' . $token;
         return $this->executeSinglePreparedRequest($prepared);
     }
 
@@ -109,10 +133,10 @@ final class GuristasEsiClient
         return $ordered;
     }
 
-    private function prepareRequest(string $path, array $query, ?int $fallbackTtlSeconds): array
+    private function prepareRequest(string $path, array $query, ?int $fallbackTtlSeconds, string $identity = 'PUBLIC'): array
     {
         $url = $this->buildUrl($path, $query);
-        $cacheKey = 'GET|' . $url . '|compat=' . $this->config['compatibility_date'];
+        $cacheKey = ($identity === 'PUBLIC' ? 'GET|' : $identity . '|GET|') . $url . '|compat=' . $this->config['compatibility_date'];
         $cached = $this->cache->read($cacheKey);
         $now = time();
 
@@ -120,6 +144,12 @@ final class GuristasEsiClient
             $fallbackTtlSeconds = (int) $this->config['default_cache_ttl_seconds'];
         }
 
+        if ($identity !== 'PUBLIC' && $cached !== null && (int)($cached['retry_at'] ?? 0) > $now) {
+            if ($cached['data'] !== null && $this->cache->isUsableStale($cached, (int)$this->config['stale_if_error_seconds'])) {
+                return ['fresh_result' => $this->resultFromCache($cached, 'STALE', true, 'ESI is rate limited.')];
+            }
+            throw new RuntimeException('ESI is rate limited.', 429);
+        }
         if ($cached !== null && $this->cache->isFresh($cached, $now)) {
             return [
                 'path' => $path,
@@ -160,6 +190,10 @@ final class GuristasEsiClient
 
     private function executeSinglePreparedRequest(array $prepared): array
     {
+        if ($this->transport !== null) {
+            $response = ($this->transport)($prepared['url'], $prepared['request_headers']);
+            return $this->finalizeResponse($prepared, $response['body'], $response['error'] ?? '', (int)$response['status'], $response['headers'] ?? []);
+        }
         $headers = [];
         $ch = curl_init($prepared['url']);
         curl_setopt_array($ch, [
@@ -300,6 +334,25 @@ final class GuristasEsiClient
             );
         }
 
+        if (!empty($prepared['private']) && in_array($status, [401, 403], true)) {
+            $this->cache->forget($prepared['cache_key']);
+            throw new RuntimeException('Private ESI authorization was rejected.', $status);
+        }
+        // Persist a brief retry window so repeated page/API requests do not
+        // hammer ESI during throttling. Tokens and error bodies are never cached.
+        if (!empty($prepared['private']) && in_array($status, [420, 429], true)) {
+            $delay = max(1, min(3600, (int)($headers['retry-after'] ?? 60)));
+            $backoff = $cached ?? ['data' => null, 'expires_at' => 0];
+            $backoff['retry_at'] = $now + $delay;
+            $this->cache->write($prepared['cache_key'], $backoff);
+            if ($cached !== null && $this->cache->isUsableStale($cached, (int)$this->config['stale_if_error_seconds'])) {
+                return $this->resultFromCache($cached, 'STALE', true, 'ESI is rate limited.');
+            }
+            throw new RuntimeException('ESI is rate limited.', $status);
+        }
+        if (!empty($prepared['private']) && $status >= 400 && $status < 500) {
+            throw new RuntimeException('Private ESI data is unavailable.', $status);
+        }
         if ($status === 304 && $cached !== null) {
             $cached['fetched_at'] = $now;
             $cached['expires_at'] = $this->calculateExpiry($headers, $now, $fallbackTtlSeconds);

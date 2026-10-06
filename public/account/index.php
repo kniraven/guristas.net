@@ -4,6 +4,8 @@ declare(strict_types=1);
 require dirname(__DIR__, 2) . '/app/services/EveAuth.php';
 eve_session();
 $viewer = eve_require_user();
+header('Cache-Control: private, no-store');
+header('Vary: Cookie');
 
 
 function escape(string $value): string
@@ -38,6 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else { http_response_code(400); exit('Invalid action.'); }
     header('Location: /account/?saved=1', true, 303); exit;
 }
+require_once dirname(__DIR__, 2) . '/app/services/PilotDataService.php';
+try { $pilotData = eve_pilot_data((int)$viewer['character_id']); }
+catch (Throwable $error) { $pilotData = ['standings' => ['state' => 'unavailable'], 'fw' => ['state' => 'unavailable']]; }
 ?>
 <!doctype html>
 <html lang="en" data-operation="raid" data-theme="<?= escape($initialTheme) ?>">
@@ -51,6 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="/assets/css/themes.css?v=<?= filemtime(__DIR__ . '/../assets/css/themes.css') ?>">
     <script src="/assets/js/themes.js?v=<?= filemtime(__DIR__ . '/../assets/js/themes.js') ?>" defer></script>
     <script src="/assets/js/site.js?v=<?= filemtime(__DIR__ . '/../assets/js/site.js') ?>" defer></script>
+    <link rel="stylesheet" href="/assets/css/pilot-data.css?v=<?= filemtime(__DIR__ . '/../assets/css/pilot-data.css') ?>">
+    <script src="/assets/js/pilot-data.js?v=<?= filemtime(__DIR__ . '/../assets/js/pilot-data.js') ?>" defer></script>
     <link rel="stylesheet" href="/assets/css/auth.css?v=<?= filemtime(__DIR__ . '/../assets/css/auth.css') ?>">
     <script>window.guristasAccount = <?= json_encode(['signedIn' => (bool)$viewer, 'csrf' => $viewer ? eve_csrf() : null], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
     <script src="/assets/js/auth.js?v=<?= filemtime(__DIR__ . '/../assets/js/auth.js') ?>" defer></script>
@@ -104,7 +111,9 @@ require dirname(__DIR__, 2) . '/app/views/partials/site-header.php';
 </form>
 <p class="note">Your ship table's visible columns, order, and locked columns also sync to this character while signed in.</p>
 <form action="/auth/logout.php" method="post"><input type="hidden" name="csrf" value="<?= escape(eve_csrf()) ?>"><button type="submit">Log out</button></form>
-</section></div></div></main>
+</section></div>
+<?php require dirname(__DIR__, 2) . '/app/views/partials/pilot-data.php'; ?>
+</div></main>
     <footer class="site-footer">
         <div class="shell footer-grid">
             <div>
