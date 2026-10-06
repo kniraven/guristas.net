@@ -20,13 +20,10 @@ try {
         'code_verifier' => $pending['verifier'],
     ]);
     $claims = eve_verify_token((string)($response['access_token'] ?? ''), $metadata, $c['client_id']);
-    $granted = $claims['scp'] ?? [];
-    if (is_string($granted)) $granted = preg_split('/\s+/', trim($granted));
-    if (!is_array($granted) || array_diff(eve_requested_scopes(), $granted)) {
-        throw new RuntimeException('EVE did not grant every requested scope. Check the registered scopes and current CCP scope list.');
-    }
+    $storeFeatureTokens = eve_validate_feature_consent($pending, $claims);
     eve_store_character($claims['character_id'], $claims['name']);
-    eve_store_tokens($claims['character_id'], $response, $claims);
+    // Required permissions were validated before establishing the session.
+    if ($storeFeatureTokens) eve_store_tokens($claims['character_id'], $response, $claims);
     session_regenerate_id(true);
     $_SESSION['eve_character_id'] = $claims['character_id'];
     unset($_SESSION['eve_csrf']);
@@ -40,7 +37,8 @@ try {
     header('Cache-Control: no-store');
     header('Location: /account/', true, 303);
 } catch (Throwable $error) {
+    unset($_SESSION['eve_character_id']);
     error_log('EVE SSO callback: ' . $error->getMessage());
     http_response_code(400);
-    echo 'EVE login could not be completed. <a href="/">Return to the site</a> and try again.';
+    echo 'EVE login requires standings, faction warfare statistics and skills permission. Login was not completed. <a href="/">Return to the site</a> and try again.';
 }

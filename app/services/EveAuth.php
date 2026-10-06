@@ -85,7 +85,7 @@ function eve_http_json(string $url, ?array $form = null): array
     $status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     curl_close($ch);
     if (!is_string($body) || $status < 200 || $status >= 300 || strlen($body) > 1000000) {
-        throw new RuntimeException('EVE service request failed.');
+        throw new RuntimeException('EVE service request failed.', (int)$status);
     }
     $json = json_decode($body, true, 32, JSON_THROW_ON_ERROR);
     if (!is_array($json)) throw new RuntimeException('Unexpected EVE response.');
@@ -176,6 +176,11 @@ function eve_current_user(): ?array
     eve_session();
     $id = $_SESSION['eve_character_id'] ?? null;
     if (!is_int($id) || $id < 1) return null;
+    // Require fresh consent for accounts signed in before the permissions policy changed.
+    if (array_diff(eve_requested_scopes(), eve_granted_scopes($id))) {
+        unset($_SESSION['eve_character_id']);
+        return null;
+    }
     $query = eve_db()->prepare('SELECT c.*, s.preferred_theme, s.favorite_ship_id, s.ship_layout_json FROM eve_characters c JOIN eve_character_settings s USING(character_id) WHERE c.character_id = ?');
     $query->execute([$id]);
     return $query->fetch() ?: null;
@@ -262,18 +267,48 @@ function eve_decrypt_token(string $sealed): string
     if ($token === false) throw new RuntimeException('Cannot decrypt EVE token.');
     return $token;
 }
-function eve_requested_scopes(): array
+class GuristasAuthorizationRequired extends RuntimeException {}
+
+function eve_feature_scopes(string $feature): array
 {
-    $scopes = require dirname(__DIR__, 2) . '/config/esi-scopes.php';
-    if (!is_array($scopes) || !$scopes || count($scopes) !== count(array_unique($scopes))) {
-        throw new RuntimeException('Invalid EVE scope list.');
+    $features = [
+        'standings' => ['esi-characters.read_standings.v1'],
+        'fw' => ['esi-characters.read_fw_stats.v1'],
+        'skills' => ['esi-skills.read_skills.v1'],
+    ];
+    if (!isset($features[$feature])) throw new InvalidArgumentException('Unknown EVE feature.');
+    return $features[$feature];
+}
+function eve_granted_scopes(int $id): array
+{
+    $q = eve_db()->prepare('SELECT scopes_json FROM ' . eve_token_table() . ' WHERE character_id = ?');
+    $q->execute([$id]);
+    $row = $q->fetch();
+    if (!$row) return [];
+    $scopes = json_decode($row['scopes_json'], true, 32, JSON_THROW_ON_ERROR);
+    if (!is_array($scopes)) throw new RuntimeException('Invalid stored scopes.');
+    return array_values(array_filter($scopes, 'is_string'));
+}
+function eve_requested_scopes(?string $feature = null, array $granted = []): array
+{
+    // All account logins require the documented account permissions.
+    $enabled = require dirname(__DIR__, 2) . '/config/esi-scopes.php';
+    $requested = $feature === null ? $enabled : eve_feature_scopes($feature);
+    if (array_diff($requested, $enabled)) throw new RuntimeException('Feature permission is disabled.');
+    return array_values(array_unique(array_merge(array_intersect($granted, $enabled), $enabled, $requested)));
+}
+function eve_validate_feature_consent(array $pending, array $claims): bool
+{
+    $requested = $pending['scopes'] ?? null;
+    $granted = $claims['scp'] ?? [];
+    if (is_string($granted)) $granted = preg_split('/\s+/', trim($granted));
+    if (!is_array($requested) || !is_array($granted) || array_diff(array_unique(array_merge($requested, eve_requested_scopes())), $granted)) {
+        throw new RuntimeException('EVE did not grant the requested feature permissions.');
     }
-    foreach ($scopes as $scope) {
-        if (!is_string($scope) || !preg_match('/^[a-z0-9_.:-]+$/D', $scope)) {
-            throw new RuntimeException('Invalid EVE scope.');
-        }
+    if (isset($pending['character_id']) && (int)$pending['character_id'] !== $claims['character_id']) {
+        throw new RuntimeException('Select the same character when connecting a feature.');
     }
-    return $scopes;
+    return $requested !== [];
 }
 function eve_token_table(): string
 {
@@ -306,9 +341,9 @@ function eve_access_token(int $id, string $scope): string
         $q = $db->prepare('SELECT * FROM ' . eve_token_table() . ' WHERE character_id = ? FOR UPDATE');
         $q->execute([$id]);
         $row = $q->fetch();
-        if (!$row) throw new RuntimeException('EVE authorization is missing. Sign in again.');
+        if (!$row) throw new GuristasAuthorizationRequired('Connect this feature through EVE Online.');
         $granted = json_decode($row['scopes_json'], true, 32, JSON_THROW_ON_ERROR);
-        if (!is_array($granted) || !in_array($scope, $granted, true)) throw new RuntimeException('Required EVE permission was not granted.');
+        if (!is_array($granted) || !in_array($scope, $granted, true)) throw new GuristasAuthorizationRequired('Required EVE permission was not granted.');
         if (strtotime($row['expires_at'] . ' UTC') > time() + 90) {
             $token = eve_decrypt_token($row['access_token_sealed']);
             $db->commit();
@@ -323,6 +358,11 @@ function eve_access_token(int $id, string $scope): string
         $token = (string)($response['access_token'] ?? '');
         $claims = eve_verify_token($token, $meta, $config['client_id']);
         if ($claims['character_id'] !== $id) throw new RuntimeException('EVE token changed character.');
+        $refreshedScopes = $claims['scp'] ?? [];
+        if (is_string($refreshedScopes)) $refreshedScopes = preg_split('/\s+/', trim($refreshedScopes));
+        if (!is_array($refreshedScopes) || !in_array($scope, $refreshedScopes, true)) {
+            throw new GuristasAuthorizationRequired('EVE permission is no longer granted.');
+        }
         // Some refresh responses omit refresh_token; reuse the prior value only then.
         if (empty($response['refresh_token'])) $response['refresh_token'] = eve_decrypt_token($row['refresh_token_sealed']);
         eve_store_tokens($id, $response, $claims);
@@ -330,6 +370,9 @@ function eve_access_token(int $id, string $scope): string
         return $token;
     } catch (Throwable $error) {
         if ($db->inTransaction()) $db->rollBack();
+        if (in_array((int)$error->getCode(), [400, 401, 403], true)) {
+            throw new GuristasAuthorizationRequired('Reconnect this feature through EVE Online.');
+        }
         throw $error;
     }
 }
