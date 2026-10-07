@@ -18,7 +18,7 @@ $empty = page('missions/index.php', ['q'=>'zz_no_agent_match']);
 check(str_contains($empty, 'No contacts match'), 'Missing empty state.');
 $escaped = page('missions/index.php', ['q'=>'"><script>alert(1)</script>']);
 check(!str_contains($escaped, '<script>alert(1)</script>'), 'Unescaped query.');
-foreach (['war/guristas/index.php','join/index.php','signals/index.php'] as $path) {
+foreach (['war/guristas/index.php','join/index.php','signals/index.php','industry/index.php'] as $path) {
     $html = page($path);
     check(str_contains($html,'OPEN ACCESS') && str_contains($html,'Skip to field tool'), 'Missing public shell.');
 }
