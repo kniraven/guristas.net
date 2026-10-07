@@ -6,10 +6,11 @@ $navItems = [
     ['command', 'Command', $isCommandPage ? '#command' : '/#command'],
     ['venal', 'Venal', '/venal/'],
     ['ships', 'Ships', '/ships/'],
-    ['war', 'War', $isCommandPage ? '#war-room' : '/#war-room'],
+    ['war', 'War', '/war/guristas/'],
+    ['missions', 'Missions', '/missions/'],
     ['build', 'Build', $isCommandPage ? '#industry-preview' : '/#industry-preview'],
     ['lore', 'Lore', $isCommandPage ? '#lore' : '/#lore'],
-    ['signals', 'Signals', $isCommandPage ? '#signals' : '/#signals'],
+    ['signals', 'Signals', '/signals/'],
 ];
 ?>
 <nav id="site-navigation"
@@ -27,7 +28,7 @@ $navItems = [
     <?php endforeach; ?>
 
     <a class="nav-cta"
-       href="<?= $isCommandPage ? '#join' : '/#join' ?>">Join</a>
+       href="/join/">Join</a>
 
     <?php require __DIR__ . '/account-nav.php'; ?>
 </nav>

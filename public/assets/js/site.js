@@ -90,6 +90,8 @@ const operationDefinitions = {
 const signalBands = [
     {
         maximum: 12,
+        href: "/missions/",
+        label: "Find a Guristas contact",
 
         message:
             "Encrypted Caldari Navy traffic detected. Signal discipline remains annoyingly competent."
@@ -97,6 +99,8 @@ const signalBands = [
 
     {
         maximum: 26,
+        href: "/ships/",
+        label: "Inspect the ship archive",
 
         message:
             "Megacorporate logistics channel detected. Cargo manifests appear valuable."
@@ -104,6 +108,8 @@ const signalBands = [
 
     {
         maximum: 42,
+        href: "/signals/#radio",
+        label: "Play Black Rabbit Radio",
 
         message:
             "Weak Guristas music carrier detected. Black Rabbit Radio may be nearby."
@@ -111,6 +117,8 @@ const signalBands = [
 
     {
         maximum: 58,
+        href: "/signals/#archive",
+        label: "Browse intercepted broadcasts",
 
         message:
             "Federation Frontline Report detected. Federal confidence levels appear artificially inflated."
@@ -118,6 +126,8 @@ const signalBands = [
 
     {
         maximum: 74,
+        href: "/venal/",
+        label: "Open Venal intelligence",
 
         message:
             "Deathless relay handshake detected. Zarzakh routing solution partially recovered."
@@ -125,6 +135,8 @@ const signalBands = [
 
     {
         maximum: 88,
+        href: "/war/guristas/",
+        label: "Read the campaign report",
 
         message:
             "Commando Guri tactical broadcast detected. Insurgency operators are assembling."
@@ -132,6 +144,8 @@ const signalBands = [
 
     {
         maximum: 100,
+        href: "/join/",
+        label: "Answer the Guristas signal",
 
         message:
             "Priority Guristas signal locked. The State made a Fatal mistake."
@@ -877,6 +891,10 @@ function updateSignalScanner({
         getSignalMessage(
             numericFrequency
         );
+
+    const destination = document.querySelector('[data-signal-destination]');
+    const band = signalBands.find(item => numericFrequency <= item.maximum) || signalBands[signalBands.length - 1];
+    if (destination) { destination.href = band.href; destination.textContent = band.label; }
 
     if (!animate) {
         return;

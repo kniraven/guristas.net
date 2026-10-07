@@ -55,7 +55,7 @@ require_once dirname(__DIR__, 2) . '/app/services/PilotDataService.php';
 try { $pilotData = $accountView === 'settings' ? [] : eve_pilot_data((int)$viewer['character_id'], $accountView === 'combat'); }
 catch (Throwable $error) { $pilotData = ['standings' => ['state' => 'unavailable'], 'fw' => ['state' => 'unavailable']]; }
 $insurgencyAdvice = null;
-if (in_array($accountView, ['overview', 'fw'], true)) {
+if ($accountView === 'overview') {
     require_once dirname(__DIR__, 2) . '/app/services/PilotInsurgency.php';
     $insurgencyAdvice = eve_current_insurgency_advice($pilotData);
 }
