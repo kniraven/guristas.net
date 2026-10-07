@@ -505,7 +505,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
         </section>
 
         <section id="industry-preview" class="section shell" aria-labelledby="industry-title"><div class="section-heading reveal"><div><p class="eyebrow">GURISTAS SUPPLY CONSOLE</p><h2 id="industry-title">Price the job before committing.</h2></div><p>Use public recipes, LP offers and station orders to compare a realistic batch. No personal account access required.</p></div><div class="industry-preview cut-panel reveal"><div class="blueprint-display"><span class="blueprint-code">RECIPES // CCP STATIC DATA</span><div class="blueprint-shape" aria-hidden="true"><span></span><span></span><span></span></div></div><div class="industry-copy"><span class="system-label">MAKE YOUR MATERIALS COUNT</span><h3>Build, convert LP or compare markets.</h3><p>Calculate materials and production time with the efficiencies you enter. Price the complete material quantities, include fees and hauling, and compare the result with station buy-order demand.</p><div class="feature-actions"><a class="primary-button" href="/industry/">Open production console</a><a class="secondary-button" href="/industry/?view=lp">Compare Commando Guri offers</a><a class="secondary-button" href="/industry/?view=trade">Compare station orders</a></div></div></div></section>
-        <section id="fulcrum" class="section shell feature-layout feature-layout-reverse" aria-labelledby="fulcrum-title"><article class="fulcrum-console cut-panel reveal"><div class="console-header"><span>THE FULCRUM INITIATIVE</span><strong>PUBLIC MARKET CHECK</strong></div><div class="initiative-list"><div><span>01</span><p>Check listed stock and immediate buy-order demand.</p></div><div><span>02</span><p>Price your cargo, travel and expected losses.</p></div><div><span>03</span><p>Verify availability in EVE before hauling.</p></div></div></article><article class="feature-copy reveal"><p class="eyebrow">SUPPLY THE FULCRUM</p><h2 id="fulcrum-title">A pirate capital needs useful stock.</h2><p>Check the public station market before moving ships or materials to Zarzakh. Thin stock can suggest a gap, but it does not prove demand or promise a profitable sale.</p><p>Supply contracts and verified contribution credit require organizer-published jobs and delivery evidence. Those workflows remain separate from these market quotes.</p><div class="feature-actions"><a class="primary-button" href="/industry/?view=fulcrum">Check The Fulcrum</a><a class="secondary-button" href="/industry/?view=trade">Compare sourcing stations</a></div></article></section>
+        <section id="fulcrum" class="section shell feature-layout feature-layout-reverse" aria-labelledby="fulcrum-title"><article class="fulcrum-console cut-panel reveal"><div class="console-header"><span>THE FULCRUM INITIATIVE</span><strong>PUBLIC MARKET CHECK</strong></div><div class="initiative-list"><div><span>01</span><p>Check listed stock and immediate buy-order demand.</p></div><div><span>02</span><p>Price your cargo, travel and expected losses.</p></div><div><span>03</span><p>Verify availability in EVE before hauling.</p></div></div></article><article class="feature-copy reveal"><p class="eyebrow">SUPPLY THE FULCRUM</p><h2 id="fulcrum-title">A pirate capital needs useful stock.</h2><p>Check the public station market before moving ships or materials to Zarzakh. Thin stock can suggest a gap, but it does not prove demand or promise a profitable sale.</p><p>Supply contracts and verified contribution credit require organizer-published jobs and delivery evidence. Read the Operations Board for posted jobs and submit delivery evidence after signing in.</p><div class="feature-actions"><a class="primary-button" href="/industry/?view=fulcrum">Check The Fulcrum</a><a class="secondary-button" href="/operations/#supply">Open supply jobs</a></div></article></section>
 
         <section
             id="lore"
@@ -751,7 +751,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         target of Guristas signal correction.
                     </p>
 
-                    <a class="secondary-button" href="/signals/#archive">Open broadcast archives</a><div class="enemy-classification">
+                    <a class="secondary-button" href="/community/#broadcast">Open broadcast archives</a><div class="enemy-classification">
                         <span>
                             CLASSIFICATION
                         </span>
@@ -818,12 +818,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                 </p>
 
                 <div class="join-actions"><a class="primary-button" href="/join/">Enlistment guide</a><a class="secondary-button" href="/join/#cozen">Meet Cozen Corp</a>
-                    <button
-                        class="primary-button"
-                        type="button"
-                    >
-                        Search “Cozen Corp” in EVE
-                    </button>
+                    <a class="secondary-button" href="/operations/">Find a posted operation</a><a class="secondary-button" href="/community/">Art &amp; comics</a>
 
                     <a
                         class="secondary-button"

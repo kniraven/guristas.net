@@ -1,0 +1,25 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__,3).'/app/services/TicketService.php';
+require_once dirname(__DIR__,3).'/app/services/CommunityNetwork.php';
+$user=eve_require_user(); $actor=(int)$user['character_id'];
+header('Cache-Control: private, no-store');
+if(!tickets_staff($actor)) { http_response_code(403); exit('Staff access required.'); }
+$message='';
+if($_SERVER['REQUEST_METHOD']==='POST') { eve_require_csrf($_POST['csrf']??null); try { community_network()->apply($_POST,$actor,(string)$user['character_name'],true); header('Location: /admin/community/',true,303); exit; } catch(Throwable $e) { $message=$e instanceof InvalidArgumentException || $e->getMessage()==='The board changed. Reload before saving.' ? $e->getMessage() : 'Unable to save. Reload and try again.'; } }
+try { $ledger=community_network()->read(); } catch(Throwable $e) { http_response_code(503); exit('Community ledger unavailable.'); }
+$edit=$ledger['entries'][$_GET['edit']??'']??['id'=>'','type'=>'fleet','status'=>'draft','title'=>'','body'=>'','when'=>'','location'=>'','contact'=>'','credit'=>'','url'=>''];
+$pageTitle='Community Publishing'; $pageDescription='Post real operations and approved media. Review delivery evidence before awarding credit.'; $navActive='admin';
+require dirname(__DIR__,3).'/app/views/partials/public-tool-header.php';
+?>
+<p><a href="/admin/">Staff desk</a> · <a href="/operations/">Public operations</a> · <a href="/community/">Public transmissions</a></p>
+<?php if($message): ?><p role="alert"><?= escape($message) ?></p><?php endif; ?>
+<section class="cut-panel tool-card"><h2><?= $edit['id']?'Edit entry':'New entry' ?></h2><p>Supply orders must state quantities, payment terms and who verifies delivery. Fleet notices must state ships allowed, whether new pilots are welcome, and the meeting instructions. Media needs creator credit and permission. All times use EVE time (UTC).</p>
+<form method="post"><input type="hidden" name="csrf" value="<?= escape(eve_csrf()) ?>"><input type="hidden" name="revision" value="<?= (int)$ledger['revision'] ?>"><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?= escape($edit['id']) ?>">
+<label>Type<select name="type"><?php foreach(CommunityNetwork::TYPES as $type): ?><option <?= $edit['type']===$type?'selected':'' ?>><?= escape($type) ?></option><?php endforeach; ?></select></label>
+<label>Status<select name="status"><?php foreach(['draft','published','archived'] as $status): ?><option <?= $edit['status']===$status?'selected':'' ?>><?= $status ?></option><?php endforeach; ?></select></label>
+<?php foreach(['title'=>160,'location'=>200,'contact'=>200,'credit'=>300,'url'=>2000] as $field=>$max): ?><label><?= escape(ucfirst($field)) ?><input name="<?= $field ?>" maxlength="<?= $max ?>" value="<?= escape($edit[$field]) ?>" <?= $field==='title'?'required':'' ?>></label><?php endforeach; ?>
+<label>Departure or supply deadline (UTC)<input type="datetime-local" name="when" value="<?= escape($edit['when']) ?>"></label><label>Instructions or description<textarea name="body" required maxlength="6000" rows="8"><?= escape($edit['body']) ?></textarea></label><label><input type="checkbox" name="rights" value="yes"> I have verified permission to publish this media and supplied creator credit.</label><button class="primary-button">Save entry</button></form></section>
+<section class="tool-section"><h2>Published, draft and archived entries</h2><p><a href="/admin/community/">Create another entry</a></p><?php foreach($ledger['entries'] as $entry): ?><p><a href="?edit=<?= escape($entry['id']) ?>"><?= escape($entry['title']) ?></a> · <?= escape($entry['type'].' / '.$entry['status']) ?></p><?php endforeach; ?></section>
+<section class="tool-section"><h2>Delivery review</h2><p>Verify the contract or transfer in EVE. Approval records an officer’s verification. It never pays rewards automatically. Another officer must review your own deliveries.</p><?php foreach($ledger['claims'] as $claim): ?><article class="cut-panel tool-card"><h3><?= escape($ledger['entries'][$claim['entry']]['title']??'Supply job') ?></h3><p><?= escape($claim['name']) ?> · <?= (int)$claim['actor'] ?> · <?= escape($claim['status']) ?></p><p style="white-space:pre-wrap"><?= escape($claim['evidence']) ?></p><p><?= escape($claim['note']) ?></p><?php if($claim['status']==='pending' && $claim['actor']!==$actor): ?><form method="post"><input type="hidden" name="csrf" value="<?= escape(eve_csrf()) ?>"><input type="hidden" name="revision" value="<?= (int)$ledger['revision'] ?>"><input type="hidden" name="action" value="review"><input type="hidden" name="id" value="<?= escape($claim['id']) ?>"><label>Decision<select name="status"><option value="approved">Verified</option><option value="rejected">Not verified</option></select></label><label>Review note<textarea name="note" maxlength="1000" required></textarea></label><button class="secondary-button">Record decision</button></form><?php endif; ?></article><?php endforeach; ?></section>
+<?php require dirname(__DIR__,3).'/app/views/partials/public-tool-footer.php'; ?>

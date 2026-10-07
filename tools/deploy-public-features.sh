@@ -62,9 +62,10 @@ done
 sudo -n mkdir -p "$site/storage/pilot-record"
 sudo -n chown apache:apache "$site/storage/pilot-record"
 sudo -n chmod 2750 "$site/storage/pilot-record"
+sudo -n install -d -o apache -g apache -m 2750 "$site/storage/community"
 # Ensure Apache can traverse the new application directories; leave runtime data alone.
 for path in app/data tools docs; do sudo -n chmod 0755 "$site/$path"; done
-for route in / /missions/ /join/ /signals/ /war/guristas/ /industry/; do
+for route in / /missions/ /join/ /signals/ /war/guristas/ /industry/ /operations/ /community/; do
     curl --fail --silent --show-error --max-time 30 -o /dev/null "https://guristas.net$route"
 done
 trap - ERR
