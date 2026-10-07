@@ -1,0 +1,16 @@
+<?php
+require_once dirname(__DIR__, 2) . '/services/PilotCombat.php';
+$combat = $pilotData['combat'] ?? ['state' => 'unavailable', 'data' => null];
+$kills = $combat['data']['kills'] ?? []; $hulls = eve_guristas_hulls(); $byHull = []; $finalBlows = 0;
+foreach ($kills as $kill) { $byHull[$kill['hull_id']] = ($byHull[$kill['hull_id']] ?? 0) + 1; if ($kill['final_blow']) $finalBlows++; }
+?>
+<section class="account-panel"><p class="eyebrow">GURISTAS HULLS // COMBAT RECORD</p><h2>Pirate hull combat</h2><p>Verified player-kill participation while you were flying a Guristas hull. Losses, NPC kills and kills in other factions’ hulls are excluded.</p>
+<?php if ($combat['state'] === 'authorization_required'): ?><p role="status">Sign in again to approve the required killmail permission. Stored private combat evidence is hidden until access is authorized.</p><a href="/auth/start.php">Sign in with EVE →</a>
+<?php elseif ($combat['data'] === null): ?><p role="status">Combat data is unavailable. No zero-kill total is inferred.</p>
+<?php else: ?>
+<div class="fw-career-summary dossier-overview"><article><h3>Recorded kills</h3><strong><?= count($kills) ?></strong><small>Deduplicated killmail participation</small></article><article><h3>Final blows</h3><strong><?= $finalBlows ?></strong><small>Included in recorded kills</small></article><article><h3>Hulls used</h3><strong><?= count($byHull) ?></strong><small>Guristas hulls with a recorded kill</small></article></div>
+<p class="note"><?= $combat['state'] !== 'ready' ? 'Live synchronization is unavailable; showing previously verified evidence. ' : '' ?>ESI provides the last 90 days. Each visit processes up to 12 unseen killmails from the newest and one historical page. Earlier lifetime kills are not assumed. Recorded evidence persists after ESI’s window expires. <?= isset($combat['pending']) && $combat['pending'] > 0 ? (int)$combat['pending'] . ' loaded entries remain to be checked; reload to continue.' : '' ?></p>
+<div class="dossier-hull-grid"><?php foreach ($hulls as $id => $name): ?><article><img src="https://images.evetech.net/types/<?= $id ?>/render?size=128" width="80" height="80" alt="<?= eve_e($name) ?>" loading="lazy"><div><h3><?= eve_e($name) ?></h3><strong><?= (int)($byHull[$id] ?? 0) ?></strong><small>recorded player kills</small></div></article><?php endforeach; ?></div>
+<details class="dossier-details"><summary>Recorded killmail evidence</summary><div class="pilot-table-wrap"><table class="pilot-table"><thead><tr><th>Killmail</th><th>EVE time</th><th>Your hull</th><th>Credit</th></tr></thead><tbody><?php $recentKills = array_values($kills); usort($recentKills, static function ($a, $b) { return strcmp($b['time'], $a['time']); }); foreach (array_slice($recentKills, 0, 30) as $kill): ?><tr><td><?= (int)$kill['killmail_id'] ?></td><td><?= eve_e($kill['time']) ?></td><td><?= eve_e($hulls[$kill['hull_id']] ?? 'Unresolved hull') ?></td><td><?= $kill['final_blow'] ? 'Final blow' : 'Participation' ?></td></tr><?php endforeach; ?></tbody></table></div><p class="note">These records verify hull use, not the location of a plex, solo credit, fair fights or Guristas militia membership at the time.</p></details>
+<?php endif; ?>
+<a href="?view=achievements">View combat achievements →</a></section>

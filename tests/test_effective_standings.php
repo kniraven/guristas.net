@@ -13,7 +13,7 @@ foreach ([null, ['skills' => [['skill_id' => 3361, 'active_skill_level' => 6]]]]
  try { GuristasPilotDataService::skills($bad); throw new LogicException('Malformed skills accepted'); } catch (RuntimeException $e) { if ($e instanceof LogicException) throw $e; }
 }
 $required = eve_requested_scopes();
-check_effective(count($required) === 3 && in_array('esi-skills.read_skills.v1', $required, true), 'Required login scopes');
+check_effective(count($required) === 7 && in_array('esi-skills.read_skills.v1', $required, true), 'Required login scopes');
 foreach ($required as $missing) {
  try { eve_validate_feature_consent(['scopes' => $required], ['scp' => array_values(array_diff($required, [$missing])), 'character_id' => 1]); throw new LogicException('Partial consent accepted'); } catch (RuntimeException $e) { if ($e instanceof LogicException) throw $e; }
 }

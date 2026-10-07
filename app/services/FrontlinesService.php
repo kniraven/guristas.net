@@ -112,6 +112,7 @@ final class GuristasFrontlinesService
                     'id' => self::GURISTAS_FACTION_ID,
                     'name' => 'Guristas Pirates',
                 ],
+                'campaigns' => $parsed['campaigns'],
                 'systems' => $systems,
                 'edges' => $topology['data']['edges'],
                 'counts' => [
@@ -276,7 +277,7 @@ final class GuristasFrontlinesService
         if ($document !== [] && array_keys($document) !== range(0, count($document) - 1)) {
             throw new RuntimeException('Insurgency feed must be a list of campaigns.');
         }
-        $records = [];
+        $records = []; $campaigns = [];
         $candidateCampaigns = 0;
         $guristasCampaigns = 0;
         foreach ($document as $campaign) {
@@ -289,6 +290,10 @@ final class GuristasFrontlinesService
             if ((int) $campaign['pirateFactionId'] !== self::GURISTAS_FACTION_ID) continue;
             $guristasCampaigns++;
             $originId = (int) ($campaign['originSolarSystem']['id'] ?? 0);
+            $campaigns[] = ['id' => (int)($campaign['campaignId'] ?? 0), 'state' => (string)($campaign['state'] ?? 'UNKNOWN'),
+                'started_at' => $campaign['startDateTime'] ?? null, 'ended_at' => $campaign['endDateTime'] ?? null,
+                'origin_id' => $originId, 'origin_name' => $campaign['originSolarSystem']['name'] ?? null,
+                'corruption_target' => $campaign['corruptionThresHold'] ?? null, 'suppression_target' => $campaign['suppressionThresHold'] ?? null];
             foreach ($campaign['insurgencies'] as $row) {
                 if (!is_array($row) || !isset($row['solarSystem']) || !is_array($row['solarSystem'])) continue;
                 $solar = $row['solarSystem'];
@@ -315,6 +320,7 @@ final class GuristasFrontlinesService
         }
         $records = $this->mergeSystemRecords($records);
         return [
+            'campaigns' => $campaigns,
             'systems' => $records,
             'diagnostics' => [
                 'candidate_campaigns' => $candidateCampaigns,

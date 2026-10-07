@@ -57,5 +57,5 @@ function eve_guristas_progress(array $rows, array $catalog, ?array $skills = nul
         $levels[$level] = ($levels[$level] ?? 0) + 1; $shortlist[] = $agent;
         if (count($shortlist) === 8) break;
     }
-    return ['relationships' => $relationships, 'tracks' => $tracks, 'connections' => $connections, 'opportunities' => $shortlist, 'faction_standing' => $standings[500010] ?? null];
+    return ['relationships' => $relationships, 'tracks' => $tracks, 'connections' => $connections, 'opportunities' => $shortlist, 'all_opportunities' => $opportunities, 'faction_standing' => $standings[500010] ?? null];
 }
