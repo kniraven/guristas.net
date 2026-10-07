@@ -1,0 +1,24 @@
+<?php
+header('Cache-Control: private, no-store');
+require __DIR__.'/public-tool-header.php';
+$failure=false;
+try { $ledger=community_network()->read(); } catch(Throwable $e) { $failure=true; $ledger=['revision'=>0,'entries'=>[],'claims'=>[]]; }
+$labels=['fleet'=>'Fleets','supply'=>'Supply Jobs','report'=>'Field Reports','art'=>'Community Art','comic'=>'Comics','broadcast'=>'Broadcast Archive'];
+$help=['fleet'=>'No departures posted. Use the War Room to find the current campaign, then find a fleet through the in-game militia channels.','supply'=>'No orders posted. Check Fulcrum market stock before hauling. A market listing is not a promised sale.','report'=>'No reports published yet. Officers can post a verified account of an operation here.','art'=>'No approved art published yet. Send an officer your HTTPS portfolio link, creator credit and permission to share it.','comic'=>'No comic episodes published yet. Publication needs an approved episode link, creator credit and permission to share it.','broadcast'=>'No recordings published yet. Watch the Signals page for Kniraven’s channel and pirate radio.'];
+?>
+<p><a class="secondary-button" href="/operations/">Operations</a> <a class="secondary-button" href="/community/">Transmissions</a> <a class="secondary-button" href="/industry/?view=fulcrum">Fulcrum market</a> <a class="secondary-button" href="/signals/">Radio &amp; live channel</a></p>
+<?php if($failure): ?><p role="alert">The board is unavailable. Try again later. Existing records have not been replaced.</p><?php endif; ?>
+<nav class="field-tabs" aria-label="Board sections"><?php foreach($types as $type): ?><a href="#<?= escape($type) ?>"><?= escape($labels[$type]) ?></a><?php endforeach; ?></nav>
+<?php foreach($types as $type): $entries=CommunityNetwork::published($ledger,[$type]); if(in_array($type,['fleet','supply'],true)) { $entries=array_values(array_filter($entries,fn($e)=>$e['when']==='' || $e['when']>=gmdate('Y-m-d\TH:i'))); usort($entries,fn($a,$b)=>strcmp($a['when']?:'9999',$b['when']?:'9999')); } ?>
+<section id="<?= escape($type) ?>" class="tool-section"><h2><?= escape($labels[$type]) ?></h2>
+<?php if(!$entries): ?><div class="cut-panel tool-card"><p><?= escape($help[$type]) ?></p><?php if($type==='fleet'): ?><a href="/war/guristas/">Open the War Room</a><?php endif; ?></div><?php endif; ?>
+<div class="tool-grid"><?php foreach($entries as $entry): ?><article class="cut-panel tool-card"><h3><?= escape($entry['title']) ?></h3><p style="white-space:pre-wrap"><?= escape($entry['body']) ?></p>
+<?php if($entry['when']): ?><p><strong><?= $type==='fleet'?'Departure':'Deadline' ?>:</strong> <?= escape(str_replace('T',' ',$entry['when'])) ?> EVE time (UTC)</p><?php endif; ?>
+<?php if($entry['location']): ?><p><strong>Destination:</strong> <?= escape($entry['location']) ?></p><?php endif; ?>
+<?php if($entry['contact']): ?><p><strong>Contact:</strong> <?= escape($entry['contact']) ?></p><?php endif; ?>
+<?php if($entry['credit']): ?><p><strong>Credit:</strong> <?= escape($entry['credit']) ?></p><?php endif; ?>
+<?php if($entry['url']): ?><a class="secondary-button" href="<?= escape($entry['url']) ?>" target="_blank" rel="noopener noreferrer">Open <?= escape($type==='comic'?'episode':($type==='broadcast'?'recording':'source')) ?></a><?php endif; ?>
+<?php if($type==='supply'): ?><p class="note">Confirm availability and payment terms with the contact before delivering. Submission records a delivery for officer review; it does not transfer ISK.</p><?php if($viewer): ?><form method="post" action="/community/delivery.php"><input type="hidden" name="csrf" value="<?= escape(eve_csrf()) ?>"><input type="hidden" name="revision" value="<?= (int)$ledger['revision'] ?>"><input type="hidden" name="id" value="<?= escape($entry['id']) ?>"><label>Private delivery evidence<textarea name="evidence" required maxlength="3000" placeholder="Contract ID, quantity, date and recipient. Do not include passwords or tokens."></textarea></label><button class="secondary-button">Submit for review</button></form><?php else: ?><p>Sign in through the main login to submit delivery evidence.</p><?php endif; ?><?php endif; ?>
+</article><?php endforeach; ?></div></section><?php endforeach; ?>
+<?php if($viewer): ?><section class="tool-section"><h2>Your delivery record</h2><?php $mine=array_filter($ledger['claims'],fn($c)=>$c['actor']===(int)$viewer['character_id']); if(!$mine): ?><p>No deliveries recorded yet.</p><?php endif; ?><?php foreach($mine as $claim): ?><article class="cut-panel tool-card"><h3><?= escape($ledger['entries'][$claim['entry']]['title']??'Supply job') ?></h3><p><?= escape(ucfirst($claim['status'])) ?> · <?= escape($claim['submitted']) ?></p><p><?= escape($claim['note']) ?></p></article><?php endforeach; ?></section><?php endif; ?>
+<?php require __DIR__.'/public-tool-footer.php'; ?>
