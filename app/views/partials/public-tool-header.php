@@ -4,6 +4,8 @@ require_once dirname(__DIR__, 2) . '/services/EveAuth.php';
 require_once dirname(__DIR__, 2) . '/services/SiteTheme.php';
 eve_session();
 $viewer = eve_current_user();
+header('Cache-Control: private, no-store');
+header('Vary: Cookie');
 function escape(string $value): string { return eve_e($value); }
 $themes = SiteTheme::LABELS;
 $initialTheme = SiteTheme::initial();

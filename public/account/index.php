@@ -92,7 +92,7 @@ require dirname(__DIR__, 2) . '/app/views/partials/site-header.php';
 
 
 <main id="account" class="account-page"><div class="shell">
-<header class="account-dossier-header"><div class="account-profile"><img src="https://images.evetech.net/characters/<?= (int)$viewer['character_id'] ?>/portrait?size=128" alt="Portrait of <?= escape($viewer['character_name']) ?>" width="56" height="56"><div><p class="eyebrow">GURISTAS.NET // PILOT RECORD</p><h1><?= escape($viewer['character_name']) ?></h1><span><?= escape($viewer['corporation_name'] ?: 'Independent capsuleer') ?></span></div></div><a href="?view=settings">Settings</a></header>
+<header class="account-dossier-header"><div class="account-profile"><img src="https://images.evetech.net/characters/<?= (int)$viewer['character_id'] ?>/portrait?size=128" alt="Portrait of <?= escape($viewer['character_name']) ?>" width="56" height="56"><div><p class="eyebrow">GURISTAS.NET // PILOT RECORD</p><h1><?= escape($viewer['character_name']) ?></h1><span><?= escape($viewer['corporation_name'] ?: 'Independent capsuleer') ?></span></div></div><div class="tool-buttons"><a href="/operations/#record">Your supply record</a><a href="/community/submissions.php">Your transmissions</a><a href="?view=settings">Settings</a></div></header>
 <nav class="dossier-tabs" aria-label="Pilot record sections"><?php foreach ($accountViews as $view => $label): ?><a href="?view=<?= escape($view) ?>" <?= $accountView === $view ? 'aria-current="page"' : '' ?>><?= escape($label) ?></a><?php endforeach; ?></nav>
 <?php if (isset($_GET['saved'])): ?><p class="saved" role="status">Settings saved.</p><?php endif; ?>
 <?php if ($accountView !== 'settings') require dirname(__DIR__, 2) . '/app/views/partials/pilot-data.php'; ?>
