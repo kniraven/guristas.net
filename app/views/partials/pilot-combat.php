@@ -2,6 +2,9 @@
 require_once dirname(__DIR__, 2) . '/services/PilotCombat.php';
 $combat = $pilotData['combat'] ?? ['state' => 'unavailable', 'data' => null];
 $kills = $combat['data']['kills'] ?? []; $hulls = eve_guristas_hulls(); $byHull = []; $finalBlows = 0;
+// Present attainable subcapital records before rare and capital hulls.
+$hullOrder = array_flip(['Worm', 'Mamba', 'Gila', 'Alligator', 'Rattlesnake']);
+uksort($hulls, static function ($a, $b) use ($hullOrder, $hulls) { return ($hullOrder[$hulls[$a]] ?? 99) <=> ($hullOrder[$hulls[$b]] ?? 99) ?: strcasecmp($hulls[$a], $hulls[$b]); });
 foreach ($kills as $kill) { $byHull[$kill['hull_id']] = ($byHull[$kill['hull_id']] ?? 0) + 1; if ($kill['final_blow']) $finalBlows++; }
 ?>
 <section class="account-panel"><p class="eyebrow">GURISTAS HULLS // COMBAT RECORD</p><h2>Pirate hull combat</h2><p>Verified player-kill participation while you were flying a Guristas hull. Losses, NPC kills and kills in other factions’ hulls are excluded.</p>

@@ -67,7 +67,7 @@ $operations = [
         'number' => '03',
         'title' => 'Trade',
         'subtitle' => 'Supply The Fulcrum',
-        'description' => 'Identify market shortages and move profitable ships, modules, ammunition, drones, and materials.',
+        'description' => 'Check stock and demand, price fees and travel, then choose a batch worth hauling.',
         'target' => 'fulcrum',
         'tag' => 'Market',
     ],
@@ -183,9 +183,10 @@ $currentYear = (int) date('Y');
     
     <script src="/assets/js/auth.js?v=<?= filemtime(__DIR__ . '/assets/js/auth.js') ?>" defer></script>
 <script src="/assets/js/public-tools.js?v=<?= filemtime(__DIR__ . '/assets/js/public-tools.js') ?>" defer></script>
+<link rel="stylesheet" href="/assets/css/site-usability.css?v=<?= filemtime(__DIR__ . '/assets/css/site-usability.css') ?>">
 </head>
 
-<body>
+<body class="command-page">
     <a
         class="skip-link"
         href="#command"
@@ -360,7 +361,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
 
                 <p>
                     Guristas.net remembers your selection and
-                    prioritizes related tools whenever you return.
+                    highlights your preferred directive whenever you return.
                 </p>
             </div>
 
@@ -676,7 +677,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         target of Guristas signal correction.
                     </p>
 
-                    <a class="secondary-button" href="/community/#broadcast">Open broadcast archives</a><div class="enemy-classification">
+                    <a class="secondary-button" href="/signals/#enemy">Hear the rival broadcast</a><div class="enemy-classification">
                         <span>
                             CLASSIFICATION
                         </span>
@@ -749,7 +750,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         class="secondary-button"
                         href="#fulcrum"
                     >
-                        Fund The Fulcrum
+                        Supply The Fulcrum
                     </a>
                 </div>
             </div>

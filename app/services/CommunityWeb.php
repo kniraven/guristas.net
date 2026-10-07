@@ -2,6 +2,20 @@
 declare(strict_types=1);
 require_once __DIR__.'/CommunityNetwork.php';
 require_once __DIR__.'/CommunityImages.php';
+function community_ini_bytes(string $value): int
+{
+    $value=trim($value);$bytes=(float)$value;
+    $bytes*=match(strtolower(substr($value,-1))){'g'=>1073741824,'m'=>1048576,'k'=>1024,default=>1};
+    return max(0,(int)$bytes);
+}
+function community_upload_limits(): array
+{
+    $post=community_ini_bytes((string)ini_get('post_max_size'));
+    $file=community_ini_bytes((string)ini_get('upload_max_filesize'));
+    // Reserve room for ten transcripts, metadata and multipart boundaries.
+    $total=min(CommunityImages::MAX_TOTAL,$post>0?max(0,$post-128*1024):CommunityImages::MAX_TOTAL);
+    return ['file'=>min(CommunityImages::MAX_FILE,$file>0?$file:CommunityImages::MAX_FILE,$total),'total'=>$total];
+}
 function community_post_limit(): void
 {
     $limit=trim((string)ini_get('post_max_size'));$unit=strtolower(substr($limit,-1));$bytes=(float)$limit;

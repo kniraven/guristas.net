@@ -40,3 +40,7 @@ Prepared code is not production acceptance. Keep GURI-045 open until deployment 
 Do not treat missing approved content as permission to invent it. Do not treat media files as a blocker to the independent software work identified above. No ticket subtasks are marked done by this package.
 
 Batch 5 completes the independently buildable community workflows above. Publication input and final production verification are still distinct requirements. Earlier batch documents record their delivery-time limits; this inventory is the cumulative status.
+
+## Production review follow-up
+
+Batch 5 is confirmed deployed on 7 October 2026. See GURI-045-production-review.md for page-by-page observed behavior, corrections and precise test limits. Batch 6 is a prepared audit-correction package; it still requires deployment and desktop/mobile acceptance. Approved content inputs remain distinct from software completion. No subtasks are automatically closed.

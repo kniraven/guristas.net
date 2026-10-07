@@ -64,10 +64,10 @@
         find(build,'build-price').addEventListener('click',async()=>{
             if(!bp) return;const button=find(build,'build-price');button.disabled=true;const current=revision,hub=find(build,'build-hub').value;let index=0,failed=0,old=0;
             find(build,'build-price-status').textContent='Pricing the complete material quantities at the selected station…';
-            const worker=async()=>{while(index<rows.length&&current===revision){const row=rows[index++];try{const quote=await json(`/api/industry/quote.php?hub=${encodeURIComponent(hub)}&type=${row.type}&quantity=${row.quantity}`);if(current!==revision) return;if(!quote.buy.complete){failed++;row.input.value='';}else{row.input.value=String(quote.buy.average);if(quote.meta.stale)old++;}}catch(error){failed++;if(current===revision)row.input.value='';}}};
+            const worker=async()=>{while(index<rows.length&&current===revision){const row=rows[index++];try{const quote=await json(`/api/industry/quote.php?hub=${encodeURIComponent(hub)}&type=${row.type}&quantity=${row.quantity}`);if(current!==revision) return;if(quote.meta.stale){old++;row.input.value='';}else if(!quote.buy.complete){failed++;row.input.value='';}else{row.input.value=String(quote.buy.average);}}catch(error){failed++;if(current===revision)row.input.value='';}}};
             await Promise.all([worker(),worker()]);button.disabled=false;
             if(current!==revision){find(build,'build-price-status').textContent='Recipe changed. Refresh prices for the new recipe.';return;}
-            find(build,'build-price-status').textContent=`Prices checked at ${ref.hubs[hub].name} at ${new Date().toUTCString()}. ${failed} material quotes incomplete or unavailable; enter those prices manually. ${old} quotes use old cached data. Orders can change; verify before buying.`;result();
+            find(build,'build-price-status').textContent=`Prices checked at ${ref.hubs[hub].name} at ${new Date().toUTCString()}. ${failed} material quotes incomplete or unavailable; enter those prices manually. ${old} stale quotes excluded; enter verified prices manually. Orders can change; verify before buying.`;result();
         });
         recipe();
     }

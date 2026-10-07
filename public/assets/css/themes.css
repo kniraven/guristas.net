@@ -2784,7 +2784,7 @@ html[data-theme="kniraven"] .ship-frame::before {
 .glitch-text::before,
 .glitch-text::after {
     content:
-        attr(data-glitch);
+        attr(data-glitch) / "";
 
     position: absolute;
     inset: 0;

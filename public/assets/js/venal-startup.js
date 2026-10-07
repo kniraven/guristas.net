@@ -9,6 +9,7 @@
         const box=document.querySelector('#errorBox'),detail=document.querySelector('#errorDetail');
         if(detail)detail.textContent='Your browser may not support WebGL, or the graphics module could not load. The system directory needs neither.';
         if(box)box.hidden=false;
+        document.querySelectorAll('[aria-label="Venal map controls"] input, [aria-label="Venal map controls"] select, [aria-label="Venal map controls"] button').forEach(control=>control.disabled=true);
         console.error('Venal graphics startup failed',error);
     });
 })();

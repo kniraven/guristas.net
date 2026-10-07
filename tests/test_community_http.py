@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory(prefix='guri-community-http-') as temporary:
     (root / 'app/services').mkdir(parents=True)
     for name in ['CommunityNetwork.php', 'CommunityImages.php', 'CommunityWeb.php', 'SiteTheme.php']:
         shutil.copyfile(ROOT / 'app/services' / name, root / 'app/services' / name)
-    for group, names in [('css', ['structure', 'themes', 'auth', 'public-tools']), ('js', ['themes', 'site', 'auth', 'public-tools', 'community-forms'])]:
+    for group, names in [('css', ['structure', 'themes', 'auth', 'public-tools', 'site-usability']), ('js', ['themes', 'site', 'auth', 'public-tools', 'community-forms'])]:
         target = root / 'public/assets' / group
         target.mkdir(parents=True)
         for name in names:
