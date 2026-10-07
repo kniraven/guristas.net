@@ -27,9 +27,9 @@ $authorize = function(int $id,string $scope) use (&$authorizeCalls,&$missing): a
 };
 $service = new GuristasPilotDataService($client,$authorize);
 try {
-    verify(count(eve_requested_scopes()) === 3, 'Login requires account scopes');
+    verify(count(eve_requested_scopes()) === 7, 'Login requires account scopes');
     verify(eve_requested_scopes('standings') === eve_requested_scopes(), 'Feature scope selection');
-    verify(count(eve_requested_scopes('fw',['esi-characters.read_standings.v1','esi-killmails.read_killmails.v1'])) === 3, 'Keep enabled grants only');
+    verify(count(eve_requested_scopes('fw',['esi-characters.read_standings.v1','esi-killmails.read_killmails.v1'])) === 7, 'Keep enabled grants only');
     throws(fn()=>eve_requested_scopes('unknown'), 'Reject unknown feature');
     throws(fn()=>eve_validate_feature_consent(['scopes'=>[],'character_id'=>null], ['character_id'=>101]), 'Identity-only consent denied');
     throws(fn()=>eve_validate_feature_consent(['scopes'=>['esi-characters.read_standings.v1'],'character_id'=>101], ['character_id'=>202,'scp'=>['esi-characters.read_standings.v1']]), 'Wrong character feature consent denied');

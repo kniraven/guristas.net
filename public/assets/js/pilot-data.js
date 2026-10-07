@@ -21,7 +21,7 @@ document.querySelectorAll('[data-pilot-controls]').forEach(controls => {
   const total = groups.reduce((sum, group) => sum + group.querySelector('tbody').rows.length, 0);
   const update = () => {
     let shown = 0;
-    const filtering = search.value.trim() !== '' || filter.value !== 'all' || relation.value !== 'all' || allegiance.value !== 'all';
+    const filtering = search.value.trim() !== '' || filter.value !== 'all' || relation.value !== 'all';
     groups.forEach(group => {
       const body = group.querySelector('tbody');
       const rows = Array.from(body.rows);
@@ -53,4 +53,14 @@ document.querySelectorAll('[data-pilot-controls]').forEach(controls => {
 document.querySelectorAll('.pilot-entity-icon').forEach(image => {
   image.addEventListener('error', () => { image.hidden = true; });
   if (image.complete && image.naturalWidth === 0) image.hidden = true;
+});
+
+// Native disclosures work without JavaScript; links open their destination when enhanced.
+document.querySelectorAll('[data-dossier-open]').forEach(link => {
+  link.addEventListener('click', () => {
+    const href = link.getAttribute('href');
+    if (!href || !href.startsWith('#')) return;
+    const destination = document.getElementById(href.slice(1));
+    if (destination && destination.tagName === 'DETAILS') destination.open = true;
+  });
 });

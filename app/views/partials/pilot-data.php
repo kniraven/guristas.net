@@ -1,5 +1,6 @@
 <?php
 // Minimal account integration for GURI-002; full Pilot Record belongs to GURI-001.
+$accountView = $accountView ?? 'overview';
 $factionNames = ($pilotData['entity_names'] ?? []) + [500001 => 'Caldari State', 500002 => 'Minmatar Republic', 500003 => 'Amarr Empire', 500004 => 'Gallente Federation', 500010 => 'Guristas Pirates', 500011 => 'Angel Cartel'];
 $stateMessages = [
     'authorization_required' => 'Sign in again to authorize the required account permissions.',
@@ -9,22 +10,25 @@ $stateMessages = [
 ];
 ?>
 <div class="pilot-panels">
-<?php foreach (['standings' => 'Guristas progression', 'fw' => 'Faction warfare'] as $feature => $label): ?>
+<?php if ($accountView === 'combat') require __DIR__ . '/pilot-combat.php'; ?>
+<?php if ($accountView === 'romance') require __DIR__ . '/pilot-romance.php'; ?>
+<?php foreach (['standings' => 'Guristas progression', 'fw' => 'Faction warfare record'] as $feature => $label): ?>
+<?php if (($feature === 'fw' && $accountView !== 'fw') || ($feature === 'standings' && !in_array($accountView, ['overview', 'standings', 'achievements'], true))) continue; ?>
 <?php $section = $pilotData[$feature]; $state = $section['state']; $data = $section['data'] ?? null; ?>
 <section class="account-panel" aria-labelledby="pilot-<?= eve_e($feature) ?>">
-<h2 id="pilot-<?= eve_e($feature) ?>"><?= eve_e($label) ?></h2>
+<h2 class="<?= $feature === 'standings' ? 'visually-hidden' : '' ?>" id="pilot-<?= eve_e($feature) ?>"><?= eve_e($label) ?></h2>
 <?php if ($state !== 'ready'): ?><p role="status"><?= eve_e($stateMessages[$state] ?? $stateMessages['unavailable']) ?></p><?php endif; ?>
 <?php if ($state === 'authorization_required'): ?>
 <p>Permission: <code><?= eve_e(eve_feature_scopes($feature)[0]) ?></code>. Select <?= eve_e($viewer['character_name']) ?> at CCP to connect this account.</p>
 <form method="post" action="/auth/start.php"><input type="hidden" name="csrf" value="<?= eve_e(eve_csrf()) ?>"><button type="submit" name="feature" value="<?= eve_e($feature) ?>">Connect <?= eve_e($feature === 'standings' ? 'personal standings' : strtolower($label)) ?></button></form>
 <?php endif; ?>
+<?php if ($feature === 'standings') require __DIR__ . '/guristas-progress.php'; ?>
 <?php if ($data !== null && in_array($state, ['ready', 'stale'], true)): ?>
-<details class="pilot-freshness"><summary><?= $state === 'stale' ? 'Previously retrieved data' : 'Data retrieved from EVE' ?> · update details</summary><p class="note">Retrieved: <time><?= eve_e($section['meta']['fetched_at'] ?? 'Unknown') ?></time><br>Cache expires: <time><?= eve_e($section['meta']['expires_at'] ?? 'Unknown') ?></time></p></details>
 <?php if ($feature === 'standings'): ?>
-<p class="note">Your standings toward NPC factions, corporations and agents. Explorer values are raw, from −10 to +10. The Guristas dossier shows calculated effective standings when fresh skills data is available. Positive values indicate better standing.</p>
+
 <?php if ($data === []): ?><p>No standings entries were returned by EVE.</p><?php else: ?>
-<?php require __DIR__ . '/guristas-progress.php'; ?>
-<h3>Standings intelligence</h3><p class="note">Guristas relationships first. Other relationships are available for reference, without progression goals.</p>
+
+<?php if ($accountView === 'standings'): ?><details open class="dossier-details" id="standings-explorer"><summary>Explore all standings · names, affiliations &amp; bases</summary><h3>Standings intelligence</h3><p class="note">Guristas relationships first. Other relationships are available for reference, without progression goals.</p>
 <div class="pilot-controls" data-pilot-controls hidden>
 <label class="pilot-search">Search <input type="search" data-pilot-search placeholder="Name, ID, corporation, faction or base" autocomplete="off"></label>
 <label>Allegiance <select data-pilot-allegiance><option value="guristas">Guristas only</option><option value="all">All relationships</option><option value="enemy">Caldari / Gallente intelligence</option></select></label>
@@ -57,16 +61,23 @@ usort($rows, static function ($a, $b) { return ($b['standing'] <=> $a['standing'
 </div></div></th><td><span class="pilot-standing <?= $row['standing'] > 0 ? 'positive' : ($row['standing'] < 0 ? 'negative' : 'neutral') ?>"><?= eve_e(($row['standing'] > 0 ? '+' : '') . number_format($row['standing'], 2)) ?></span></td></tr>
 <?php endforeach; ?></tbody></table></div></details><?php endif; ?>
 <?php endforeach; ?>
+</details><?php endif; ?>
 <?php endif; ?>
 <?php else: ?>
 <p class="pilot-militia"><?= $data['enlisted'] ? 'Reported militia: ' . eve_e($factionNames[$data['faction_id']] ?? ('Faction ID ' . $data['faction_id'])) : 'EVE did not report a current militia enlistment.' ?></p>
-<div class="pilot-summary pilot-fw-summary"><div><strong><?= number_format($data['kills']['last_week']) ?></strong><span>FW kills last week</span></div><div><strong><?= number_format($data['victory_points']['last_week']) ?></strong><span>Victory points last week</span></div></div>
-<dl><dt>Enlisted on</dt><dd><?= eve_e($data['enlisted_on'] ?? 'Not reported') ?></dd><dt>Current rank</dt><dd><?= eve_e(isset($data['current_rank']) ? (string)$data['current_rank'] : 'Not reported') ?></dd><dt>Highest rank</dt><dd><?= eve_e(isset($data['highest_rank']) ? (string)$data['highest_rank'] : 'Not reported') ?></dd></dl>
+<p class="note">Your reported FW career, with current militia status. Totals may include previous service in other militias.</p>
+<div class="pilot-summary fw-career-summary"><?php foreach (['total' => 'Career total', 'last_week' => 'Last week', 'yesterday' => 'Yesterday'] as $period => $periodLabel): ?><article><h3><?= $periodLabel ?></h3><strong><?= number_format($data['kills'][$period]) ?></strong><span>FW kills</span><strong><?= number_format($data['victory_points'][$period]) ?></strong><span>Victory points</span></article><?php endforeach; ?></div>
+<p class="note">Enlisted since <?= eve_e($data['enlisted_on'] ?? 'Not reported') ?> · current rank <?= isset($data['current_rank']) ? (int)$data['current_rank'] : 'Not reported' ?> · highest rank <?= isset($data['highest_rank']) ? (int)$data['highest_rank'] : 'Not reported' ?>.</p>
+<details open class="dossier-details"><summary>Current insurgency &amp; personal contribution</summary>
+<?php if (isset($insurgencyAdvice['campaign'])): ?><dl><dt>Campaign</dt><dd><?= (int)$insurgencyAdvice['campaign']['id'] ?> · <?= eve_e(ucfirst($insurgencyAdvice['phase'])) ?></dd><dt>FOB system</dt><dd><?= eve_e($insurgencyAdvice['campaign']['origin_name'] ?? 'Not reported') ?></dd><dt>Report retrieved</dt><dd><?= eve_e($insurgencyAdvice['retrieved_at'] ?? 'Not reported') ?></dd></dl><?php else: ?><p class="note"><?= ($insurgencyAdvice['phase'] ?? '') === 'none' ? 'No active or forecast campaign is reported.' : 'Fresh campaign information is unavailable.' ?></p><?php endif; ?><p>Maximum contribution payout requires <strong>45% personal corruption or suppression</strong>. A win pays up to <strong>1,500,000 LP</strong>; the losing payout multiplier is 0.4. These are campaign rewards, separate from the career victory points above.</p><p class="note">Personal insurgency contribution is not exposed by the current ESI or public war-report feed. Check your personal meter in EVE; this page does not claim you have reached maximum contribution.</p><p>Corruption stage 3 enables spread. Large ADV-1 is now static with a 40-minute respawn. Campaigns last up to seven days; forecasts last 48 hours.</p><p class="note">Campaign destination and strategy suggestions are in Overview. The ranking prefers practical travel, then lower suppression and campaign progress. It does not estimate LP/hour, route safety or expansion direction.</p><a href="https://www.eveonline.com/news/view/patch-notes-version-24-01" target="_blank" rel="noopener noreferrer">September 22 insurgency changes ↗</a></details>
+<?php $achievementScope = 'fw'; require __DIR__ . '/pilot-achievements.php'; ?>
+<details class="dossier-details"><summary>Enlistment details &amp; full statistics</summary><dl><dt>Enlisted on</dt><dd><?= eve_e($data['enlisted_on'] ?? 'Not reported') ?></dd><dt>Current rank</dt><dd><?= eve_e(isset($data['current_rank']) ? (string)$data['current_rank'] : 'Not reported') ?></dd><dt>Highest rank</dt><dd><?= eve_e(isset($data['highest_rank']) ? (string)$data['highest_rank'] : 'Not reported') ?></dd></dl>
 <div class="pilot-table-wrap"><table class="pilot-table"><caption>FW statistics reported by EVE</caption><thead><tr><th scope="col">Metric</th><th scope="col">Yesterday</th><th scope="col">Last week</th><th scope="col">Total</th></tr></thead><tbody>
 <?php foreach (['kills' => 'FW kills', 'victory_points' => 'Victory points'] as $metric => $metricLabel): ?><tr><th scope="row"><?= eve_e($metricLabel) ?></th><?php foreach (['yesterday', 'last_week', 'total'] as $period): ?><td><?= number_format($data[$metric][$period]) ?></td><?php endforeach; ?></tr><?php endforeach; ?>
-</tbody></table></div><p class="note">ESI updates these statistics on its daily schedule. They are not live killmail totals or loyalty points.</p>
+</tbody></table></div><p class="note">ESI updates these statistics on its daily schedule. They are not live killmail totals or loyalty points.</p></details>
 <?php endif; ?>
 <?php endif; ?>
+<?php if (in_array($state, ['ready', 'stale'], true)): ?><details class="pilot-freshness"><summary><?= $state === 'stale' ? 'Previously retrieved data' : 'Data retrieved from EVE' ?> · update details</summary><p class="note">Retrieved: <time><?= eve_e($section['meta']['fetched_at'] ?? 'Unknown') ?></time><br>Cache expires: <time><?= eve_e($section['meta']['expires_at'] ?? 'Unknown') ?></time></p></details><?php endif; ?>
 </section>
 <?php endforeach; ?>
 </div>

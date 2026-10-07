@@ -275,6 +275,10 @@ function eve_feature_scopes(string $feature): array
         'standings' => ['esi-characters.read_standings.v1'],
         'fw' => ['esi-characters.read_fw_stats.v1'],
         'skills' => ['esi-skills.read_skills.v1'],
+        'combat' => ['esi-killmails.read_killmails.v1'],
+        'location' => ['esi-location.read_location.v1'],
+        'ship' => ['esi-location.read_ship_type.v1'],
+        'assets' => ['esi-assets.read_assets.v1'],
     ];
     if (!isset($features[$feature])) throw new InvalidArgumentException('Unknown EVE feature.');
     return $features[$feature];

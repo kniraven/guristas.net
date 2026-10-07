@@ -4,6 +4,9 @@ declare(strict_types=1);
 require dirname(__DIR__, 2) . '/app/services/EveAuth.php';
 eve_session();
 $viewer = eve_require_user();
+$accountViews = ['overview' => 'Overview', 'standings' => 'Standings & Agents', 'fw' => 'Faction Warfare', 'combat' => 'Guristas Hulls', 'romance' => 'Romance', 'achievements' => 'Achievements', 'settings' => 'Settings'];
+$requestedView = $_GET['view'] ?? 'overview';
+$accountView = is_string($requestedView) && isset($accountViews[$requestedView]) ? $requestedView : 'overview';
 header('Cache-Control: private, no-store');
 header('Vary: Cookie');
 
@@ -26,7 +29,15 @@ foreach ($shipData['ships'] ?? [] as $ship) {
 asort($shipOptions, SORT_NATURAL | SORT_FLAG_CASE);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     eve_require_csrf($_POST['csrf'] ?? null);
-    if (($_POST['action'] ?? '') === 'save') {
+    if (in_array($_POST['action'] ?? '', ['romance_start', 'romance_pause', 'romance_choice'], true)) {
+        require_once dirname(__DIR__, 2) . '/app/services/PilotRomance.php';
+        try { eve_pilot_record_store()->update((int)$viewer['character_id'], static function ($record) {
+            $chapter = is_string($_POST['chapter'] ?? null) && ctype_digit($_POST['chapter']) ? (int)$_POST['chapter'] : null;
+            return eve_romance_transition($record, (string)$_POST['action'], is_string($_POST['choice'] ?? null) ? $_POST['choice'] : null, $chapter);
+        }); } catch (InvalidArgumentException $error) { http_response_code(409); exit(escape($error->getMessage())); }
+        catch (Throwable $error) { http_response_code(503); exit('Story could not be saved. Please try again.'); }
+        header('Location: /account/?view=romance', true, 303); exit;
+    } elseif (($_POST['action'] ?? '') === 'save') {
         $theme = (string)($_POST['theme'] ?? '');
         $favorite = (string)($_POST['favorite_ship'] ?? '');
         if (!array_key_exists($theme, $themes) || ($favorite !== '' && (!ctype_digit($favorite) || !array_key_exists((int)$favorite, $shipOptions)))) {
@@ -38,11 +49,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (($_POST['action'] ?? '') === 'refresh') {
         eve_store_character((int)$viewer['character_id'], $viewer['character_name']);
     } else { http_response_code(400); exit('Invalid action.'); }
-    header('Location: /account/?saved=1', true, 303); exit;
+    header('Location: /account/?view=settings&saved=1', true, 303); exit;
 }
 require_once dirname(__DIR__, 2) . '/app/services/PilotDataService.php';
-try { $pilotData = eve_pilot_data((int)$viewer['character_id']); }
+try { $pilotData = $accountView === 'settings' ? [] : eve_pilot_data((int)$viewer['character_id'], $accountView === 'combat'); }
 catch (Throwable $error) { $pilotData = ['standings' => ['state' => 'unavailable'], 'fw' => ['state' => 'unavailable']]; }
+$insurgencyAdvice = null;
+if (in_array($accountView, ['overview', 'fw'], true)) {
+    require_once dirname(__DIR__, 2) . '/app/services/PilotInsurgency.php';
+    $insurgencyAdvice = eve_current_insurgency_advice($pilotData);
+}
 ?>
 <!doctype html>
 <html lang="en" data-operation="raid" data-theme="<?= escape($initialTheme) ?>">
@@ -50,8 +66,8 @@ catch (Throwable $error) { $pilotData = ['standings' => ['state' => 'unavailable
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#080503">
-    <meta name="description" content="Manage your Guristas.net character profile and site settings.">
-    <title>Account Settings // Guristas.net</title>
+    <meta name="description" content="Your Guristas progress, recognition and next mission opportunities.">
+    <title>Your Guristas Dossier // Guristas.net</title>
     <link rel="stylesheet" href="/assets/css/structure.css?v=<?= filemtime(__DIR__ . '/../assets/css/structure.css') ?>">
     <link rel="stylesheet" href="/assets/css/themes.css?v=<?= filemtime(__DIR__ . '/../assets/css/themes.css') ?>">
     <script src="/assets/js/themes.js?v=<?= filemtime(__DIR__ . '/../assets/js/themes.js') ?>" defer></script>
@@ -76,10 +92,11 @@ require dirname(__DIR__, 2) . '/app/views/partials/site-header.php';
 
 
 <main id="account" class="account-page"><div class="shell">
-<p class="eyebrow">GURISTAS.NET // CAPSULEER PROFILE</p>
-<h1>Account settings</h1>
+<header class="account-dossier-header"><div class="account-profile"><img src="https://images.evetech.net/characters/<?= (int)$viewer['character_id'] ?>/portrait?size=128" alt="Portrait of <?= escape($viewer['character_name']) ?>" width="56" height="56"><div><p class="eyebrow">GURISTAS.NET // PILOT RECORD</p><h1><?= escape($viewer['character_name']) ?></h1><span><?= escape($viewer['corporation_name'] ?: 'Independent capsuleer') ?></span></div></div><a href="?view=settings">Settings</a></header>
+<nav class="dossier-tabs" aria-label="Pilot record sections"><?php foreach ($accountViews as $view => $label): ?><a href="?view=<?= escape($view) ?>" <?= $accountView === $view ? 'aria-current="page"' : '' ?>><?= escape($label) ?></a><?php endforeach; ?></nav>
 <?php if (isset($_GET['saved'])): ?><p class="saved" role="status">Settings saved.</p><?php endif; ?>
-<div class="account-grid">
+<?php if ($accountView !== 'settings') require dirname(__DIR__, 2) . '/app/views/partials/pilot-data.php'; ?>
+<?php if ($accountView === 'settings'): ?><div id="account-settings"><h2>Profile &amp; site settings</h2><div class="account-grid">
 <section class="account-panel" aria-labelledby="profile-heading">
 <h2 id="profile-heading">Character</h2>
 <div class="account-profile"><img src="https://images.evetech.net/characters/<?= (int)$viewer['character_id'] ?>/portrait?size=128" alt="Portrait of <?= escape($viewer['character_name']) ?>" width="96" height="96"><strong><?= escape($viewer['character_name']) ?></strong></div>
@@ -111,8 +128,7 @@ require dirname(__DIR__, 2) . '/app/views/partials/site-header.php';
 </form>
 <p class="note">Your ship table's visible columns, order, and locked columns also sync to this character while signed in.</p>
 <form action="/auth/logout.php" method="post"><input type="hidden" name="csrf" value="<?= escape(eve_csrf()) ?>"><button type="submit">Log out</button></form>
-</section></div>
-<?php require dirname(__DIR__, 2) . '/app/views/partials/pilot-data.php'; ?>
+</section></div></div><?php endif; ?>
 </div></main>
     <footer class="site-footer">
         <div class="shell footer-grid">

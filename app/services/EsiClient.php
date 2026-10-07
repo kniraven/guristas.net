@@ -42,18 +42,19 @@ final class GuristasEsiClient
     /** Private cache identity includes environment, character and grant fingerprint.
      * Call only after validating the signed-in character and required scope.
      */
-    public function getCharacterJson(int $characterId, string $route, string $token, string $authorizationIdentity): array
+    public function getCharacterJson(int $characterId, string $route, string $token, string $authorizationIdentity, int $page = 1): array
     {
-        if ($characterId < 1 || !in_array($route, ['standings', 'fw/stats', 'skills'], true)
+        if ($characterId < 1 || !in_array($route, ['standings', 'fw/stats', 'skills', 'killmails/recent', 'location', 'ship', 'assets'], true)
             || $token === '' || preg_match('/[\r\n]/', $token) || $authorizationIdentity === '') {
             throw new InvalidArgumentException('Invalid private ESI request.');
         }
         if (($this->config['base_url'] ?? '') !== 'https://esi.evetech.net') {
             throw new RuntimeException('Private ESI requests require the trusted HTTPS origin.');
         }
+        if ($page < 1 || $page > 10000 || (!in_array($route, ['killmails/recent', 'assets'], true) && $page !== 1)) throw new InvalidArgumentException('Invalid private page.');
         $path = '/characters/' . $characterId . '/' . $route;
         $identity = 'PRIVATE|' . $characterId . '|' . hash('sha256', $authorizationIdentity);
-        $prepared = $this->prepareRequest($path, [], 3600, $identity);
+        $prepared = $this->prepareRequest($path, in_array($route, ['killmails/recent', 'assets'], true) ? ['page' => $page] : [], in_array($route, ['location', 'ship'], true) ? 5 : ($route === 'killmails/recent' ? 300 : 3600), $identity);
         $prepared['private'] = true;
         if ($prepared['fresh_result'] !== null) return $prepared['fresh_result'];
         $prepared['request_headers'][] = 'Authorization: Bearer ' . $token;
@@ -232,6 +233,11 @@ final class GuristasEsiClient
 
     private function executePreparedChunk(array $chunk): array
     {
+        if ($this->transport !== null) {
+            $results = [];
+            foreach ($chunk as $prepared) $results[$prepared['result_key']] = $this->executeSinglePreparedRequest($prepared);
+            return $results;
+        }
         $multi = curl_multi_init();
         $contexts = [];
 
@@ -446,6 +452,7 @@ final class GuristasEsiClient
         return [
             'data' => isset($entry['data']) ? $entry['data'] : null,
             'meta' => [
+                'pages' => max(1, (int)($entry['response_headers']['x-pages'] ?? 1)),
                 'source' => 'CCP ESI',
                 'request_url' => isset($entry['url']) ? $entry['url'] : null,
                 'http_status' => isset($entry['status']) ? $entry['status'] : 200,
@@ -510,6 +517,7 @@ final class GuristasEsiClient
             'x-ratelimit-remaining',
             'x-ratelimit-used',
             'retry-after',
+            'x-pages',
         ];
 
         return array_intersect_key($headers, array_flip($keep));

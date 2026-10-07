@@ -58,7 +58,7 @@ final class GuristasPilotDataService
                 throw new RuntimeException('Invalid active skill.');
             }
             $seen[$id] = true;
-            if (in_array($id, [3357, 3359, 3361], true)) $levels[$id] = $level;
+            $levels[$id] = $level;
         }
         return $levels + [3357 => 0, 3359 => 0, 3361 => 0];
     }
@@ -107,12 +107,25 @@ final class GuristasPilotDataService
         return $normalized;
     }
 }
-function eve_pilot_data(int $characterId): array
+function eve_pilot_data(int $characterId, bool $syncCombat = false): array
 {
     $config = require dirname(__DIR__, 2) . '/config/esi.php';
     // Use a separate cache tree from public ESI data.
     $cache = new GuristasEsiCache(dirname(__DIR__, 2) . '/storage/cache/pilot/' . eve_token_table());
     $result = (new GuristasPilotDataService(new GuristasEsiClient($config, $cache)))->read($characterId);
+    require_once __DIR__ . '/PilotRecommendations.php';
+    $result += eve_read_pilot_context(new GuristasEsiClient($config, $cache), $characterId);
+    $combatCache = new GuristasEsiCache(dirname(__DIR__, 2) . '/storage/cache/pilot/' . eve_token_table() . '/combat');
+    $authorizeCombat = static function (int $id, string $scope): array {
+        $token = eve_access_token($id, $scope);
+        $q = eve_db()->prepare('SELECT refresh_token_sealed, scopes_json FROM ' . eve_token_table() . ' WHERE character_id = ?');
+        $q->execute([$id]); $grant = $q->fetch();
+        if (!$grant) throw new GuristasAuthorizationRequired('Sign in again.');
+        return ['token' => $token, 'identity' => eve_token_table() . '|' . hash('sha256', $grant['refresh_token_sealed'] . '|' . $grant['scopes_json'])];
+    };
+    $result['combat'] = (new GuristasPilotCombat(new GuristasEsiClient($config, $combatCache), eve_pilot_record_store(), $authorizeCombat))->read($characterId, $syncCombat);
+    try { $result['romance'] = eve_pilot_record_store()->read($characterId)['romance']; }
+    catch (Throwable $error) { $result['romance'] = null; }
     // Name lookup is public and carries no character access token.
     require_once __DIR__ . '/PilotEntityNames.php';
     $catalog = eve_pilot_entity_catalog();
@@ -122,9 +135,16 @@ function eve_pilot_data(int $characterId): array
         if (empty($reference['name'])) $ids[] = $row['from_id'];
         if (!empty($reference['station_id'])) $ids[] = $reference['station_id'];
     }
+    foreach ($catalog as $reference) {
+        if (($reference['kind'] ?? '') === 'agent' && ($reference['faction_id'] ?? 0) === 500010
+            && ($reference['agent_type_id'] ?? 0) === 2 && !empty($reference['station_id'])) $ids[] = $reference['station_id'];
+    }
     $factionId = $result['fw']['data']['faction_id'] ?? null;
     if ($factionId && empty($catalog[$factionId]['name'])) $ids[] = $factionId;
     $names = eve_pilot_entity_names($ids);
+    $destinations = [];
+    foreach ($catalog as $agent) if (($agent['kind'] ?? '') === 'agent' && ($agent['faction_id'] ?? 0) === 500010 && ($agent['agent_type_id'] ?? 0) === 2 && ($agent['division_name'] ?? '') === 'Security') $destinations[] = $agent['system_id'] ?? null;
+    $result['travel']['agent_jumps'] = eve_pilot_travel($result, $destinations, new GuristasEsiClient($config, new GuristasEsiCache(dirname(__DIR__, 2) . '/storage/cache/routes')));
     if (is_array($result['standings']['data'])) {
         $result['standings']['data'] = eve_enrich_pilot_entities($result['standings']['data'], $catalog, $names);
     }
