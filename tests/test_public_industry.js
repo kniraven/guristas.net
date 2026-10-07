@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const {materials,conversion}=require('../public/assets/js/public-industry.js');
+const bp={materials:[{typeID:1,quantity:1},{typeID:2,quantity:11}]};
+assert.deepEqual(materials(bp,10,10,0),[{type:1,quantity:10},{type:2,quantity:99}]);
+assert.equal(materials(bp,1,6,6)[1].quantity,10);
+assert.throws(()=>materials(bp,0,0,0));
+assert.throws(()=>materials(bp,1,11,0));
+assert.deepEqual(conversion(1000,100,200,50,100),{value:650,perLP:6.5});
+assert.equal(conversion(10,100,0,0,100).perLP,-.9);
+assert.throws(()=>conversion(NaN,0,0,0,100));
+assert.throws(()=>conversion(100,0,0,0,0));
+console.log('Public production rounding and LP conversion passed.');

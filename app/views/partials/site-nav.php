@@ -8,7 +8,7 @@ $navItems = [
     ['ships', 'Ships', '/ships/'],
     ['war', 'War', '/war/guristas/'],
     ['missions', 'Missions', '/missions/'],
-    ['build', 'Build', $isCommandPage ? '#industry-preview' : '/#industry-preview'],
+    ['build', 'Build', '/industry/'],
     ['lore', 'Lore', $isCommandPage ? '#lore' : '/#lore'],
     ['signals', 'Signals', '/signals/'],
 ];
