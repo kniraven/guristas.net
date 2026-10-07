@@ -18,9 +18,12 @@ $empty = page('missions/index.php', ['q'=>'zz_no_agent_match']);
 check(str_contains($empty, 'No contacts match'), 'Missing empty state.');
 $escaped = page('missions/index.php', ['q'=>'"><script>alert(1)</script>']);
 check(!str_contains($escaped, '<script>alert(1)</script>'), 'Unescaped query.');
-foreach (['war/guristas/index.php','join/index.php','signals/index.php','industry/index.php','operations/index.php','community/index.php'] as $path) {
+foreach (['war/guristas/index.php','join/index.php','signals/index.php','industry/index.php','operations/index.php','community/index.php','lore/index.php','venal/systems/index.php'] as $path) {
     $html = page($path);
     check(str_contains($html,'OPEN ACCESS') && str_contains($html,'Skip to field tool'), 'Missing public shell.');
 }
 check(!str_contains(page('signals/index.php'),'autoplay'), 'Audio must not autoplay.');
+check(str_contains(page('venal/systems/index.php',['q'=>'H-PA29']),'1 matching systems'),'Venal search');
+check(!str_contains(page('venal/systems/index.php',['q'=>'<script>alert(1)</script>']),'<script>alert(1)</script>'),'Venal escaping');
+check(str_contains(page('lore/index.php',['dossier'=>'crielere']),'Crielere Research Laboratories'),'Lore detail');
 echo "Public pages, agent search, empty state and escaping passed.\n";

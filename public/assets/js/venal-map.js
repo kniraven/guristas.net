@@ -194,11 +194,15 @@ function colors() {
 }
 
 async function fetchVenal() {
-    const response = await fetch(API_URL, {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    let response;
+    try { response = await fetch(API_URL, {
+        signal: controller.signal,
         headers: {
             Accept: "application/json"
         }
-    });
+    }); } finally { clearTimeout(timeout); }
 
     let payload = null;
     try {
