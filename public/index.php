@@ -110,15 +110,15 @@ $operations = [
 $commandStatuses = [
     [
         'label' => 'Transmission',
-        'value' => 'Offline',
-        'detail' => 'Twitch feed not connected',
+        'value' => 'Open channel',
+        'detail' => 'Kniraven on Twitch; live status unverified',
         'tone' => 'quiet',
     ],
 
     [
         'label' => 'Insurgency',
-        'value' => 'Awaiting Feed',
-        'detail' => 'Manual status system pending',
+        'value' => 'Check War Room',
+        'detail' => 'Public campaign report; no login required',
         'tone' => 'warning',
     ],
 
@@ -189,6 +189,7 @@ $currentYear = (int) date('Y');
     <link rel="stylesheet" href="/assets/css/auth.css?v=<?= filemtime(__DIR__ . '/assets/css/auth.css') ?>">
     
     <script src="/assets/js/auth.js?v=<?= filemtime(__DIR__ . '/assets/js/auth.js') ?>" defer></script>
+<script src="/assets/js/public-tools.js?v=<?= filemtime(__DIR__ . '/assets/js/public-tools.js') ?>" defer></script>
 </head>
 
 <body>
@@ -316,16 +317,16 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                 <div class="hero-actions">
                     <a
                         class="primary-button"
-                        href="#operations"
+                        href="/join/"
                     >
-                        Choose your operation
+                        New pilot? Start here
                     </a>
 
                     <a
                         class="secondary-button"
-                        href="#lore"
+                        href="/war/guristas/"
                     >
-                        Begin the story
+                        Open War Room
                     </a>
                 </div>
 
@@ -404,11 +405,11 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         <?= escape($status['label']) ?>
                     </span>
 
-                    <strong>
+                    <strong <?= $status['label'] === 'Insurgency' ? 'data-public-campaign-status' : '' ?>>
                         <?= escape($status['value']) ?>
                     </strong>
 
-                    <small>
+                    <small <?= $status['label'] === 'Insurgency' ? 'data-public-campaign-detail' : '' ?>>
                         <?= escape($status['detail']) ?>
                     </small>
                 </article>
@@ -427,7 +428,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                     </p>
 
                     <h2 id="operations-title">
-                        Choose your operation
+                        New pilot? Start here
                     </h2>
                 </div>
 
@@ -498,126 +499,9 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
             </div>
         </section>
 
-        <section
-            id="war-room"
-            class="section shell feature-layout"
-            aria-labelledby="war-room-title"
-        >
-            <article class="feature-copy reveal">
-                <p class="eyebrow">
-                    INSURGENCY WAR ROOM
-                </p>
-
-                <h2 id="war-room-title">
-                    Corruption is a campaign, not a random roam.
-                </h2>
-
-                <p>
-                    The War Room will teach pirate faction warfare
-                    from initial forecast through corruption stage
-                    five. It will eventually combine objectives,
-                    fleet announcements, ship recommendations, maps,
-                    tactical guidance, and after-action reports.
-                </p>
-
-                <div class="feature-actions">
-                    <button
-                        class="primary-button"
-                        type="button"
-                        disabled
-                    >
-                        Live insurgency feed coming later
-                    </button>
-
-                    <a
-                        class="secondary-button"
-                        href="/venal/"
-                    >
-                        Open Venal intelligence
-                    </a>
-                </div>
-            </article>
-
-            <aside class="war-console cut-panel reveal">
-                <div class="console-header">
-                    <span>
-                        WARZONE STATUS
-                    </span>
-
-                    <strong>
-                        MANUAL FEED
-                    </strong>
-                </div>
-
-                <div class="war-meter">
-                    <div class="war-meter-row">
-                        <span>
-                            Forecast
-                        </span>
-
-                        <strong>
-                            Pending
-                        </strong>
-                    </div>
-
-                    <div
-                        class="meter-track"
-                        aria-hidden="true"
-                    >
-                        <span style="width: 18%"></span>
-                    </div>
-                </div>
-
-                <div class="war-objectives">
-                    <article>
-                        <span>
-                            01
-                        </span>
-
-                        <div>
-                            <strong>
-                                Prepare
-                            </strong>
-
-                            <p>
-                                Fit a suitable Guristas hull.
-                            </p>
-                        </div>
-                    </article>
-
-                    <article>
-                        <span>
-                            02
-                        </span>
-
-                        <div>
-                            <strong>
-                                Deploy
-                            </strong>
-
-                            <p>
-                                Enter the active insurgency.
-                            </p>
-                        </div>
-                    </article>
-
-                    <article>
-                        <span>
-                            03
-                        </span>
-
-                        <div>
-                            <strong>
-                                Corrupt
-                            </strong>
-
-                            <p>
-                                Complete pirate complexes and objectives.
-                            </p>
-                        </div>
-                    </article>
-                </div>
-            </aside>
+        <section id="war-room" class="section shell feature-layout" aria-labelledby="war-room-title">
+            <article class="feature-copy reveal"><p class="eyebrow">INSURGENCY WAR ROOM</p><h2 id="war-room-title">Find the campaign. Make your sortie count.</h2><p>Read the public campaign report, compare systems and learn how to earn your cut while helping the Guristas advance. Start with an eligible objective and a ship you can afford to replace.</p><div class="feature-actions"><a class="primary-button" href="/war/guristas/">Open live War Room</a><a class="secondary-button" href="/missions/">Find a mission contact</a></div></article>
+            <aside class="war-console cut-panel reveal"><div class="console-header"><span>YOUR FIRST SORTIE</span><strong>OPEN FIELD GUIDE</strong></div><div class="war-objectives"><article><span>01</span><div><strong>Check access</strong><p>Use the enlistment guide. Joining Cozen is optional.</p><a href="/join/">Start here →</a></div></article><article><span>02</span><div><strong>Prepare</strong><p>Compare hulls, check site restrictions and plan your exit.</p><a href="/ships/">Explore ships →</a></div></article><article><span>03</span><div><strong>Choose a manageable objective</strong><p>Check campaign systems, local activity and personal contribution in EVE.</p><a href="/war/guristas/">Read the report →</a></div></article></div></aside>
         </section>
 
         <section
@@ -1021,8 +905,8 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         class="signal-message"
                         aria-live="polite"
                     >
-                        Weak Guristas music carrier detected.
-                    </div>
+                        Weak Guristas music carrier detected. This is a fictional discovery scanner, not live intercepted traffic.
+                    </div><p class="note">Fictional signal scanner. Discover real tools and fan transmissions; this does not intercept live EVE traffic.</p><a class="secondary-button" data-signal-destination href="/signals/#radio">Open the radio relay</a>
 
                     <button
                         id="scanSignalButton"
@@ -1042,17 +926,11 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         Kniraven on Twitch
                     </h3>
 
-                    <div class="media-status">
-                        <span class="status-light"></span>
-
-                        <strong>
-                            Offline
-                        </strong>
-                    </div>
+                    <p class="note">Live status is shown by Twitch when you open the channel.</p>
 
                     <p>
-                        When the channel is live, the player will appear
-                        automatically on the Command Deck.
+                        Watch Kniraven on Twitch for broadcasts, recent videos
+                        and the channel schedule.
                     </p>
 
                     <a
@@ -1079,7 +957,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         target of Guristas signal correction.
                     </p>
 
-                    <div class="enemy-classification">
+                    <a class="secondary-button" href="/signals/#archive">Open broadcast archives</a><div class="enemy-classification">
                         <span>
                             CLASSIFICATION
                         </span>
@@ -1100,12 +978,12 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                     </h3>
 
                     <p>
-                        Black Rabbit Radio will feature original tracks,
-                        cover art, lyrics, lore annotations, and reactive
-                        visual themes.
+                        Play the recovered Fatal Mistake and Black Rabbits
+                        demos, read the companion lyrics and choose an optional
+                        playback animation. No login required.
                     </p>
 
-                    <div class="track-list">
+                    <a class="secondary-button" href="/signals/#radio">Play Black Rabbit Radio</a><div class="track-list">
                         <span>
                             Fatal Mistake
                         </span>
@@ -1114,9 +992,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                             Black Rabbits of Venal
                         </span>
 
-                        <span>
-                            Good Mourning New Eden
-                        </span>
+
                     </div>
                 </article>
             </div>
@@ -1147,7 +1023,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                     apply to Cozen Corp in EVE Online.
                 </p>
 
-                <div class="join-actions">
+                <div class="join-actions"><a class="primary-button" href="/join/">Enlistment guide</a><a class="secondary-button" href="/join/#cozen">Meet Cozen Corp</a>
                     <button
                         class="primary-button"
                         type="button"

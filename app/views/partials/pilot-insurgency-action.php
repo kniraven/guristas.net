@@ -14,4 +14,4 @@ $campaign = $insurgencyAdvice['campaign'] ?? []; $warTarget = $insurgencyAdvice[
 <?php elseif ($insurgencyAdvice['phase'] === 'forecast'): ?><h4>Prepare for the forecast at <?= eve_e($campaign['origin_name'] ?? 'the next FOB') ?></h4><p><?= !empty($insurgencyAdvice['expected_start']) ? 'Estimated live start: ' . eve_e(gmdate('j M Y H:i', strtotime($insurgencyAdvice['expected_start']))) . ' EVE time (UTC).' : 'A start time has not been reported.' ?> This estimate uses the 48-hour forecasting period; confirm the countdown in EVE.</p>
 <?php elseif ($insurgencyAdvice['phase'] === 'none'): ?><h4>Prepare for the next Guristas insurgency</h4><p>No active or forecast Guristas campaign is reported. The next location and start time have not been announced in this feed.</p>
 <?php else: ?><h4>Check the current insurgency in EVE</h4><p>A fresh campaign feed is unavailable. Open Insurgencies in EVE before choosing a destination.</p><?php endif; ?>
-<a href="/war/guristas/overlay/">Open the Guristas war map →</a></div></article>
+<a href="/war/guristas/">Open the Guristas war map →</a></div></article>
