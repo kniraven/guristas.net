@@ -5,14 +5,7 @@ require dirname(__DIR__) . '/app/services/EveAuth.php';
 eve_session();
 $viewer = eve_current_user();
 
-/**
- * Guristas.net Command Deck
- *
- * The command deck still contains several local placeholder feeds.
- * Public ESI infrastructure and the Venal intelligence map are now
- * connected through backend services; market, insurgency, corporation,
- * music, gallery, comic, and donation systems will follow.
- */
+// Public field tools and personal dossier share the command deck.
 
 function escape(string $value): string
 {
@@ -217,74 +210,7 @@ $currentYear = (int) date('Y');
 
     
 
-    <section
-        class="boot-screen"
-        data-boot
-        aria-label="Establishing connection to Guristas.net"
-    >
-        <div class="boot-terminal">
-            <div
-                class="boot-mark"
-                aria-hidden="true"
-            >
-                <svg viewBox="0 0 64 64">
-                    <path
-                        d="M17 6 29 24l-8 5-11-10L17 6Z"
-                    ></path>
 
-                    <path
-                        d="M47 6 35 24l8 5 11-10L47 6Z"
-                    ></path>
-
-                    <path
-                        d="M15 28c4-6 10-9 17-9s13 3 17 9l-3 19-8 10H26l-8-10-3-19Z"
-                    ></path>
-
-                    <path
-                        class="boot-mark-cut"
-                        d="m21 34 9 2-3 8-8-4 2-6Zm22 0-9 2 3 8 8-4-2-6ZM29 49h6l-3 5-3-5Z"
-                    ></path>
-                </svg>
-            </div>
-
-            <p class="boot-kicker">
-                GURISTAS.NET
-            </p>
-
-            <h1>
-                Pirate command network
-            </h1>
-
-            <div
-                class="boot-sequence"
-                aria-live="polite"
-            >
-                <span>
-                    Recovering damaged transmission fragments
-                </span>
-
-                <span>
-                    Reconstructing breached hull telemetry
-                </span>
-
-                <span>
-                    Injecting unstable holographic handshake
-                </span>
-
-                <span>
-                    Broadcast identity forcibly overwritten
-                </span>
-            </div>
-
-            <button
-                class="text-button"
-                type="button"
-                data-skip-boot
-            >
-                Skip connection sequence
-            </button>
-        </div>
-    </section>
 
 <?php
 $navActive = 'command';
@@ -519,17 +445,16 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                     </p>
 
                     <h2 id="lore-title">
-                        The complete Guristas story
+                        Recover the Guristas story
                     </h2>
                 </div>
 
                 <p>
-                    Read a sixty-second briefing, follow the visual
-                    timeline, or open complete sourced dossiers.
+                    Read the short briefing, then open sourced dossiers on the founders, Venal, Crielere and the Deathless alliance.
                 </p>
             </div>
 
-            <div class="lore-layout">
+            <p class="feature-actions"><a class="primary-button" href="/lore/">Open the recovered dossiers</a><a class="secondary-button" href="/lore/?dossier=fatal">Start with Fatal</a></p><div class="lore-layout">
                 <article class="lore-brief cut-panel reveal">
                     <span class="system-label">
                         60-SECOND BRIEFING

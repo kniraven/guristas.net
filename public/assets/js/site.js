@@ -126,7 +126,7 @@ const signalBands = [
 
     {
         maximum: 74,
-        href: "/venal/",
+        href: "/venal/systems/",
         label: "Open Venal intelligence",
 
         message:

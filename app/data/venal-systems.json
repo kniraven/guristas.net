@@ -1,0 +1,671 @@
+{
+  "source": "EVE official SDE build 3579973",
+  "retrieved_at": "2026-10-06",
+  "systems": [
+    {
+      "id": 30001287,
+      "name": "0-BFTQ",
+      "constellation": "UTZ-7B",
+      "security": -0.174388,
+      "gates": 2
+    },
+    {
+      "id": 30001322,
+      "name": "0-O2UT",
+      "constellation": "Y8-HHZ",
+      "security": -0.421246,
+      "gates": 4
+    },
+    {
+      "id": 30001295,
+      "name": "0-XIDJ",
+      "constellation": "E-I1JW",
+      "security": -0.119301,
+      "gates": 3
+    },
+    {
+      "id": 30001270,
+      "name": "1-Y6KI",
+      "constellation": "ST-0EZ",
+      "security": -0.180591,
+      "gates": 3
+    },
+    {
+      "id": 30001352,
+      "name": "2IBE-N",
+      "constellation": "0KTC-R",
+      "security": -0.495035,
+      "gates": 1
+    },
+    {
+      "id": 30001319,
+      "name": "2PLH-3",
+      "constellation": "Y8-HHZ",
+      "security": -0.141819,
+      "gates": 3
+    },
+    {
+      "id": 30001333,
+      "name": "2TH-3F",
+      "constellation": "XMNF-7",
+      "security": -0.934034,
+      "gates": 2
+    },
+    {
+      "id": 30001281,
+      "name": "3A1P-N",
+      "constellation": "N32Z-Z",
+      "security": -0.878544,
+      "gates": 2
+    },
+    {
+      "id": 30001318,
+      "name": "4-7IL9",
+      "constellation": "Y8-HHZ",
+      "security": -0.101362,
+      "gates": 2
+    },
+    {
+      "id": 30001349,
+      "name": "42XJ-N",
+      "constellation": "0HD-6C",
+      "security": -0.412015,
+      "gates": 3
+    },
+    {
+      "id": 30001340,
+      "name": "430-BE",
+      "constellation": "L-1T22",
+      "security": -0.127689,
+      "gates": 1
+    },
+    {
+      "id": 30001300,
+      "name": "4RX-EE",
+      "constellation": "W9MQ-1",
+      "security": -0.162184,
+      "gates": 2
+    },
+    {
+      "id": 30001335,
+      "name": "4S-PVC",
+      "constellation": "XMNF-7",
+      "security": -0.745209,
+      "gates": 1
+    },
+    {
+      "id": 30001317,
+      "name": "65V-RH",
+      "constellation": "Y8-HHZ",
+      "security": -0.271743,
+      "gates": 2
+    },
+    {
+      "id": 30001290,
+      "name": "6NJ8-V",
+      "constellation": "UTZ-7B",
+      "security": -0.179321,
+      "gates": 3
+    },
+    {
+      "id": 30001339,
+      "name": "6UQ-4U",
+      "constellation": "L-1T22",
+      "security": -0.174515,
+      "gates": 1
+    },
+    {
+      "id": 30001276,
+      "name": "6W-HRH",
+      "constellation": "48R-PS",
+      "security": -0.207624,
+      "gates": 2
+    },
+    {
+      "id": 30001328,
+      "name": "6ZJ-SC",
+      "constellation": "Y8HB-U",
+      "security": -0.127174,
+      "gates": 2
+    },
+    {
+      "id": 30001298,
+      "name": "8CIX-S",
+      "constellation": "E-I1JW",
+      "security": -0.089061,
+      "gates": 1
+    },
+    {
+      "id": 30001273,
+      "name": "9-266Q",
+      "constellation": "ST-0EZ",
+      "security": -0.250879,
+      "gates": 5
+    },
+    {
+      "id": 30001279,
+      "name": "9-8BL8",
+      "constellation": "48R-PS",
+      "security": -0.497033,
+      "gates": 1
+    },
+    {
+      "id": 30001266,
+      "name": "9-R6GU",
+      "constellation": "1G-8KY",
+      "security": -0.098749,
+      "gates": 2
+    },
+    {
+      "id": 30001312,
+      "name": "92D-OI",
+      "constellation": "XHYS-O",
+      "security": -0.321985,
+      "gates": 2
+    },
+    {
+      "id": 30001284,
+      "name": "92K-H2",
+      "constellation": "N32Z-Z",
+      "security": -0.442065,
+      "gates": 4
+    },
+    {
+      "id": 30001306,
+      "name": "9IPC-E",
+      "constellation": "W9MQ-1",
+      "security": -0.143937,
+      "gates": 3
+    },
+    {
+      "id": 30001283,
+      "name": "A-AFGR",
+      "constellation": "N32Z-Z",
+      "security": -0.395259,
+      "gates": 4
+    },
+    {
+      "id": 30001285,
+      "name": "AA-YRK",
+      "constellation": "N32Z-Z",
+      "security": -0.412802,
+      "gates": 2
+    },
+    {
+      "id": 30001289,
+      "name": "AJCJ-1",
+      "constellation": "UTZ-7B",
+      "security": -0.15117,
+      "gates": 2
+    },
+    {
+      "id": 30001342,
+      "name": "AZ-UWB",
+      "constellation": "L-1T22",
+      "security": -0.077252,
+      "gates": 1
+    },
+    {
+      "id": 30001321,
+      "name": "B-CZXG",
+      "constellation": "Y8-HHZ",
+      "security": -0.237112,
+      "gates": 5
+    },
+    {
+      "id": 30001346,
+      "name": "B3QP-K",
+      "constellation": "0HD-6C",
+      "security": -0.772029,
+      "gates": 4
+    },
+    {
+      "id": 30001286,
+      "name": "BV-1JG",
+      "constellation": "UTZ-7B",
+      "security": -0.23401,
+      "gates": 3
+    },
+    {
+      "id": 30001355,
+      "name": "C2-DDA",
+      "constellation": "0KTC-R",
+      "security": -0.80373,
+      "gates": 1
+    },
+    {
+      "id": 30001275,
+      "name": "CSOA-B",
+      "constellation": "48R-PS",
+      "security": -0.152217,
+      "gates": 2
+    },
+    {
+      "id": 30001272,
+      "name": "D-8SI1",
+      "constellation": "ST-0EZ",
+      "security": -0.129108,
+      "gates": 4
+    },
+    {
+      "id": 30001299,
+      "name": "D-SKWC",
+      "constellation": "E-I1JW",
+      "security": -0.161061,
+      "gates": 2
+    },
+    {
+      "id": 30001294,
+      "name": "E-7U8U",
+      "constellation": "E-I1JW",
+      "security": -0.133443,
+      "gates": 2
+    },
+    {
+      "id": 30001334,
+      "name": "E1F-E5",
+      "constellation": "XMNF-7",
+      "security": -0.614754,
+      "gates": 2
+    },
+    {
+      "id": 30001307,
+      "name": "EIV-1W",
+      "constellation": "W9MQ-1",
+      "security": -0.190758,
+      "gates": 3
+    },
+    {
+      "id": 30001313,
+      "name": "EK2-ET",
+      "constellation": "XHYS-O",
+      "security": -0.332991,
+      "gates": 1
+    },
+    {
+      "id": 30001344,
+      "name": "FHB-QA",
+      "constellation": "0HD-6C",
+      "security": -0.379195,
+      "gates": 3
+    },
+    {
+      "id": 30001348,
+      "name": "G9D-XW",
+      "constellation": "0HD-6C",
+      "security": -0.328827,
+      "gates": 4
+    },
+    {
+      "id": 30001347,
+      "name": "GVZ-1W",
+      "constellation": "0HD-6C",
+      "security": -0.90207,
+      "gates": 2
+    },
+    {
+      "id": 30001331,
+      "name": "H-AJ27",
+      "constellation": "XMNF-7",
+      "security": -0.590983,
+      "gates": 3
+    },
+    {
+      "id": 30001269,
+      "name": "H-PA29",
+      "constellation": "ST-0EZ",
+      "security": -0.241054,
+      "gates": 4
+    },
+    {
+      "id": 30001343,
+      "name": "H-S5BM",
+      "constellation": "L-1T22",
+      "security": -0.066827,
+      "gates": 1
+    },
+    {
+      "id": 30001292,
+      "name": "HBD-CC",
+      "constellation": "E-I1JW",
+      "security": -0.122571,
+      "gates": 5
+    },
+    {
+      "id": 30001330,
+      "name": "HD-JVQ",
+      "constellation": "Y8HB-U",
+      "security": -0.134952,
+      "gates": 3
+    },
+    {
+      "id": 30001315,
+      "name": "JURU-T",
+      "constellation": "Y8-HHZ",
+      "security": -0.122743,
+      "gates": 4
+    },
+    {
+      "id": 30001274,
+      "name": "K3JR-J",
+      "constellation": "48R-PS",
+      "security": -0.13866,
+      "gates": 2
+    },
+    {
+      "id": 30001264,
+      "name": "KK-L97",
+      "constellation": "1G-8KY",
+      "security": -0.119007,
+      "gates": 3
+    },
+    {
+      "id": 30001350,
+      "name": "L-IE41",
+      "constellation": "0KTC-R",
+      "security": -0.662038,
+      "gates": 3
+    },
+    {
+      "id": 30001337,
+      "name": "LHJ-2G",
+      "constellation": "L-1T22",
+      "security": -0.167453,
+      "gates": 4
+    },
+    {
+      "id": 30001332,
+      "name": "M2-2V1",
+      "constellation": "XMNF-7",
+      "security": -0.685704,
+      "gates": 2
+    },
+    {
+      "id": 30001316,
+      "name": "MC6-5J",
+      "constellation": "Y8-HHZ",
+      "security": -0.105155,
+      "gates": 4
+    },
+    {
+      "id": 30001278,
+      "name": "MQFX-Q",
+      "constellation": "48R-PS",
+      "security": -0.422913,
+      "gates": 2
+    },
+    {
+      "id": 30001309,
+      "name": "N-5476",
+      "constellation": "XHYS-O",
+      "security": -0.355341,
+      "gates": 4
+    },
+    {
+      "id": 30001267,
+      "name": "N-Q5PW",
+      "constellation": "1G-8KY",
+      "security": -0.166216,
+      "gates": 2
+    },
+    {
+      "id": 30001302,
+      "name": "N0C-UN",
+      "constellation": "W9MQ-1",
+      "security": -0.142044,
+      "gates": 2
+    },
+    {
+      "id": 30001277,
+      "name": "N5Y-4N",
+      "constellation": "48R-PS",
+      "security": -0.245205,
+      "gates": 2
+    },
+    {
+      "id": 30001280,
+      "name": "N6G-H3",
+      "constellation": "N32Z-Z",
+      "security": -0.404285,
+      "gates": 5
+    },
+    {
+      "id": 30001297,
+      "name": "O-TVTD",
+      "constellation": "E-I1JW",
+      "security": -0.097938,
+      "gates": 2
+    },
+    {
+      "id": 30001341,
+      "name": "OJ-CT4",
+      "constellation": "L-1T22",
+      "security": -0.068315,
+      "gates": 3
+    },
+    {
+      "id": 30001282,
+      "name": "OZ-VAE",
+      "constellation": "N32Z-Z",
+      "security": -0.309249,
+      "gates": 3
+    },
+    {
+      "id": 30001268,
+      "name": "P-FSQE",
+      "constellation": "ST-0EZ",
+      "security": -0.149703,
+      "gates": 2
+    },
+    {
+      "id": 30001293,
+      "name": "P-GKF5",
+      "constellation": "E-I1JW",
+      "security": -0.131429,
+      "gates": 3
+    },
+    {
+      "id": 30001329,
+      "name": "P-VYVL",
+      "constellation": "Y8HB-U",
+      "security": -0.125219,
+      "gates": 4
+    },
+    {
+      "id": 30001324,
+      "name": "PF-QHK",
+      "constellation": "Y8HB-U",
+      "security": -0.134402,
+      "gates": 3
+    },
+    {
+      "id": 30001310,
+      "name": "PZOZ-K",
+      "constellation": "XHYS-O",
+      "security": -0.395218,
+      "gates": 4
+    },
+    {
+      "id": 30001326,
+      "name": "Q-7SUI",
+      "constellation": "Y8HB-U",
+      "security": -0.175048,
+      "gates": 1
+    },
+    {
+      "id": 30001323,
+      "name": "Q61Y-F",
+      "constellation": "Y8-HHZ",
+      "security": -0.655139,
+      "gates": 2
+    },
+    {
+      "id": 30001305,
+      "name": "QHJ-FW",
+      "constellation": "W9MQ-1",
+      "security": -0.172758,
+      "gates": 4
+    },
+    {
+      "id": 30001265,
+      "name": "R-KZK7",
+      "constellation": "1G-8KY",
+      "security": -0.106761,
+      "gates": 2
+    },
+    {
+      "id": 30001320,
+      "name": "RQ9-OZ",
+      "constellation": "Y8-HHZ",
+      "security": -0.155892,
+      "gates": 3
+    },
+    {
+      "id": 30001308,
+      "name": "S-1ZXZ",
+      "constellation": "W9MQ-1",
+      "security": -0.300787,
+      "gates": 2
+    },
+    {
+      "id": 30001296,
+      "name": "SBL5-R",
+      "constellation": "E-I1JW",
+      "security": -0.128037,
+      "gates": 3
+    },
+    {
+      "id": 30001314,
+      "name": "SE-SHZ",
+      "constellation": "XHYS-O",
+      "security": -0.47201,
+      "gates": 2
+    },
+    {
+      "id": 30001338,
+      "name": "SHJO-J",
+      "constellation": "L-1T22",
+      "security": -0.124623,
+      "gates": 2
+    },
+    {
+      "id": 30001288,
+      "name": "SS-GED",
+      "constellation": "UTZ-7B",
+      "security": -0.163631,
+      "gates": 3
+    },
+    {
+      "id": 30001301,
+      "name": "V3X-L8",
+      "constellation": "W9MQ-1",
+      "security": -0.162483,
+      "gates": 2
+    },
+    {
+      "id": 30001303,
+      "name": "VG-6CH",
+      "constellation": "W9MQ-1",
+      "security": -0.148245,
+      "gates": 3
+    },
+    {
+      "id": 30001351,
+      "name": "VG-QW1",
+      "constellation": "0KTC-R",
+      "security": -0.774871,
+      "gates": 2
+    },
+    {
+      "id": 30001327,
+      "name": "VVD-O6",
+      "constellation": "Y8HB-U",
+      "security": -0.124544,
+      "gates": 4
+    },
+    {
+      "id": 30001311,
+      "name": "W3KK-R",
+      "constellation": "XHYS-O",
+      "security": -0.534679,
+      "gates": 1
+    },
+    {
+      "id": 30001336,
+      "name": "WLF-D3",
+      "constellation": "XMNF-7",
+      "security": -1.0,
+      "gates": 2
+    },
+    {
+      "id": 30001325,
+      "name": "XW-6TC",
+      "constellation": "Y8HB-U",
+      "security": -0.124902,
+      "gates": 3
+    },
+    {
+      "id": 30001291,
+      "name": "Y-4CFK",
+      "constellation": "UTZ-7B",
+      "security": -0.190475,
+      "gates": 1
+    },
+    {
+      "id": 30001261,
+      "name": "Y-W1Q3",
+      "constellation": "1G-8KY",
+      "security": -0.16016,
+      "gates": 2
+    },
+    {
+      "id": 30001262,
+      "name": "Y6-HPG",
+      "constellation": "1G-8KY",
+      "security": -0.113985,
+      "gates": 3
+    },
+    {
+      "id": 30001353,
+      "name": "YJ3-UT",
+      "constellation": "0KTC-R",
+      "security": -0.678497,
+      "gates": 3
+    },
+    {
+      "id": 30001271,
+      "name": "YP-J33",
+      "constellation": "ST-0EZ",
+      "security": -0.139472,
+      "gates": 2
+    },
+    {
+      "id": 30001263,
+      "name": "Z-GY5S",
+      "constellation": "1G-8KY",
+      "security": -0.11335,
+      "gates": 3
+    },
+    {
+      "id": 30001304,
+      "name": "Z0-TJW",
+      "constellation": "W9MQ-1",
+      "security": -0.157719,
+      "gates": 2
+    },
+    {
+      "id": 30001345,
+      "name": "Z3U-GI",
+      "constellation": "0HD-6C",
+      "security": -0.601802,
+      "gates": 4
+    },
+    {
+      "id": 30001354,
+      "name": "ZD4-G9",
+      "constellation": "0KTC-R",
+      "security": -0.623715,
+      "gates": 1
+    }
+  ]
+}

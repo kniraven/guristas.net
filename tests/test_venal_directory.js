@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict');
+const {activityState}=require('../public/assets/js/venal-directory.js');
+const now=Date.parse('2026-10-07T03:00:00Z');
+const payload={ok:true,data:{systems:[]},meta:{activity_updated_at:'2026-10-07T02:30:00Z'}};
+assert.equal(activityState(payload,now).stale,false);
+payload.meta.activity_updated_at='2026-10-07T00:00:00Z';assert.equal(activityState(payload,now).stale,true);
+payload.meta.activity_updated_at='2026-10-08T00:00:00Z';assert.equal(activityState(payload,now).stale,true);
+delete payload.meta.activity_updated_at;assert.equal(activityState(payload,now).stale,true);
+assert.throws(()=>activityState({ok:false},now));
+console.log('Venal activity freshness checks passed');

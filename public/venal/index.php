@@ -68,7 +68,7 @@ require dirname(__DIR__, 2) . '/app/views/partials/site-header.php';
             <section id="titlePanel" class="venal-panel venal-title-panel">
                 <p class="venal-kicker">VENAL // REGIONAL INTELLIGENCE</p>
                 <h1>3D theater map</h1>
-                <p id="status" class="venal-status" aria-live="polite">Establishing CCP ESI relay…</p>
+                <p id="status" class="venal-status" aria-live="polite">Establishing CCP ESI relay…</p><p><a href="/venal/systems/">Open searchable system directory (no 3D required)</a></p>
             </section>
 
             <section id="controls" class="venal-panel venal-controls" aria-label="Venal map controls">
@@ -189,12 +189,12 @@ require dirname(__DIR__, 2) . '/app/views/partials/site-header.php';
 
         <section id="errorBox" class="venal-panel venal-error-box" role="alert" hidden>
             <h2>Venal intelligence relay unavailable</h2>
-            <p>The map could not retrieve Guristas.net's Venal data feed.</p>
-            <p id="errorDetail"></p>
+            <p>The graphics renderer or data relay is unavailable.</p>
+            <p id="errorDetail"></p><a href="/venal/systems/">Use the Venal system directory</a>
         </section>
     </main>
 
-    <script type="module" src="/assets/js/venal-map.js?v=<?= filemtime($publicRoot . '/assets/js/venal-map.js') ?>"></script>
+    <script defer src="/assets/js/venal-startup.js?v=<?= filemtime($publicRoot . '/assets/js/venal-startup.js') ?>" data-venal-module="/assets/js/venal-map.js?v=<?= filemtime($publicRoot . '/assets/js/venal-map.js') ?>"></script>
 <?php require dirname(__DIR__, 2) . '/app/views/partials/login-modal.php'; ?>
 </body>
 </html>
