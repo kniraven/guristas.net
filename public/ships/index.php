@@ -33,6 +33,7 @@ $initialTheme = SiteTheme::initial();
     <link rel="stylesheet" href="/assets/css/auth.css?v=<?= filemtime(__DIR__ . '/../assets/css/auth.css') ?>">
     <script>window.guristasAccount = <?= json_encode(['signedIn' => (bool)$viewer, 'csrf' => $viewer ? eve_csrf() : null], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
     <script src="/assets/js/auth.js?v=<?= filemtime(__DIR__ . '/../assets/js/auth.js') ?>" defer></script>
+<link rel="stylesheet" href="/assets/css/site-usability.css?v=<?= filemtime(dirname(__DIR__) . '/assets/css/site-usability.css') ?>">
 </head>
 <body>
 <a class="skip-link" href="#ship-explorer">Skip to ship explorer</a>

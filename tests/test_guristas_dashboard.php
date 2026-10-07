@@ -48,12 +48,12 @@ dashboard_check(!$combat['earned'] && $combat['remaining'] === 28, 'FW next comb
 $achievementScope = 'fw'; ob_start(); require dirname(__DIR__) . '/app/views/partials/pilot-achievements.php'; $fwHtml = ob_get_clean();
 dashboard_check(strpos($fwHtml, '28 to go') !== false && strpos($fwHtml, '3,908 to go') !== false, 'FW progression distances');
 $accountView = 'overview'; ob_start(); require dirname(__DIR__) . '/app/views/partials/guristas-progress.php'; $overviewHtml = ob_get_clean();
-dashboard_check(strpos($overviewHtml, 'dossier-highlights') !== false && strpos($overviewHtml, 'dossier-badges') === false && strpos($overviewHtml, 'standings#special-missions') !== false, 'Overview achievements and field-guide discovery');
+dashboard_check(strpos($overviewHtml, 'dossier-highlights') !== false && strpos($overviewHtml, 'dossier-badges') === false && strpos($overviewHtml, 'href="/missions/"') !== false, 'Overview achievements and field-guide discovery');
 $pilotData['fw']['state'] = 'stale'; $staleFw = eve_guristas_dashboard($pilotData, $catalog);
 foreach ($staleFw['badges'] as $badge) if ($badge['section'] === 'fw') dashboard_check(!$badge['earned'], 'Stale FW cannot verify achievement');
 echo "PASS: contextual achievements, exact FW goal distances, overview recognition and safe external link.\n";
 
 $accountView = 'standings'; ob_start(); require dirname(__DIR__) . '/app/views/partials/guristas-progress.php'; $sectionHtml = ob_get_clean();
-dashboard_check(strpos($sectionHtml, 'dossier-action') === false && strpos($sectionHtml, 'dossier-milestone-list') !== false && strpos($sectionHtml, 'id="special-missions"') !== false && strpos($sectionHtml, 'target="_blank" rel="noopener noreferrer"') !== false, 'Section evidence without action cards');
-dashboard_check(strpos($overviewHtml, 'NEXT FW ACTION') !== false && strpos($overviewHtml, 'standings#special-missions') !== false, 'Overview contains FW and epic recommendations');
+dashboard_check(strpos($sectionHtml, 'dossier-action') === false && strpos($sectionHtml, 'dossier-milestone-list') !== false && strpos($sectionHtml, 'href="/missions/"') !== false && strpos($sectionHtml, 'target="_blank" rel="noopener noreferrer"') !== false, 'Section evidence without action cards');
+dashboard_check(strpos($overviewHtml, 'NEXT FW ACTION') !== false && strpos($overviewHtml, 'href="/missions/"') !== false, 'Overview contains FW and epic recommendations');
 dashboard_check(count(array_filter($fwDashboard['badges'], static function ($badge) { return ($badge['target'] ?? 0) === 1000000; })) === 1, 'Contribution continues past 10000');

@@ -46,6 +46,7 @@ $publicRoot = dirname(__DIR__);
         }
     }
     </script>
+<link rel="stylesheet" href="/assets/css/site-usability.css?v=<?= filemtime(dirname(__DIR__) . '/assets/css/site-usability.css') ?>">
 </head>
 <body class="venal-body">
     <a class="skip-link" href="#venal-map-shell">Skip to Venal intelligence map</a>

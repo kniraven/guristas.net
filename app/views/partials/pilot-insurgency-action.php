@@ -2,7 +2,7 @@
 $insurgencyAdvice = $insurgencyAdvice ?? ['phase' => 'unavailable'];
 $campaign = $insurgencyAdvice['campaign'] ?? []; $warTarget = $insurgencyAdvice['target'] ?? null;
 ?>
-<article class="dossier-action dossier-illustrated"><img class="dossier-action-icon" src="/assets/images/dossier/insurgency.svg" width="72" height="72" alt=""><div><p class="eyebrow">NEXT FW ACTION</p>
+<article id="next-fw" class="dossier-action dossier-illustrated"><img class="dossier-action-icon" src="/assets/images/dossier/insurgency.svg" width="72" height="72" alt=""><div><p class="eyebrow">NEXT FW ACTION</p>
 <?php if (!$dashboard['fw_ready']): ?><h4>Restore your enlistment feed</h4><p>Sign in again if access was revoked. Membership must be known before sending you into pirate service.</p>
 <?php elseif (!$dashboard['enlisted']): ?><h4>Prepare for Guristas service</h4><p>Check Guristas enlistment requirements in the Insurgencies window. Campaign intelligence is available in Faction Warfare.</p>
 <?php elseif ($insurgencyAdvice['phase'] === 'active'): ?>
@@ -14,4 +14,4 @@ $campaign = $insurgencyAdvice['campaign'] ?? []; $warTarget = $insurgencyAdvice[
 <?php elseif ($insurgencyAdvice['phase'] === 'forecast'): ?><h4>Prepare for the forecast at <?= eve_e($campaign['origin_name'] ?? 'the next FOB') ?></h4><p><?= !empty($insurgencyAdvice['expected_start']) ? 'Estimated live start: ' . eve_e(gmdate('j M Y H:i', strtotime($insurgencyAdvice['expected_start']))) . ' EVE time (UTC).' : 'A start time has not been reported.' ?> This estimate uses the 48-hour forecasting period; confirm the countdown in EVE.</p>
 <?php elseif ($insurgencyAdvice['phase'] === 'none'): ?><h4>Prepare for the next Guristas insurgency</h4><p>No active or forecast Guristas campaign is reported. The next location and start time have not been announced in this feed.</p>
 <?php else: ?><h4>Check the current insurgency in EVE</h4><p>A fresh campaign feed is unavailable. Open Insurgencies in EVE before choosing a destination.</p><?php endif; ?>
-<a href="/war/guristas/">Open the Guristas war map →</a></div></article>
+<?php if (!empty($insurgencyAdvice['retrieved_at'])): ?><p class="note">Campaign report retrieved <?= eve_e($insurgencyAdvice['retrieved_at']) ?>. Orders and local conditions may have changed.</p><?php endif; ?><a href="/war/guristas/">Open the Guristas war map →</a></div></article>

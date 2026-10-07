@@ -1,0 +1,35 @@
+/* Keep operational screens readable while preserving the selected theme palette. */
+body.field-page .theme-fx-layer,body.dossier-page .theme-fx-layer,
+body.field-page .theme-side-stage,body.dossier-page .theme-side-stage,
+body.dossier-page .screen-noise,body.dossier-page .scanlines{display:none}
+body.field-page .public-tool{padding-top:28px}
+body.field-page .tool-heading h1{font-size:clamp(1.8rem,3.2vw,2.7rem)}
+.field-network-nav{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;margin:16px 0 20px}
+.field-network-nav>a,.field-network-nav summary{display:block;padding:8px 12px;border:1px solid var(--line-strong);border-radius:4px;text-decoration:none;cursor:pointer}
+.field-network-nav>a[aria-current=page]{border-color:var(--accent)}
+.field-network-nav details{margin:0}.field-network-nav .field-tabs{margin:10px 0;max-width:720px}
+body.dossier-page .account-page{padding-top:24px}
+body.dossier-page .account-dossier-header{align-items:center;margin-bottom:16px;flex-wrap:wrap}
+body.dossier-page .account-dossier-header h1{font-size:clamp(1.65rem,3vw,2.4rem);margin:4px 0;overflow-wrap:anywhere}
+body.dossier-page .account-dossier-header .eyebrow{margin:0}
+.account-dossier-header .tool-buttons{display:flex;flex-wrap:wrap;gap:10px}
+.account-dossier-header .tool-buttons a{padding:8px 12px;border:1px solid var(--line-strong);border-radius:4px;text-decoration:none;font-size:.85rem}
+body.dossier-page .dossier-trust,body.dossier-page .dossier-next{padding:16px}
+body.dossier-page .account-panel{background:var(--panel-solid)}
+.dossier-action-index{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 16px}
+.dossier-action-index a{padding:8px 12px;border:1px solid var(--line-strong);border-radius:4px;text-decoration:none;font-size:.85rem}
+:is(.dossier-action-index,.account-dossier-header,.field-network-nav) a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.dossier-action[id],.tool-card[id]{scroll-margin-top:100px}
+body.command-page .hero{min-height:0;padding-block:36px 24px}
+body.command-page .hero h1{font-size:clamp(2.3rem,4.4vw,3.5rem);line-height:.98;letter-spacing:-.04em}
+body.command-page .hero-lede{color:var(--text);margin-top:18px;max-width:60ch}
+body.command-page .hero-visual .ship-frame{min-height:280px}
+body.command-page .hero-visual img{max-height:320px}
+body.command-page .hero-actions{margin-top:18px}
+body.command-page .selected-operation{margin-top:16px}
+body.command-page .theme-fx-layer{z-index:0}
+body.command-page .ship-frame::before{content:'GURISTAS HULL // GILA'}
+body.command-page .command-status{margin-top:0}
+.upload-summary{padding:10px;border-left:3px solid var(--accent);font-size:.9rem}
+@media(max-width:991px){body.command-page .hero-visual{display:none}body.command-page .hero{padding-block:28px 24px}}
+@media(max-width:600px){body.field-page .public-tool{padding-top:20px}.account-dossier-header .tool-buttons{width:100%}.dossier-action-index a{flex:1 1 40%;text-align:center}}

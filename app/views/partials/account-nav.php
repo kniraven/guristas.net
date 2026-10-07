@@ -1,7 +1,7 @@
 <?php if ($viewer): ?>
     <a class="nav-profile-link"
        href="/account/"<?= ($navActive ?? '') === 'account' ? ' aria-current="page"' : '' ?>
-       aria-label="Account settings for <?= eve_e($viewer['character_name']) ?>">
+       aria-label="Pilot dossier for <?= eve_e($viewer['character_name']) ?>">
         <?= eve_e($viewer['character_name']) ?>
     </a>
 
