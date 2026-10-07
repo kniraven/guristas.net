@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+trap 'status=$?; printf "Deployment failed at line %s (exit %s).\n" "$LINENO" "$status" >&2; exit "$status"' ERR
 archive=${1:?Archive required}
 commit=${2:?Commit required}
-[[ "$archive" =~ ^/tmp/guristas-dossier-[a-f0-9]+\.tar$ && "$commit" =~ ^[a-f0-9]{40,64}$ ]] || exit 1
+[[ "$archive" =~ ^/tmp/guristas-dossier-[a-f0-9]+\.tar$ && "$commit" =~ ^[a-f0-9]{40,64}$ ]] || { printf "Deployment validation failed at line %s.\n" "$LINENO" >&2; exit 1; }
 site=/var/www/sites/guristas.net
 [[ -d "$site/app" && -d "$site/public" && ! -L "$site/storage" ]] || { echo 'Expected production layout not found.' >&2; exit 1; }
 work=$(mktemp -d /tmp/guristas-dossier-stage-XXXXXX)
@@ -19,9 +20,11 @@ chmod 700 "$backup_dir"
 exec 9>"$backup_dir/.guristas.net-backup.lock"
 flock -n 9 || { echo 'Another deployment/backup is running.' >&2; exit 1; }
 mapfile -t files < "$manifest"
+# Normalize manifest lines from Windows Git archives.
+for i in "${!files[@]}"; do files[$i]=${files[$i]%$'\r'}; done
 for file in "${files[@]}"; do
-    [[ "$file" =~ ^(app|public|tests|docs|tools)/[a-zA-Z0-9_./-]+$ || "$file" == config/esi-scopes.php ]] || exit 1
-    [[ "$file" != *..* && -f "$work/source/$file" && ! -L "$work/source/$file" ]] || exit 1
+    [[ "$file" =~ ^(app|public|tests|docs|tools)/[a-zA-Z0-9_./-]+$ || "$file" == config/esi-scopes.php ]] || { printf "Deployment validation failed at line %s.\n" "$LINENO" >&2; exit 1; }
+    [[ "$file" != *..* && -f "$work/source/$file" && ! -L "$work/source/$file" ]] || { printf "Deployment validation failed at line %s.\n" "$LINENO" >&2; exit 1; }
     parent="$site/$file"
     while [[ "$parent" != "$site" ]]; do
         [[ ! -L "$parent" ]] || { echo "Symlink blocks deployment: $parent" >&2; exit 1; }
