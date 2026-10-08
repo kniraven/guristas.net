@@ -16,7 +16,7 @@ function escape(string $value): string
     );
 }
 
-$siteVersion = '0.3.0';
+$siteVersion = '0.3.1';
 
 require_once dirname(__DIR__) . '/app/services/SiteTheme.php';
 $themes = SiteTheme::LABELS;
@@ -100,36 +100,6 @@ $operations = [
     ],
 ];
 
-$commandStatuses = [
-    [
-        'label' => 'Transmission',
-        'value' => 'Open channel',
-        'detail' => 'Kniraven on Twitch; live status unverified',
-        'tone' => 'quiet',
-    ],
-
-    [
-        'label' => 'Insurgency',
-        'value' => 'Check War Room',
-        'detail' => 'Public campaign report; no login required',
-        'tone' => 'warning',
-    ],
-
-    [
-        'label' => 'The Fulcrum',
-        'value' => 'Check listed stock',
-        'detail' => 'Public station orders in the Supply Console',
-        'tone' => 'active',
-    ],
-
-    [
-        'label' => 'Network',
-        'value' => 'Public Alpha',
-        'detail' => 'Command Deck v' . $siteVersion,
-        'tone' => 'active',
-    ],
-];
-
 $currentYear = (int) date('Y');
 
 ?>
@@ -182,11 +152,13 @@ $currentYear = (int) date('Y');
     <link rel="stylesheet" href="/assets/css/auth.css?v=<?= filemtime(__DIR__ . '/assets/css/auth.css') ?>">
     
     <script src="/assets/js/auth.js?v=<?= filemtime(__DIR__ . '/assets/js/auth.js') ?>" defer></script>
-<script src="/assets/js/public-tools.js?v=<?= filemtime(__DIR__ . '/assets/js/public-tools.js') ?>" defer></script>
+
 <link rel="stylesheet" href="/assets/css/site-usability.css?v=<?= filemtime(__DIR__ . '/assets/css/site-usability.css') ?>">
+<link rel="stylesheet" href="/assets/css/home-command.css?v=<?= filemtime(__DIR__ . '/assets/css/home-command.css') ?>">
+<script src="/assets/js/home-command.js?v=<?= filemtime(__DIR__ . '/assets/js/home-command.js') ?>" defer></script>
 </head>
 
-<body class="command-page">
+<body class="command-page home-refresh">
     <a
         class="skip-link"
         href="#command"
@@ -228,46 +200,40 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                 </p>
 
                 <h1>
-                    The State made
+                    Fly with Guristas.
                     <span>
-                        a Fatal mistake.
+                        Make your next move count.
                     </span>
                 </h1>
 
                 <p class="hero-lede">
-                    Learn the history. Build the ships. Corrupt the
-                    warzone. Supply The Fulcrum. Guristas.net is an
-                    independent command network for every capsuleer
-                    interested in the Guristas.
+                    Pirate warfare, profitable plans and stories worth stealing. Explore EVE’s Guristas network. Your next move is yours.
                 </p>
 
-                <div class="hero-actions">
-                    <a
-                        class="primary-button"
-                        href="/join/"
-                    >
-                        New pilot? Start here
-                    </a>
-
-                    <a
-                        class="secondary-button"
-                        href="/war/guristas/"
-                    >
-                        Open War Room
-                    </a>
-                </div>
-
-                <div
-                    class="selected-operation"
-                    aria-live="polite"
-                >
-                    <span>
-                        Selected operation
-                    </span>
-
-                    <strong id="selectedOperationLabel">
-                        RAID // CORRUPT THE WARZONE
-                    </strong>
+                <details class="rookie-brief">
+                    <summary>New to EVE? Start here</summary>
+                    <p>EVE is a space sandbox. The Guristas are one of its pirate factions. You can explore this network without an account or corporation membership.</p>
+                    <p>New character? Finish EVE’s tutorial and try the Career Agents to learn the controls before risking a ship in pirate warfare.</p>
+                    <div class="home-links"><a href="/lore/">Meet the Guristas</a><a href="/join/">Understand enlistment</a><a href="/ships/">Explore the ships</a></div>
+                </details>
+                <div class="directive-terminal" id="operations">
+                    <div class="terminal-label"><span>CHOOSE YOUR NEXT MOVE</span><span>PUBLIC ACCESS</span></div>
+                    <div class="home-directives" role="group" aria-label="Choose a directive">
+                    <?php
+                    $directiveSubtitles = ['raid'=>'Pirate warfare', 'trade'=>'Markets & LP', 'build'=>'Ship production', 'lore'=>'Guristas history', 'signals'=>'Music & broadcasts', 'join'=>'Fly together'];
+                    foreach (['raid','trade','build','lore','signals','join'] as $key): ?>
+                        <button type="button" class="operation-chip" data-operation="<?= escape($key) ?>" aria-controls="directive-briefing" aria-pressed="<?= $key === 'raid' ? 'true' : 'false' ?>">
+                            <b><?= escape($operations[$key]['title']) ?></b><small><?= escape($directiveSubtitles[$key]) ?></small>
+                        </button>
+                    <?php endforeach; ?>
+                    </div>
+                    <div class="selected-operation home-briefing" id="directive-briefing" aria-live="polite" aria-atomic="true">
+                        <span class="system-label">DIRECTIVE LOADED // <span data-directive-code>01</span></span>
+                        <strong id="selectedOperationLabel">RAID // CORRUPT THE WARZONE</strong>
+                        <p data-directive-copy>Find the Guristas campaign, inspect reported system conditions and prepare your next sortie.</p>
+                        <div class="home-links"><a class="primary-button" data-directive-action href="/war/guristas/">Open War Room →</a><a data-directive-help href="/join/">How pirate warfare works</a></div>
+                    </div>
+                    <noscript><p>Open a public destination: <a href="/war/guristas/">War</a> · <a href="/industry/?view=trade">Trade</a> · <a href="/industry/">Build</a> · <a href="/lore/">Lore</a> · <a href="/signals/">Signals</a> · <a href="/join/">Join</a>.</p></noscript>
                 </div>
             </div>
 
@@ -313,126 +279,39 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         </span>
 
                         <span>
-                            STATUS // COMBAT READY
+                            CLASS // CRUISER
                         </span>
                     </div>
                 </div>
+                <a class="ship-archive-link" href="/ships/">Inspect the Guristas fleet →</a>
             </div>
         </section>
 
-        <section
-            class="command-status shell reveal"
-            aria-label="Current network status"
-        >
-            <?php foreach ($commandStatuses as $status): ?>
-                <article
-                    class="status-item status-<?= escape($status['tone']) ?>"
-                >
-                    <span class="status-label">
-                        <?= escape($status['label']) ?>
-                    </span>
-
-                    <strong <?= $status['label'] === 'Insurgency' ? 'data-public-campaign-status' : '' ?>>
-                        <?= escape($status['value']) ?>
-                    </strong>
-
-                    <small <?= $status['label'] === 'Insurgency' ? 'data-public-campaign-detail' : '' ?>>
-                        <?= escape($status['detail']) ?>
-                    </small>
-                </article>
-            <?php endforeach; ?>
+        <section class="home-intelligence shell" aria-label="Field intelligence">
+            <article class="home-panel campaign-terminal" id="war-room">
+                <div class="terminal-label"><span>01 // WARZONE RELAY</span><button type="button" class="text-control" data-home-campaign-refresh>Refresh report</button></div>
+                <h2 data-home-campaign-title>Contacting the campaign relay</h2>
+                <p data-home-campaign-summary role="status">Fetching the latest available Guristas report.</p>
+                <label for="home-system">Inspect a reported system</label>
+                <select id="home-system" disabled><option>Awaiting report</option></select>
+                <div class="system-briefing" data-home-system-brief role="status">Corruption and suppression will appear here.</div>
+                <p class="home-source" data-home-campaign-source>Source freshness pending.</p>
+                <div class="home-links"><a class="primary-button" href="/war/guristas/">Open War Room →</a><a href="/missions/">Explore missions</a></div>
+            </article>
+            <article class="home-panel market-terminal" id="fulcrum">
+                <div class="terminal-label"><span>02 // FULCRUM EXCHANGE</span><span>ZARZAKH</span></div>
+                <h2>Price your next move.</h2>
+                <p>Inspect listed hull stock before you undock. Compare other hubs and the costs of getting it here.</p>
+                <div class="market-controls"><label for="home-market-type">Hull<select id="home-market-type"><option value="17930">Worm</option><option value="78367">Mamba</option><option value="17715" selected>Gila</option><option value="78366">Alligator</option><option value="17918">Rattlesnake</option></select></label><button type="button" class="secondary-button" data-home-market-refresh>Check stock</button></div>
+                <div class="market-result" data-home-market-result role="status">Select a hull and check The Fulcrum’s public orders.</div>
+                <p class="home-source" data-home-market-source>Low stock does not establish demand. Prices exclude fees and travel.</p>
+                <div class="home-links"><a class="primary-button" data-home-market-link href="/industry/?view=fulcrum&amp;type=17715">Open station market →</a><a href="/industry/?view=lp">Value your LP</a></div>
+            </article>
         </section>
-
-        <section
-            id="operations"
-            class="section shell"
-            aria-labelledby="operations-title"
-        >
-            <div class="section-heading reveal">
-                <div>
-                    <p class="eyebrow">
-                        SELECT A DIRECTIVE
-                    </p>
-
-                    <h2 id="operations-title">
-                        New pilot? Start here
-                    </h2>
-                </div>
-
-                <p>
-                    Guristas.net remembers your selection and
-                    highlights your preferred directive whenever you return.
-                </p>
-            </div>
-
-            <div class="operation-selector reveal">
-                <?php foreach ($operations as $key => $operation): ?>
-                    <button
-                        class="operation-chip"
-                        type="button"
-                        data-operation="<?= escape($key) ?>"
-                        data-target="<?= escape($operation['target']) ?>"
-                        aria-pressed="<?= $key === 'raid' ? 'true' : 'false' ?>"
-                    >
-                        <span>
-                            <?= escape($operation['number']) ?>
-                        </span>
-
-                        <?= escape($operation['title']) ?>
-                    </button>
-                <?php endforeach; ?>
-            </div>
-
-            <div class="operation-grid">
-                <?php foreach ($operations as $key => $operation): ?>
-                    <article
-                        class="operation-card cut-panel reveal"
-                        data-operation-card="<?= escape($key) ?>"
-                    >
-                        <div class="operation-card-top">
-                            <span class="card-number">
-                                <?= escape($operation['number']) ?>
-                            </span>
-
-                            <span class="card-tag">
-                                <?= escape($operation['tag']) ?>
-                            </span>
-                        </div>
-
-                        <h3>
-                            <?= escape($operation['title']) ?>
-                        </h3>
-
-                        <strong class="operation-subtitle">
-                            <?= escape($operation['subtitle']) ?>
-                        </strong>
-
-                        <p>
-                            <?= escape($operation['description']) ?>
-                        </p>
-
-                        <a
-                            href="#<?= escape($operation['target']) ?>"
-                            data-operation-link="<?= escape($key) ?>"
-                        >
-                            Open directive
-
-                            <span aria-hidden="true">
-                                →
-                            </span>
-                        </a>
-                    </article>
-                <?php endforeach; ?>
-            </div>
+        <section class="section shell home-production" id="industry-preview" aria-labelledby="production-title">
+            <div><p class="eyebrow">INDUSTRY // ACQUIRE. BUILD. SELL.</p><h2 id="production-title">Make the numbers work.</h2><p>Choose a Guristas hull. Open its actual recipe, calculate the materials and price your production run.</p></div>
+            <div class="home-panel"><label for="home-build-hull">Production target</label><select id="home-build-hull"><option value="17930">Worm</option><option value="78367">Mamba</option><option value="17715" selected>Gila</option><option value="78366">Alligator</option><option value="17918">Rattlesnake</option></select><p data-home-build-summary role="status">Gila blueprint: open the production console to enter your job assumptions.</p><a class="primary-button" data-home-build-link href="/industry/?bp=17716">Calculate Gila production →</a></div>
         </section>
-
-        <section id="war-room" class="section shell feature-layout" aria-labelledby="war-room-title">
-            <article class="feature-copy reveal"><p class="eyebrow">INSURGENCY WAR ROOM</p><h2 id="war-room-title">Find the campaign. Make your sortie count.</h2><p>Read the public campaign report, compare systems and learn how to earn your cut while helping the Guristas advance. Start with an eligible objective and a ship you can afford to replace.</p><div class="feature-actions"><a class="primary-button" href="/war/guristas/">Open live War Room</a><a class="secondary-button" href="/missions/">Find a mission contact</a></div></article>
-            <aside class="war-console cut-panel reveal"><div class="console-header"><span>YOUR FIRST SORTIE</span><strong>OPEN FIELD GUIDE</strong></div><div class="war-objectives"><article><span>01</span><div><strong>Check access</strong><p>Use the enlistment guide. Joining Cozen is optional.</p><a href="/join/">Start here →</a></div></article><article><span>02</span><div><strong>Prepare</strong><p>Compare hulls, check site restrictions and plan your exit.</p><a href="/ships/">Explore ships →</a></div></article><article><span>03</span><div><strong>Choose a manageable objective</strong><p>Check campaign systems, local activity and personal contribution in EVE.</p><a href="/war/guristas/">Read the report →</a></div></article></div></aside>
-        </section>
-
-        <section id="industry-preview" class="section shell" aria-labelledby="industry-title"><div class="section-heading reveal"><div><p class="eyebrow">GURISTAS SUPPLY CONSOLE</p><h2 id="industry-title">Price the job before committing.</h2></div><p>Use public recipes, LP offers and station orders to compare a realistic batch. No personal account access required.</p></div><div class="industry-preview cut-panel reveal"><div class="blueprint-display"><span class="blueprint-code">RECIPES // CCP STATIC DATA</span><div class="blueprint-shape" aria-hidden="true"><span></span><span></span><span></span></div></div><div class="industry-copy"><span class="system-label">MAKE YOUR MATERIALS COUNT</span><h3>Build, convert LP or compare markets.</h3><p>Calculate materials and production time with the efficiencies you enter. Price the complete material quantities, include fees and hauling, and compare the result with station buy-order demand.</p><div class="feature-actions"><a class="primary-button" href="/industry/">Open production console</a><a class="secondary-button" href="/industry/?view=lp">Compare Commando Guri offers</a><a class="secondary-button" href="/industry/?view=trade">Compare station orders</a></div></div></div></section>
-        <section id="fulcrum" class="section shell feature-layout feature-layout-reverse" aria-labelledby="fulcrum-title"><article class="fulcrum-console cut-panel reveal"><div class="console-header"><span>THE FULCRUM INITIATIVE</span><strong>PUBLIC MARKET CHECK</strong></div><div class="initiative-list"><div><span>01</span><p>Check listed stock and immediate buy-order demand.</p></div><div><span>02</span><p>Price your cargo, travel and expected losses.</p></div><div><span>03</span><p>Verify availability in EVE before hauling.</p></div></div></article><article class="feature-copy reveal"><p class="eyebrow">SUPPLY THE FULCRUM</p><h2 id="fulcrum-title">A pirate capital needs useful stock.</h2><p>Check the public station market before moving ships or materials to Zarzakh. Thin stock can suggest a gap, but it does not prove demand or promise a profitable sale.</p><p>Supply contracts and verified contribution credit require organizer-published jobs and delivery evidence. Read the Operations Board for posted jobs and submit delivery evidence after signing in.</p><div class="feature-actions"><a class="primary-button" href="/industry/?view=fulcrum">Check The Fulcrum</a><a class="secondary-button" href="/operations/#supply">Open supply jobs</a></div></article></section>
 
         <section
             id="lore"
@@ -487,9 +366,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         </span>
 
                         <div>
-                            <strong>
-                                Octopus Squadron
-                            </strong>
+                            <strong><a href="/lore/?dossier=fatal">Octopus Squadron →</a></strong>
 
                             <p>
                                 Fatal and Rabbit serve the Caldari Navy.
@@ -503,9 +380,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         </span>
 
                         <div>
-                            <strong>
-                                The Desertion
-                            </strong>
+                            <strong><a href="/lore/?dossier=rabbit">The Desertion →</a></strong>
 
                             <p>
                                 Two stolen Condors begin a criminal empire.
@@ -519,9 +394,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         </span>
 
                         <div>
-                            <strong>
-                                Venal
-                            </strong>
+                            <strong><a href="/lore/?dossier=venal">Venal →</a></strong>
 
                             <p>
                                 The gang becomes an organized pirate power.
@@ -535,9 +408,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         </span>
 
                         <div>
-                            <strong>
-                                The Deathless
-                            </strong>
+                            <strong><a href="/lore/?dossier=deathless">The Deathless →</a></strong>
 
                             <p>
                                 Zarzakh and The Fulcrum reshape pirate warfare.
@@ -551,9 +422,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         </span>
 
                         <div>
-                            <strong>
-                                Capsuleer Insurgencies
-                            </strong>
+                            <strong><a href="/lore/?dossier=insurgencies">Capsuleer Insurgencies →</a></strong>
 
                             <p>
                                 The Guristas recruit immortal operators.
@@ -587,66 +456,31 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
             </div>
 
             <div class="signals-grid">
-                <article class="signal-scanner cut-panel reveal">
-                    <div class="console-header">
-                        <span>
-                            BLACK RABBIT RADIO
-                        </span>
-
-                        <strong>
-                            SCANNING
-                        </strong>
-                    </div>
-
-                    <div class="frequency-display">
-                        <span>
-                            FREQUENCY
-                        </span>
-
-                        <output
-                            id="frequencyOutput"
-                            for="signalFrequency"
-                        >
-                            130.9
-                        </output>
-                    </div>
-
-                    <input
-                        id="signalFrequency"
-                        type="range"
-                        min="0"
-                        max="100"
-                        value="32"
-                        aria-label="Scan pirate radio frequencies"
-                    >
-
-                    <div
-                        id="signalMessage"
-                        class="signal-message"
-                        aria-live="polite"
-                    >
-                        Weak Guristas music carrier detected. This is a fictional discovery scanner, not live intercepted traffic.
-                    </div><p class="note">Fictional signal scanner. Discover real tools and fan transmissions; this does not intercept live EVE traffic.</p><a class="secondary-button" data-signal-destination href="/signals/#radio">Open the radio relay</a>
-
-                    <button
-                        id="scanSignalButton"
-                        class="secondary-button"
-                        type="button"
-                    >
-                        Scan random frequency
-                    </button>
+                <article class="signal-scanner cut-panel reveal home-radio">
+                    <div class="console-header"><span>BLACK RABBIT RADIO</span><strong data-home-radio-state>STANDBY</strong></div>
+                    <div class="frequency-display"><span>CHANNEL</span><output id="home-frequency-output" for="home-frequency">01 / 04</output></div>
+                    <label for="home-frequency">Tune the network</label>
+                    <input id="home-frequency" type="range" min="0" max="3" step="1" value="0" aria-valuetext="Fatal Mistake, music demo">
+                    <div class="radio-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                    <h3 data-home-radio-title>Fatal Mistake</h3>
+                    <p data-home-radio-description>Guristas alternate rock demo. Lock the channel to start playback.</p>
+                    <audio data-home-radio-player controls preload="none" src="/assets/audio/fatal-mistake-demo.mp3" aria-label="Black Rabbit Radio audio player"></audio>
+                    <p data-home-radio-status role="status">Channel selected. Press Play to listen.</p>
+                    <div class="home-links"><button type="button" class="primary-button" data-home-radio-play>Play transmission</button><button type="button" class="secondary-button" data-home-radio-next>Scan next channel</button><a data-home-radio-link href="/signals/#radio">Track archive →</a></div>
+                    <label class="motion-control"><input type="checkbox" data-home-radio-motion> Playback animation</label>
+                    <p class="home-source">Fan radio and broadcast discovery. Audio starts only when you choose to play.</p>
                 </article>
 
                 <article class="media-card cut-panel reveal">
                     <span class="system-label">
-                        LIVE TRANSMISSION
+                        KNIRAVEN // BROADCAST DESK
                     </span>
 
                     <h3>
                         Kniraven on Twitch
                     </h3>
 
-                    <p class="note">Live status is shown by Twitch when you open the channel.</p>
+                    <p class="note">Open the Twitch player for the channel’s current broadcast status.</p><div data-home-twitch-player></div><button class="primary-button" type="button" data-home-load-twitch>Connect to Twitch</button><p data-home-twitch-status role="status"></p>
 
                     <p>
                         Watch Kniraven on Twitch for broadcasts, recent videos
@@ -757,7 +591,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
 
             <aside class="cozen-card">
                 <span>
-                    RECOMMENDED GURISTAS CORPORATION
+                    KNIRAVEN’S CORPORATION
                 </span>
 
                 <strong>
@@ -787,7 +621,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
 
             <div class="footer-status">
                 <span>
-                    NETWORK VERSION
+                    PUBLIC ALPHA // VERSION
                 </span>
 
                 <strong>
