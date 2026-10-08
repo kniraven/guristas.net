@@ -97,3 +97,23 @@ body.home-refresh .hero-visual img{max-height:390px}
 .receiver-controls{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-top:22px;padding-top:20px;border-top:2px groove #505255}.receiver .receiver-play{background:linear-gradient(#657251,#35412a);min-width:175px}.receiver-volume{display:flex;align-items:center;gap:10px;font:11px monospace}.receiver .receiver-volume input{width:140px;height:44px}.receiver .motion-control{font:12px monospace;display:flex;align-items:center;gap:8px}.receiver .motion-control input{width:20px;height:20px}.receiver-footer{margin-top:20px;font-size:13px}.receiver-footer a{color:#e1d3b4;text-decoration:underline;text-underline-offset:4px}.receiver audio{display:none}.receiver [hidden]{display:none!important}.receiver .home-twitch-frame{width:100%;height:auto;aspect-ratio:16/9;min-height:300px;border:0;margin:10px 0}
 @media(max-width:700px){.home-refresh .receiver{padding:20px 14px}.receiver-main{grid-template-columns:minmax(0,1fr);gap:20px}.receiver-screen{padding:16px;border-width:5px}.receiver-tuner{flex-direction:row;justify-content:center;flex-wrap:wrap}.receiver-tuner>label{width:100%;text-align:center}.receiver-stamp{display:none}.receiver-presets{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.receiver-controls{gap:12px}.receiver-controls .receiver-play{flex:1}.receiver-volume{flex:1}.receiver .receiver-volume input{width:100%;min-width:80px}.receiver .home-twitch-frame{min-height:300px}.receiver-plate{font-size:9px;gap:8px}.receiver-channel{gap:10px}.receiver-channel span{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.receiver *{scroll-behavior:auto;transition:none!important;animation:none!important}}
+
+/* Keep the receiver chassis and controls stationary while tuning. */
+.home-refresh .receiver-screen{box-sizing:border-box;height:560px;overflow-y:auto;scrollbar-gutter:stable;align-self:start}
+.receiver-main{align-items:start}
+.receiver-tuner{padding-top:24px}
+.receiver-controls{display:grid;grid-template-columns:minmax(175px,1fr) minmax(180px,1fr) auto;grid-template-areas:"transport volume meter";min-height:68px;align-items:center}
+.receiver-controls [data-home-radio-play],.receiver-controls [data-home-load-twitch]{grid-area:transport;width:100%;min-height:52px}
+.receiver-controls .receiver-volume{grid-area:volume}
+.receiver-controls .motion-control{grid-area:meter}
+.receiver .receiver-controls [hidden]{display:flex!important;visibility:hidden;pointer-events:none}
+.receiver .receiver-controls button[hidden]{display:block!important}
+.receiver-footer{min-height:44px}
+@media(max-width:700px){
+ .home-refresh .receiver-screen{height:600px}
+ .receiver-tuner{padding-top:0}
+ .receiver-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"transport transport" "volume volume" "meter meter";gap:12px;min-height:172px}
+ .receiver-controls .receiver-volume{min-height:44px}
+ .receiver-controls .motion-control{min-height:28px}
+ .receiver-footer{align-items:flex-start;flex-direction:column;justify-content:center;gap:12px;min-height:72px}
+}
