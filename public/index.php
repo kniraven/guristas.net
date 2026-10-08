@@ -16,7 +16,7 @@ function escape(string $value): string
     );
 }
 
-$siteVersion = '0.3.1';
+$siteVersion = '0.3.2';
 
 require_once dirname(__DIR__) . '/app/services/SiteTheme.php';
 $themes = SiteTheme::LABELS;
@@ -455,101 +455,43 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                 </p>
             </div>
 
-            <div class="signals-grid">
-                <article class="signal-scanner cut-panel reveal home-radio">
-                    <div class="console-header"><span>BLACK RABBIT RADIO</span><strong data-home-radio-state>STANDBY</strong></div>
-                    <div class="frequency-display"><span>CHANNEL</span><output id="home-frequency-output" for="home-frequency">01 / 04</output></div>
-                    <label for="home-frequency">Tune the network</label>
-                    <input id="home-frequency" type="range" min="0" max="3" step="1" value="0" aria-valuetext="Fatal Mistake, music demo">
-                    <div class="radio-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-                    <h3 data-home-radio-title>Fatal Mistake</h3>
-                    <p data-home-radio-description>Guristas alternate rock demo. Lock the channel to start playback.</p>
-                    <audio data-home-radio-player controls preload="none" src="/assets/audio/fatal-mistake-demo.mp3" aria-label="Black Rabbit Radio audio player"></audio>
-                    <p data-home-radio-status role="status">Channel selected. Press Play to listen.</p>
-                    <div class="home-links"><button type="button" class="primary-button" data-home-radio-play>Play transmission</button><button type="button" class="secondary-button" data-home-radio-next>Scan next channel</button><a data-home-radio-link href="/signals/#radio">Track archive →</a></div>
-                    <label class="motion-control"><input type="checkbox" data-home-radio-motion> Playback animation</label>
-                    <p class="home-source">Fan radio and broadcast discovery. Audio starts only when you choose to play.</p>
-                </article>
-
-                <article class="media-card cut-panel reveal">
-                    <span class="system-label">
-                        KNIRAVEN // BROADCAST DESK
-                    </span>
-
-                    <h3>
-                        Kniraven on Twitch
-                    </h3>
-
-                    <p class="note">Open the Twitch player for the channel’s current broadcast status.</p><div data-home-twitch-player></div><button class="primary-button" type="button" data-home-load-twitch>Connect to Twitch</button><p data-home-twitch-status role="status"></p>
-
-                    <p>
-                        Watch Kniraven on Twitch for broadcasts, recent videos
-                        and the channel schedule.
-                    </p>
-
-                    <a
-                        class="secondary-button"
-                        href="https://www.twitch.tv/kniraven"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        Open Twitch channel
-                    </a>
-                </article>
-
-                <article class="media-card cut-panel reveal">
-                    <span class="system-label">
-                        ENEMY TRANSMISSION
-                    </span>
-
-                    <h3>
-                        Federation Frontline Report
-                    </h3>
-
-                    <p>
-                        A Gallente-aligned warzone broadcast and recurring
-                        target of Guristas signal correction.
-                    </p>
-
-                    <a class="secondary-button" href="/signals/#enemy">Hear the rival broadcast</a><div class="enemy-classification">
-                        <span>
-                            CLASSIFICATION
-                        </span>
-
-                        <strong>
-                            NEMESIS // THEATRICAL
-                        </strong>
+            <article class="home-radio receiver reveal" aria-label="Guristas communications receiver">
+                <div class="receiver-plate"><span>GURI // SIGNAL ACQUISITION UNIT</span><span>RX-06 · FIELD MODIFIED</span></div>
+                <div class="receiver-main">
+                    <div class="receiver-screen">
+                        <div class="receiver-readout"><span>INTERCEPTED SIGNAL</span><strong data-home-radio-state>STANDBY</strong></div>
+                        <div class="receiver-channel"><output id="home-frequency-output" for="home-frequency">01</output><span>CHANNEL<br>BLACK RABBIT NETWORK</span></div>
+                        <h3 data-home-radio-title>Fatal Mistake</h3>
+                        <p data-home-radio-description>Guristas alternate rock demo.</p>
+                        <div class="receiver-meter" aria-label="Audio level"><span>OUTPUT</span><div class="radio-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+                        <p data-home-radio-status role="status">Channel selected. Press Play to listen.</p>
+                        <div data-home-twitch-player></div>
+                        <div class="receiver-timeline"><label for="receiver-seek">TRACK POSITION</label><output data-radio-time>0:00 / 0:00</output></div>
+                        <input id="receiver-seek" type="range" min="0" max="100" value="0" step="0.1" disabled aria-label="Track position">
                     </div>
-                </article>
-
-                <article class="media-card cut-panel reveal">
-                    <span class="system-label">
-                        PIRATE AUDIO ARCHIVE
-                    </span>
-
-                    <h3>
-                        Guristas album
-                    </h3>
-
-                    <p>
-                        Play the recovered Fatal Mistake and Black Rabbits
-                        demos, read the companion lyrics and choose an optional
-                        playback animation. No login required.
-                    </p>
-
-                    <a class="secondary-button" href="/signals/#radio">Play Black Rabbit Radio</a><div class="track-list">
-                        <span>
-                            Fatal Mistake
-                        </span>
-
-                        <span>
-                            Black Rabbits of Venal
-                        </span>
-
-
+                    <div class="receiver-tuner">
+                        <label for="home-frequency">CHANNEL SELECT</label>
+                        <div class="receiver-dial"><span class="dial-pointer"></span><input id="home-frequency" type="range" min="0" max="3" step="1" value="0" aria-label="Tune channel" aria-valuetext="Fatal Mistake"></div>
+                        <div class="receiver-step"><button type="button" data-radio-prev aria-label="Previous channel">◀</button><button type="button" data-home-radio-next aria-label="Next channel">▶</button></div>
+                        <span class="receiver-stamp">GURISTAS<br>PROPERTY</span>
                     </div>
-                </article>
-            </div>
+                </div>
+                <div class="receiver-presets" role="group" aria-label="Station presets">
+                    <button type="button" data-radio-preset="0" aria-pressed="true"><small>01 // MUSIC</small>Fatal Mistake</button>
+                    <button type="button" data-radio-preset="1" aria-pressed="false"><small>02 // MUSIC</small>Black Rabbits</button>
+                    <button type="button" data-radio-preset="2" aria-pressed="false"><small>03 // BROADCAST</small>Kniraven</button>
+                    <button type="button" data-radio-preset="3" aria-pressed="false"><small>04 // ENEMY</small>Frontline Report</button>
+                </div>
+                <div class="receiver-controls">
+                    <button type="button" class="receiver-play" data-home-radio-play>Play transmission</button>
+                    <button type="button" class="receiver-play" data-home-load-twitch hidden>Connect to Twitch</button>
+                    <label class="receiver-volume" for="receiver-volume">VOLUME <input id="receiver-volume" type="range" min="0" max="1" step="0.01" value="0.7"></label>
+                    <label class="motion-control"><input type="checkbox" data-home-radio-motion checked> Audio meter</label>
+                </div>
+                <div class="receiver-footer"><a data-home-radio-link href="/signals/#radio">Track archive →</a><a href="/signals/">All transmissions →</a></div>
+                <audio data-home-radio-player preload="none" src="/assets/audio/fatal-mistake-demo.mp3"></audio>
+                <noscript><p>Use the audio player or <a href="/signals/">open transmissions</a>.</p><audio controls src="/assets/audio/fatal-mistake-demo.mp3"></audio></noscript>
+            </article>
         </section>
 
         <section

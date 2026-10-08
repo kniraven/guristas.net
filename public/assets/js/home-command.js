@@ -109,37 +109,55 @@
     build.addEventListener('change',selectBuild);selectBuild();
 
     const channels=[
-        {title:'Fatal Mistake',description:'Guristas alternate rock demo.',audio:'/assets/audio/fatal-mistake-demo.mp3',href:'/signals/#radio',link:'Track archive →'},
-        {title:'Black Rabbits',description:'A second recovered Guristas alternate rock demo.',audio:'/assets/audio/black-rabbits-demo.mp3',href:'/signals/#radio',link:'Track archive →'},
-        {title:'Kniraven // Broadcast desk',description:'Open the channel player for current status, or browse recent broadcasts.',href:'https://www.twitch.tv/kniraven',link:'Open Twitch channel ↗'},
-        {title:'Federation Frontline Report',description:'The Gallente side of the story. Open their broadcast archive.',href:'/signals/#enemy',link:'Open rival broadcasts →'}
+        {title:'Fatal Mistake',description:'Recovered Guristas alternate rock demo.',audio:'/assets/audio/fatal-mistake-demo.mp3',href:'/signals/#radio',link:'Track archive →'},
+        {title:'Black Rabbits',description:'A second recovered transmission from Black Rabbit Radio.',audio:'/assets/audio/black-rabbits-demo.mp3',href:'/signals/#radio',link:'Track archive →'},
+        {title:'Kniraven',description:'Pirate broadcasts from Kniraven. Connect to check the channel or watch on Twitch.',href:'https://www.twitch.tv/kniraven',link:'Open Twitch channel ↗'},
+        {title:'Federation Frontline Report',description:'Intercept the Gallente side of the story. Open the broadcast archive to choose an episode.',href:'/signals/#enemy',link:'Open rival broadcasts →'}
     ];
-    const dial=$('#home-frequency'),player=$('[data-home-radio-player]'),play=$('[data-home-radio-play]'),radio=$('.home-radio'),motion=$('[data-home-radio-motion]');let channel=-1;
-    const prefersReduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-    function visual(){radio.classList.toggle('is-playing',!player.paused&&motion.checked&&!prefersReduced.matches);}
-    function tune(){
-        const next=Number(dial.value);if(next===channel)return;player.pause();channel=next;
-        const c=channels[channel];text('#home-frequency-output',`${String(channel+1).padStart(2,'0')} / 04`);text('[data-home-radio-title]',c.title);text('[data-home-radio-description]',c.description);
-        dial.setAttribute('aria-valuetext',c.title+(c.audio?', music demo':', broadcast link'));
-        text('[data-home-radio-state]','CHANNEL LOCKED');text('[data-home-radio-status]',c.audio?'Channel selected. Press Play to listen.':'Broadcast selected. Open the channel to watch or listen.');
-        player.hidden=!c.audio;play.hidden=!c.audio;motion.closest('label').hidden=!c.audio;
-        if(c.audio){player.src=c.audio;play.textContent='Play transmission';}else{player.removeAttribute('src');player.load();}
-        const a=$('[data-home-radio-link]');a.href=c.href;a.textContent=c.link;if(c.href.startsWith('https:')){a.target='_blank';a.rel='noopener noreferrer';}else{a.removeAttribute('target');a.removeAttribute('rel');}
-        visual();
-        document.dispatchEvent(new CustomEvent('guristas:signalscan',{detail:{frequency:channel*33,signalPanel:radio,frequencyOutput:$('#home-frequency-output'),signalMessage:$('[data-home-radio-description]')}}));
+    const dial=$('#home-frequency'),player=$('[data-home-radio-player]'),play=$('[data-home-radio-play]'),radio=$('.home-radio'),motion=$('[data-home-radio-motion]'),seek=$('#receiver-seek'),volume=$('#receiver-volume'),connect=$('[data-home-load-twitch]'),screen=$('[data-home-twitch-player]');
+    const presets=[...document.querySelectorAll('[data-radio-preset]')],bars=[...radio.querySelectorAll('.radio-bars i')];
+    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+    let channel=-1,context,analyser,samples,raf=0;
+    function state(label,message){text('[data-home-radio-state]',label);text('[data-home-radio-status]',message);radio.dataset.state=label.toLowerCase();}
+    function stopMeter(){cancelAnimationFrame(raf);raf=0;bars.forEach(b=>b.style.height='4%');}
+    function meter(){
+        stopMeter();if(!analyser||player.paused||!motion.checked||reduced.matches)return;
+        function draw(){analyser.getByteFrequencyData(samples);bars.forEach((b,i)=>{const start=Math.floor(i*samples.length/bars.length),end=Math.floor((i+1)*samples.length/bars.length);let sum=0;for(let j=start;j<end;j++)sum+=samples[j];b.style.height=Math.max(4,sum/(end-start)/255*100)+'%';});raf=requestAnimationFrame(draw);}
+        draw();
     }
-    dial.addEventListener('input',tune);$('[data-home-radio-next]').addEventListener('click',()=>{dial.value=String((channel+1)%channels.length);tune();});
-    play.addEventListener('click',async()=>{if(!player.paused){player.pause();return;}const selected=channel;try{await player.play();}catch(error){if(channel===selected)text('[data-home-radio-status]','Playback unavailable. Try the native player or open the track archive.');}});
-    player.addEventListener('play',()=>{play.textContent='Pause transmission';text('[data-home-radio-state]','PLAYING');text('[data-home-radio-status]',`Playing: ${channels[channel].title}`);visual();});
-    player.addEventListener('pause',()=>{play.textContent='Play transmission';text('[data-home-radio-state]','PAUSED');text('[data-home-radio-status]',`Paused: ${channels[channel]?.title||'Transmission'}`);visual();});
-    player.addEventListener('ended',()=>{text('[data-home-radio-state]','COMPLETE');text('[data-home-radio-status]','Transmission complete. Scan another channel or replay.');visual();});
-    player.addEventListener('error',()=>{if(channels[channel]?.audio){text('[data-home-radio-state]','RELAY ERROR');text('[data-home-radio-status]','Audio unavailable. Open the track archive or retry Play.');}visual();});
-    motion.addEventListener('change',visual);prefersReduced.addEventListener('change',visual);tune();
-    $('[data-home-load-twitch]').addEventListener('click',()=>{
-        player.pause();const frame=document.createElement('iframe');const url=new URL('https://player.twitch.tv/');
-        url.searchParams.set('channel','kniraven');url.searchParams.set('parent',location.hostname);url.searchParams.set('autoplay','false');
-        frame.src=url.href;frame.title='Kniraven Twitch broadcast';frame.allowFullscreen=true;frame.allow='fullscreen';frame.className='home-twitch-frame';
-        $('[data-home-twitch-player]').replaceChildren(frame);text('[data-home-twitch-status]','Twitch connection requested. If its player cannot load, use Open Twitch channel.');
-        text('[data-home-load-twitch]','Reconnect to Twitch');
-    });
+    async function enableMeter(){
+        const Audio=window.AudioContext||window.webkitAudioContext;
+        if(!Audio)return;
+        try{if(!context){context=new Audio();analyser=context.createAnalyser();analyser.fftSize=128;samples=new Uint8Array(analyser.frequencyBinCount);const source=context.createMediaElementSource(player);source.connect(analyser);analyser.connect(context.destination);}if(context.state==='suspended')await context.resume();}catch(error){/* Playback remains available without a meter. */}
+    }
+    function clock(value){if(!Number.isFinite(value))return '0:00';return `${Math.floor(value/60)}:${String(Math.floor(value%60)).padStart(2,'0')}`;}
+    function progress(){const valid=Number.isFinite(player.duration)&&player.duration>0;seek.disabled=!valid;seek.value=valid?player.currentTime/player.duration*100:0;text('[data-radio-time]',`${clock(player.currentTime)} / ${clock(player.duration)}`);seek.setAttribute('aria-valuetext',clock(player.currentTime));}
+    function tune(){
+        const next=Number(dial.value);if(next===channel)return;player.pause();screen.replaceChildren();channel=next;const c=channels[channel];
+        stopMeter();radio.style.setProperty('--dial-angle',(-135+channel*90)+'deg');
+        text('#home-frequency-output',String(channel+1).padStart(2,'0'));text('[data-home-radio-title]',c.title);text('[data-home-radio-description]',c.description);dial.setAttribute('aria-valuetext',c.title);
+        presets.forEach((b,i)=>b.setAttribute('aria-pressed',String(i===channel)));
+        play.hidden=!c.audio;connect.hidden=channel!==2;connect.textContent='Connect to Twitch';volume.closest('label').hidden=!c.audio;motion.closest('label').hidden=!c.audio;seek.hidden=!c.audio;$('.receiver-timeline').hidden=!c.audio;$('.receiver-meter').hidden=!c.audio;
+        if(c.audio){player.src=c.audio;play.textContent='Play transmission';}else player.removeAttribute('src');player.load();progress();
+        const link=$('[data-home-radio-link]');link.href=c.href;link.textContent=c.link;if(c.href.startsWith('https:')){link.target='_blank';link.rel='noopener noreferrer';}else{link.removeAttribute('target');link.removeAttribute('rel');}
+        state('SELECTED',c.audio?'Channel selected. Press Play to listen.':channel===2?'Ready to connect. Twitch reports its own broadcast status.':'Archive channel selected. Open rival broadcasts to listen.');
+    }
+    function step(amount){dial.value=String((channel+amount+channels.length)%channels.length);tune();}
+    dial.addEventListener('input',tune);$('[data-home-radio-next]').addEventListener('click',()=>step(1));$('[data-radio-prev]').addEventListener('click',()=>step(-1));presets.forEach(b=>b.addEventListener('click',()=>{dial.value=b.dataset.radioPreset;tune();}));
+    // Native range supplies keyboard support; vertical dragging turns the dial.
+    let drag;
+    dial.addEventListener('pointerdown',event=>{if(event.button!==0)return;drag={y:event.clientY,value:channel};dial.setPointerCapture(event.pointerId);dial.focus();event.preventDefault();});
+    dial.addEventListener('pointermove',event=>{if(!drag)return;dial.value=String(Math.max(0,Math.min(3,drag.value+Math.round((drag.y-event.clientY)/28))));tune();});
+    for(const name of ['pointerup','pointercancel','lostpointercapture'])dial.addEventListener(name,()=>{drag=null;});
+    play.addEventListener('click',async()=>{if(!player.paused){player.pause();return;}const selected=channel;state('LOADING','Opening audio transmission…');try{await enableMeter();if(selected!==channel)return;await player.play();}catch(error){if(selected===channel)state('UNAVAILABLE','Audio could not play. Retry Play or open the track archive.');}});
+    player.addEventListener('playing',()=>{play.textContent='Pause transmission';state('PLAYING',`Playing: ${channels[channel].title}`);meter();});
+    player.addEventListener('pause',()=>{play.textContent='Play transmission';stopMeter();if(channels[channel]?.audio&&['playing','buffering'].includes(radio.dataset.state))state('PAUSED','Transmission paused. Press Play to resume.');});
+    player.addEventListener('waiting',()=>{if(channels[channel]?.audio&&!player.paused){stopMeter();state('BUFFERING','Receiving audio…');}});
+    player.addEventListener('ended',()=>{play.textContent='Replay transmission';state('COMPLETE','Transmission complete. Replay or tune another channel.');stopMeter();});
+    player.addEventListener('error',()=>{if(channels[channel]?.audio)state('UNAVAILABLE','Audio unavailable. Retry Play or open the track archive.');stopMeter();});
+    for(const event of ['timeupdate','loadedmetadata','durationchange','emptied'])player.addEventListener(event,progress);
+    seek.addEventListener('input',()=>{if(Number.isFinite(player.duration)&&player.duration>0)player.currentTime=Number(seek.value)/100*player.duration;});
+    player.volume=Number(volume.value);volume.addEventListener('input',()=>{player.volume=Number(volume.value);});motion.addEventListener('change',meter);reduced.addEventListener('change',meter);
+    connect.addEventListener('click',()=>{if(channel!==2)return;player.pause();const frame=document.createElement('iframe');const url=new URL('https://player.twitch.tv/');url.searchParams.set('channel','kniraven');url.searchParams.set('parent',location.hostname);url.searchParams.set('autoplay','false');frame.src=url.href;frame.title='Kniraven Twitch broadcast';frame.allowFullscreen=true;frame.allow='fullscreen';frame.className='home-twitch-frame';screen.replaceChildren(frame);state('PLAYER OPEN','Twitch player requested. If blocked, use Open Twitch channel below.');connect.textContent='Reconnect to Twitch';});
+    tune();
 })();
