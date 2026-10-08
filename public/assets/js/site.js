@@ -180,7 +180,7 @@ const navigation = document.querySelector(
 
 const operationButtons = [
     ...document.querySelectorAll(
-        "[data-operation]"
+        "button[data-operation]"
     )
 ];
 
@@ -693,6 +693,8 @@ function selectOperation(
             definition.label;
     }
 
+    document.dispatchEvent(new CustomEvent('guristas:directive-selected', {detail: {key: operationKey}}));
+
     if (shouldStore) {
         storage.set(
             "guristas.preferredOperation",
@@ -714,31 +716,7 @@ operationButtons.forEach(button => {
             const operationKey =
                 button.dataset.operation;
 
-            const targetId =
-                button.dataset.target;
-
             selectOperation(operationKey);
-
-            const target =
-                document.getElementById(
-                    targetId
-                );
-
-            if (target) {
-                window.setTimeout(
-                    () => {
-                        target.scrollIntoView({
-                            behavior:
-                                reducedMotion
-                                    ? "auto"
-                                    : "smooth",
-
-                            block: "start"
-                        });
-                    },
-                    180
-                );
-            }
         }
     );
 });
