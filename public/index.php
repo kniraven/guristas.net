@@ -459,36 +459,31 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                 <div class="receiver-plate"><span>GURI // SIGNAL ACQUISITION UNIT</span><span>RX-06 · FIELD MODIFIED</span></div>
                 <div class="receiver-main">
                     <div class="receiver-screen">
+                        <div class="receiver-video-layer" data-home-twitch-player hidden></div>
                         <div class="receiver-readout"><span>INTERCEPTED SIGNAL</span><strong data-home-radio-state>STANDBY</strong></div>
                         <div class="receiver-channel"><output id="home-frequency-output" for="home-frequency">01</output><span>CHANNEL<br>BLACK RABBIT NETWORK</span></div>
                         <h3 data-home-radio-title>Fatal Mistake</h3>
                         <p data-home-radio-description>Guristas alternate rock demo.</p>
                         <div class="receiver-meter" aria-label="Audio level"><span>OUTPUT</span><div class="radio-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
                         <p data-home-radio-status role="status">Channel selected. Press Play to listen.</p>
-                        <div data-home-twitch-player></div>
-                        <div class="receiver-timeline"><label for="receiver-seek">TRACK POSITION</label><output data-radio-time>0:00 / 0:00</output></div>
-                        <input id="receiver-seek" type="range" min="0" max="100" value="0" step="0.1" disabled aria-label="Track position">
+                        <div class="receiver-volume-bar-head"><label for="receiver-volume-bar">VOLUME</label><output data-radio-volume-bar for="receiver-volume-bar">70%</output></div>
+                        <input id="receiver-volume-bar" type="range" min="0" max="100" value="70" step="1" aria-label="Broadcast volume">
                     </div>
                     <div class="receiver-tuner">
                         <label for="home-frequency">CHANNEL SELECT</label>
-                        <div class="receiver-dial"><span class="dial-pointer"></span><input id="home-frequency" type="range" min="0" max="3" step="1" value="0" aria-label="Tune channel" aria-valuetext="Fatal Mistake"></div>
+                        <div class="receiver-dial"><span class="dial-pointer"></span><input id="home-frequency" type="range" min="0" max="4" step="1" value="0" aria-label="Tune channel" aria-valuetext="Fatal Mistake"></div>
                         <div class="receiver-step"><button type="button" data-radio-prev aria-label="Previous channel">◀</button><button type="button" data-home-radio-next aria-label="Next channel">▶</button></div>
                         <span class="receiver-stamp">GURISTAS<br>PROPERTY</span>
+                        <p class="receiver-embed-status" data-receiver-embed-status role="status" aria-live="polite" hidden></p>
+                        <div class="receiver-controls" aria-label="Receiver playback and volume">
+                            <div class="receiver-transport" role="group" aria-label="Transmission controls">
+                                <button type="button" class="receiver-transport-button" data-home-radio-play aria-label="Play transmission" aria-pressed="false" title="Play"><span aria-hidden="true" class="transport-symbol transport-play">▶</span></button>
+                                <button type="button" class="receiver-transport-button" data-home-radio-pause aria-label="Pause transmission" aria-pressed="true" title="Pause"><span aria-hidden="true" class="transport-symbol transport-pause">❚❚</span></button>
+                            </div>
+                            <div class="receiver-volume"><label for="receiver-volume">VOLUME</label><div class="receiver-volume-knob"><span class="volume-pointer" aria-hidden="true"></span><input id="receiver-volume" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Receiver volume"></div><output data-radio-volume for="receiver-volume">70%</output></div>
+                        </div>
                     </div>
                 </div>
-                <div class="receiver-presets" role="group" aria-label="Station presets">
-                    <button type="button" data-radio-preset="0" aria-pressed="true"><small>01 // MUSIC</small>Fatal Mistake</button>
-                    <button type="button" data-radio-preset="1" aria-pressed="false"><small>02 // MUSIC</small>Black Rabbits</button>
-                    <button type="button" data-radio-preset="2" aria-pressed="false"><small>03 // BROADCAST</small>Kniraven</button>
-                    <button type="button" data-radio-preset="3" aria-pressed="false"><small>04 // ENEMY</small>Frontline Report</button>
-                </div>
-                <div class="receiver-controls">
-                    <button type="button" class="receiver-play" data-home-radio-play>Play transmission</button>
-                    <button type="button" class="receiver-play" data-home-load-twitch hidden>Connect to Twitch</button>
-                    <label class="receiver-volume" for="receiver-volume">VOLUME <input id="receiver-volume" type="range" min="0" max="1" step="0.01" value="0.7"></label>
-                    <label class="motion-control"><input type="checkbox" data-home-radio-motion checked> Audio meter</label>
-                </div>
-                <div class="receiver-footer"><a data-home-radio-link href="/signals/#radio">Track archive →</a><a href="/signals/">All transmissions →</a></div>
                 <audio data-home-radio-player preload="none" src="/assets/audio/fatal-mistake-demo.mp3"></audio>
                 <noscript><p>Use the audio player or <a href="/signals/">open transmissions</a>.</p><audio controls src="/assets/audio/fatal-mistake-demo.mp3"></audio></noscript>
             </article>

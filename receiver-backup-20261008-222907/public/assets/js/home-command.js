@@ -139,55 +139,10 @@
         if(!Audio)return;
         try{if(!context){context=new Audio();analyser=context.createAnalyser();analyser.fftSize=128;samples=new Uint8Array(analyser.frequencyBinCount);const source=context.createMediaElementSource(player);source.connect(analyser);analyser.connect(context.destination);}if(context.state==='suspended')await context.resume();}catch(error){/* Playback remains available without a meter. */}
     }
-    // Keep only the Twitch video above the global CRT layers.
-    let twitchPortal=null, portalFrame=0;
-    const receiverGlass=screen.closest('.receiver-screen');
-    function positionTwitchPortal(){
-        portalFrame=0;
-        if(!twitchPortal||!receiverGlass)return;
-        const rect=receiverGlass.getBoundingClientRect();
-        const header=document.querySelector('.site-header');
-        const headerRect=header?.getBoundingClientRect();
-        const topLimit=headerRect&&headerRect.top<=0?Math.max(0,headerRect.bottom):0;
-        const clippedTop=Math.max(0,topLimit-rect.top);
-        const clippedBottom=Math.max(0,rect.bottom-window.innerHeight);
-        const clippedLeft=Math.max(0,-rect.left);
-        const clippedRight=Math.max(0,rect.right-window.innerWidth);
-        const visible=rect.width>0&&rect.height>0&&clippedTop+clippedBottom<rect.height&&clippedLeft+clippedRight<rect.width;
-        twitchPortal.style.visibility=visible?'visible':'hidden';
-        twitchPortal.style.left=rect.left+'px';
-        twitchPortal.style.top=rect.top+'px';
-        twitchPortal.style.width=rect.width+'px';
-        twitchPortal.style.height=rect.height+'px';
-        twitchPortal.style.clipPath=`inset(${clippedTop}px ${clippedRight}px ${clippedBottom}px ${clippedLeft}px)`;
-        portalFrame=requestAnimationFrame(positionTwitchPortal);
-    }
-    function createTwitchPortal(){
-        if(twitchPortal)return twitchPortal;
-        twitchPortal=document.createElement('div');
-        twitchPortal.className='receiver-twitch-portal';
-        twitchPortal.setAttribute('aria-label','Live Twitch video');
-        document.body.appendChild(twitchPortal);
-        positionTwitchPortal();
-        return twitchPortal;
-    }
-    function removeTwitchPortal(){
-        cancelAnimationFrame(portalFrame);portalFrame=0;
-        twitchPortal?.remove();twitchPortal=null;
-    }
-    // Keep one Twitch SDK instance for the lifetime of this page.
-    // Removing its iframe and constructing another instance can accumulate SDK listeners.
-    let playerChannel = null, statusController = null;
-    function hideTwitch(){
-        if(twitchPortal)twitchPortal.style.display='none';
-        screen.parentElement?.classList.remove('receiver-twitch-unobstructed');
-    }
     function stopTwitch(){
         ++embedRequest;
-        statusController?.abort();statusController=null;
-        if(activeTwitch){try{activeTwitch.pause();}catch(error){}}
+        if(activeTwitch){try{activeTwitch.pause();}catch(error){}activeTwitch=null;}
         twitchReady=false;
-        hideTwitch();
         screen.replaceChildren();screen.hidden=true;delete screen.dataset.live;showEmbedStatus();
     }
     function loadTwitchLibrary(){
@@ -207,104 +162,47 @@
         const detail=document.createElement('span');detail.textContent='Awaiting broadcaster signal.';
         fallback.append(heading,detail);screen.appendChild(fallback);
     }
-    function markTwitchOffline(c){
-        hideTwitch();screen.dataset.live='offline';
-        const heading=screen.querySelector('.receiver-video-fallback strong');
-        if(heading)heading.textContent='CURRENTLY OFFLINE';
-        state('OFFLINE',`${c.title} is not live on Twitch.`);
-        showEmbedStatus('OFFLINE · Awaiting broadcaster signal.');transport(false,false);
-    }
-    // Optional authenticated PHP preflight. If credentials are not configured,
-    // the receiver falls back to the SDK's own ONLINE/OFFLINE events.
-    async function preflightTwitch(name,request){
-        const controller=new AbortController();statusController=controller;
-        const timeout=setTimeout(()=>controller.abort(),6500);
-        try{
-            const response=await fetch(`/api/twitch/status.php?channel=${encodeURIComponent(name)}`,{signal:controller.signal,credentials:'same-origin',headers:{Accept:'application/json'}});
-            if(!response.ok)return 'unknown';
-            const payload=await response.json();
-            if(request!==embedRequest)return 'stale';
-            return payload.ok===true&&['online','offline'].includes(payload.status)?payload.status:'unknown';
-        }catch(error){return request!==embedRequest?'stale':'unknown';}
-        finally{clearTimeout(timeout);if(statusController===controller)statusController=null;}
-    }
-    function bindTwitchEvents(instance){
-        instance.addEventListener(Twitch.Player.READY,()=>{
-            if(!channels[channel]?.twitch)return;
-            twitchReady=true;
-            try{instance.setVolume(Number(volume.value));}catch(error){}
-        });
-        instance.addEventListener(Twitch.Player.PLAYBACK_BLOCKED,()=>{
-            if(!channels[channel]?.twitch||screen.dataset.live!=='online')return;
-            state('BLOCKED','Twitch requires a direct click on the video player to start playback.');
-            showEmbedStatus('Twitch blocked playback. Click Play inside the video.');transport(false,true);
-        });
-        instance.addEventListener(Twitch.Player.ONLINE,()=>{
-            if(!channels[channel]?.twitch||playerChannel!==channels[channel].twitch)return;
-            screen.dataset.live='online';
-            if(twitchPortal)twitchPortal.style.display='block';
-            screen.parentElement?.classList.add('receiver-twitch-unobstructed');
-            state('LIVE','Live broadcast available. Press Play to watch.');
-            showEmbedStatus('LIVE · Press Play to receive.');transport(false,true);
-        });
-        instance.addEventListener(Twitch.Player.OFFLINE,()=>{
-            if(!channels[channel]?.twitch||playerChannel!==channels[channel].twitch)return;
-            markTwitchOffline(channels[channel]);
-        });
-        instance.addEventListener(Twitch.Player.PLAYING,()=>{
-            if(!channels[channel]?.twitch||screen.dataset.live!=='online')return;
-            state('PLAYING',`Receiving ${channels[channel].title} live.`);
-            showEmbedStatus('LIVE · Receiving transmission.');transport(true);
-        });
-        if(Twitch.Player.PAUSE)instance.addEventListener(Twitch.Player.PAUSE,()=>{
-            if(!channels[channel]?.twitch||screen.dataset.live!=='online')return;
-            state('PAUSED','Live transmission paused.');showEmbedStatus('LIVE · Transmission paused.');transport(false);
-        });
-    }
     async function connectTwitch(c,request){
-        hideTwitch();screen.hidden=false;screen.dataset.live='checking';
+        screen.hidden=false;screen.dataset.live='checking';
         fallbackMessage('ACQUIRING SIGNAL');
         state('CHECKING','Checking Twitch broadcast status…');showEmbedStatus('Checking Twitch signal…');transport(false,false);
-        const status=await preflightTwitch(c.twitch,request);
-        if(request!==embedRequest||status==='stale')return;
-        if(status==='offline'){markTwitchOffline(c);return;}
         try{
             await loadTwitchLibrary();
             if(request!==embedRequest)return;
-            const portal=createTwitchPortal();portal.style.display='block';
-            if(!activeTwitch){
-                const host=document.createElement('div');host.className='receiver-video-host';
-                host.id='receiver-twitch-persistent';portal.appendChild(host);
-                activeTwitch=new Twitch.Player(host.id,{channel:c.twitch,width:'100%',height:'100%',parent:[location.hostname],autoplay:false,muted:false});
-                playerChannel=c.twitch;
-                bindTwitchEvents(activeTwitch);
-            }else if(playerChannel!==c.twitch){
-                playerChannel=c.twitch;
-                activeTwitch.setChannel(c.twitch);
-            }else{
-                // Same channel: existing SDK state is reused instead of adding listeners.
-                screen.dataset.live=status==='online'?'online':'checking';
-                if(status==='online'){
-                    screen.parentElement?.classList.add('receiver-twitch-unobstructed');
-                    state('LIVE','Live broadcast available. Press Play to watch.');
-                    showEmbedStatus('LIVE · Press Play to receive.');transport(false,true);
-                }
-            }
-            if(status==='online'){
+            const host=document.createElement('div');host.className='receiver-video-host';
+            host.id='receiver-twitch-'+request;screen.prepend(host);
+            const instance=new Twitch.Player(host.id,{channel:c.twitch,width:'100%',height:'100%',parent:[location.hostname],autoplay:false,muted:false});
+            activeTwitch=instance;
+            instance.addEventListener(Twitch.Player.READY,()=>{
+                if(request!==embedRequest)return;
+                twitchReady=true;
+                try{instance.setVolume(Number(volume.value));}catch(error){}
+            });
+            instance.addEventListener(Twitch.Player.PLAYBACK_BLOCKED,()=>{
+                if(request!==embedRequest)return;
+                state('BLOCKED','Twitch requires a direct click on the video player to start playback.');
+                showEmbedStatus('Twitch blocked playback. Click Play inside the video.');
+                transport(false,true);
+            });
+            try{instance.setVolume(Number(volume.value));}catch(error){}
+            instance.addEventListener(Twitch.Player.ONLINE,()=>{
+                if(request!==embedRequest)return;
                 screen.dataset.live='online';
-                screen.parentElement?.classList.add('receiver-twitch-unobstructed');
-                state('LIVE','Live broadcast available. Press Play to watch.');
-                showEmbedStatus('LIVE · Press Play to receive.');transport(false,true);
-            }
-            twitchReady=true;
-            try{activeTwitch.setVolume(Number(volume.value));}catch(error){}
+                state('LIVE','Live broadcast available. Press Play to watch.');showEmbedStatus('LIVE · Press Play to receive.');transport(false,true);
+            });
+            instance.addEventListener(Twitch.Player.OFFLINE,()=>{
+                if(request!==embedRequest)return;
+                screen.dataset.live='offline';
+                screen.querySelector('.receiver-video-fallback strong').textContent='CURRENTLY OFFLINE';
+                state('OFFLINE',`${c.title} is not live on Twitch.`);showEmbedStatus('OFFLINE · Awaiting broadcaster signal.');transport(false,false);
+            });
+            instance.addEventListener(Twitch.Player.PLAYING,()=>{if(request===embedRequest){state('PLAYING',`Receiving ${c.title} live.`);showEmbedStatus('LIVE · Receiving transmission.');transport(true);}});
+            if(Twitch.Player.PAUSE)instance.addEventListener(Twitch.Player.PAUSE,()=>{if(request===embedRequest){state('PAUSED','Live transmission paused.');showEmbedStatus('LIVE · Transmission paused.');transport(false);}});
         }catch(error){
             if(request!==embedRequest)return;
-            hideTwitch();screen.dataset.live='offline';
-            const heading=screen.querySelector('.receiver-video-fallback strong');
-            if(heading)heading.textContent='SIGNAL UNAVAILABLE';
-            state('UNAVAILABLE','Could not verify Twitch broadcast status.');
-            showEmbedStatus('Unable to acquire Twitch signal.');transport(false,false);
+            screen.dataset.live='offline';
+            screen.querySelector('.receiver-video-fallback strong').textContent='SIGNAL UNAVAILABLE';
+            state('UNAVAILABLE','Could not verify Twitch broadcast status.');showEmbedStatus('Unable to acquire Twitch signal.');transport(false,false);
         }
     }
     function tune(){
@@ -328,7 +226,7 @@
             if(!activeTwitch||screen.dataset.live!=='online')return;
             if(!twitchReady){state('LOADING','Twitch player is still initializing. Retry Play shortly.');showEmbedStatus('Initializing player…');return;}
             state('LOADING','Requesting Twitch playback…');showEmbedStatus('Requesting Twitch playback…');
-            try{activeTwitch.play();}catch(error){console.error('Twitch playback failed:',error);state('BLOCKED','Use the Play button inside the Twitch video player.');showEmbedStatus('Click Play inside the Twitch video.');transport(false,true);}
+            try{activeTwitch.play();}catch(error){state('BLOCKED','Use the Play button inside the Twitch video player.');showEmbedStatus('Click Play inside the Twitch video.');transport(false,true);}
             return;
         }
         if(!player.paused)return;

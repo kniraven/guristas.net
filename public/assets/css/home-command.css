@@ -99,7 +99,7 @@ body.home-refresh .hero-visual img{max-height:390px}
 @media(prefers-reduced-motion:reduce){.receiver *{scroll-behavior:auto;transition:none!important;animation:none!important}}
 
 /* Keep the receiver chassis and controls stationary while tuning. */
-.home-refresh .receiver-screen{box-sizing:border-box;height:560px;overflow-y:auto;scrollbar-gutter:stable;align-self:start}
+.home-refresh .receiver-screen{box-sizing:border-box;width:100%;height:auto;aspect-ratio:16/9;overflow-y:auto;scrollbar-gutter:stable;align-self:start}
 .receiver-main{align-items:start}
 .receiver-tuner{padding-top:24px}
 .receiver-controls{display:grid;grid-template-columns:minmax(175px,1fr) minmax(180px,1fr) auto;grid-template-areas:"transport volume meter";min-height:68px;align-items:center}
@@ -110,10 +110,362 @@ body.home-refresh .hero-visual img{max-height:390px}
 .receiver .receiver-controls button[hidden]{display:block!important}
 .receiver-footer{min-height:44px}
 @media(max-width:700px){
- .home-refresh .receiver-screen{height:600px}
+ .home-refresh .receiver-screen{height:auto;aspect-ratio:16/9}
  .receiver-tuner{padding-top:0}
  .receiver-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"transport transport" "volume volume" "meter meter";gap:12px;min-height:172px}
  .receiver-controls .receiver-volume{min-height:44px}
  .receiver-controls .motion-control{min-height:28px}
  .receiver-footer{align-items:flex-start;flex-direction:column;justify-content:center;gap:12px;min-height:72px}
+}
+
+/* Embedded video stays inside the fixed 16:9 receiver screen. */
+.home-refresh .receiver .home-twitch-frame{display:block;min-height:0;max-width:100%;}
+@media(max-width:700px){.home-refresh .receiver .home-twitch-frame{min-height:0}}
+
+
+/* RX-06: immutable 16:9 viewport; video renders behind station text. */
+.home-refresh .receiver-screen{position:relative;isolation:isolate;overflow:hidden;scrollbar-gutter:auto;aspect-ratio:16/9;height:auto;min-height:0}
+.receiver-screen>.receiver-video-layer{position:absolute;inset:0;z-index:0;overflow:hidden;background:transparent}
+.receiver-screen>.receiver-video-layer .receiver-video-host,.receiver-screen>.receiver-video-layer iframe{display:block;width:100%!important;height:100%!important;min-height:0!important;margin:0!important;border:0;aspect-ratio:auto}
+.receiver-screen>.receiver-video-layer[hidden]{display:none!important}
+.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-readout,.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel,.receiver-screen>.receiver-video-layer:not([hidden])~h3,.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-description],.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-status]{position:relative;z-index:2;pointer-events:none;text-shadow:0 2px 7px #000,0 1px 3px #000;max-width:100%}
+.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-readout{background:linear-gradient(90deg,#09150de8,#09150dc9);padding:2px 5px}
+.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel{margin-top:5px;margin-bottom:3px}
+.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel output{font-size:clamp(24px,4vw,38px)}
+.receiver-screen>.receiver-video-layer:not([hidden])~h3{font-size:clamp(17px,2vw,23px);margin-bottom:3px}
+.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-description],.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-status]{display:inline-block;background:#07140ee8;padding:2px 6px;font-size:11px;margin:2px 0}
+.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-status]{display:block;width:max-content}
+.receiver-video-fallback{position:absolute;inset:0;display:grid;place-content:center;gap:10px;text-align:center;padding:22px;background:radial-gradient(ellipse at 50% 38%,#24432e,#08120d 80%);color:#c9e8d1}
+.receiver-video-fallback strong{font:700 clamp(18px,2.2vw,28px)/1.3 monospace;color:var(--rx-light)}
+.receiver-video-fallback span{font:12px/1.5 monospace}
+.receiver-video-layer[data-live=online] .receiver-video-fallback{display:none}
+.receiver-video-layer[data-live=offline] .receiver-video-host{display:none}
+.receiver-video-layer[data-live=offline]~.receiver-readout,.receiver-video-layer[data-live=offline]~.receiver-channel,.receiver-video-layer[data-live=offline]~h3,.receiver-video-layer[data-live=offline]~[data-home-radio-description],.receiver-video-layer[data-live=offline]~[data-home-radio-status]{position:relative;z-index:2}
+.receiver-presets{display:none!important}
+@media(max-width:700px){.home-refresh .receiver-screen{aspect-ratio:16/9;height:auto;min-height:0;padding:11px}.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel{margin:2px 0}.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-description]{display:none}.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-status]{font-size:10px}.receiver-video-fallback strong{font-size:16px}}
+
+
+/* RX-06 physical controls and uniform on-screen telemetry. */
+.receiver .receiver-footer,.receiver .motion-control{display:none!important}
+.receiver-controls{grid-template-columns:minmax(180px,1fr) minmax(180px,1fr);grid-template-areas:"transport volume";min-height:86px;gap:20px;margin-top:16px;padding-top:16px}
+.receiver-controls .receiver-volume{grid-area:volume;display:flex;align-items:center;justify-content:flex-end;gap:15px;min-height:72px;font:700 11px/1.3 monospace;letter-spacing:.12em;color:#c9c8bd}
+.receiver-volume-knob{position:relative;flex:none;width:66px;height:66px;border:7px solid #151719;border-radius:50%;background:repeating-conic-gradient(#7b7e80 0deg 2deg,#292c30 3deg 11deg);box-shadow:0 5px 9px #000a,inset 0 1px 2px #ffffff55;transform:rotate(var(--volume-angle,54deg))}
+.receiver-volume-knob::before{content:'';position:absolute;inset:5px;border-radius:50%;background:radial-gradient(circle at 40% 28%,#565a5e,#1c1e22 72%);box-shadow:inset 0 1px 3px #ffffff44}
+.receiver-volume-knob .volume-pointer{position:absolute;z-index:1;top:6px;left:calc(50% - 2px);width:4px;height:13px;background:var(--rx-light);border-radius:2px;box-shadow:0 0 5px #baffb088}
+.home-refresh .receiver #receiver-volume{position:absolute;z-index:2;inset:-7px;width:66px;height:66px;margin:0;opacity:0;cursor:ns-resize;touch-action:none}
+.receiver-volume-knob:focus-within{outline:3px solid var(--rx-light);outline-offset:4px}
+.receiver-volume output{font:700 12px monospace;color:var(--rx-light);width:40px;text-align:right}
+.receiver .receiver-play{display:inline-flex;align-items:center;justify-content:center;gap:14px;min-height:64px;max-width:280px;padding:10px 16px;border:3px solid #191d1d;border-bottom-width:7px;border-radius:9px;background:linear-gradient(180deg,#77846b 0%,#46563c 32%,#263723 100%);box-shadow:inset 0 2px 1px #dfffc044,inset 0 -3px 4px #0008,0 5px 0 #111713,0 9px 11px #0009;letter-spacing:.05em;text-shadow:0 2px 2px #000a}
+.receiver .receiver-play:hover{filter:brightness(1.1)}
+.receiver .receiver-play:active{transform:translateY(4px);box-shadow:inset 0 3px 7px #000b,0 1px 0 #111713}
+.receiver-play-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:50%;border:2px solid #152414;background:radial-gradient(circle at 35% 25%,#a5d698,#42613b 75%);box-shadow:inset 0 1px 2px #ffffff66,0 2px 3px #000b;color:#0c2110;font-size:16px}
+/* The same telemetry grid, type scale, and spacing are used for all channels. */
+.home-refresh .receiver-screen{display:grid;grid-template-rows:auto auto auto auto minmax(0,1fr) auto auto;align-content:start;padding:clamp(8px,1.65vw,20px);gap:clamp(2px,.38vw,6px)}
+.receiver-screen>.receiver-video-layer{grid-area:1/1/-1/-1}
+.receiver-screen>.receiver-readout,.receiver-screen>.receiver-channel,.receiver-screen>h3,.receiver-screen>[data-home-radio-description],.receiver-screen>.receiver-meter,.receiver-screen>[data-home-radio-status],.receiver-screen>.receiver-timeline,.receiver-screen>#receiver-seek{position:relative;z-index:2;min-width:0;margin:0;pointer-events:none}
+.receiver-screen>.receiver-readout{font-size:clamp(8px,.9vw,11px);line-height:1.3;flex-wrap:nowrap}
+.receiver-screen>.receiver-channel{margin:0;gap:clamp(6px,1.1vw,14px)}
+.receiver-screen>.receiver-channel output,.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel output{font-size:clamp(23px,4.1vw,48px);line-height:1}
+.receiver-screen>.receiver-channel span{font-size:clamp(8px,.8vw,11px);line-height:1.25}
+.home-refresh .receiver-screen>h3,.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~h3{font-size:clamp(13px,1.7vw,23px);line-height:1.12;margin:0;max-width:100%;overflow-wrap:anywhere}
+.receiver-screen>[data-home-radio-description],.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-description]{display:block;font-size:clamp(9px,.85vw,12px);line-height:1.3;margin:0;padding:0;background:transparent;max-width:100%}
+.receiver-screen>.receiver-meter{align-self:end;min-height:24px;gap:8px}
+.receiver-screen>.receiver-meter .radio-bars{height:22px}
+.receiver-screen>[data-home-radio-status],.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-status]{font-size:clamp(9px,.83vw,12px);line-height:1.25;min-height:1.25em;margin:0;padding:0;background:transparent;width:auto}
+.receiver-screen>.receiver-timeline{font-size:9px;line-height:1.2}
+.receiver-screen>#receiver-seek{pointer-events:auto;height:16px}
+/* Place text over the video without intercepting Twitch's player controls. */
+.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-readout,.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel,.receiver-screen>.receiver-video-layer:not([hidden])~h3,.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-description],.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-status]{background:transparent;padding:0;font-size:inherit;margin:0}
+.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-readout,.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel,.receiver-screen>.receiver-video-layer:not([hidden])~h3,.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-description],.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-meter,.receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-status]{filter:drop-shadow(0 1px 3px #000);text-shadow:0 1px 4px #000,0 0 8px #000}
+.receiver-screen>.receiver-video-layer:not([hidden])~.receiver-readout{background:#09150dc9;padding:2px 4px}
+.receiver .receiver-controls [hidden]{visibility:hidden!important;pointer-events:none!important}
+@media(max-width:700px){
+ .receiver-controls{grid-template-columns:1fr 1fr;grid-template-areas:"transport volume";min-height:80px;gap:8px}
+ .receiver .receiver-play{min-width:0;max-width:none;min-height:58px;font-size:11px;gap:6px;padding:7px}
+ .receiver-play-icon{width:26px;height:26px;flex:none}
+ .receiver-controls .receiver-volume{gap:5px;justify-content:center;font-size:9px}
+ .receiver-volume-knob{width:52px;height:52px;border-width:6px}
+ .home-refresh .receiver #receiver-volume{width:52px;height:52px;inset:-6px}
+ .receiver-volume output{font-size:10px;width:30px}
+ .home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-description]{display:block}
+ .receiver-video-fallback strong{font-size:clamp(11px,3vw,16px)}
+}
+@media(max-width:420px){.receiver-controls .receiver-volume{flex-wrap:wrap}.receiver-controls .receiver-volume>label{width:100%;text-align:center}.receiver-screen>.receiver-readout{letter-spacing:0}.receiver-screen>[data-home-radio-description]{display:none!important}}
+
+/* RX-06: mechanical transport lives with the tuning hardware, not below the chassis. */
+.home-refresh .receiver-main{align-items:stretch}
+.home-refresh .receiver-tuner{align-self:stretch;justify-content:flex-start;gap:clamp(10px,1.2vw,16px)}
+.home-refresh .receiver-tuner .receiver-controls{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:18px;width:100%;min-height:0;margin:6px 0 0;padding:16px 0 0;border-top:1px solid #57595c;grid-template-areas:none;grid-template-columns:none}
+.home-refresh .receiver-transport{display:flex;justify-content:center;gap:10px;width:100%}
+.home-refresh .receiver .receiver-transport-button{position:relative;display:grid;place-items:center;min-width:0;width:61px;height:54px;min-height:54px;padding:0;border:3px solid #17191b;border-bottom-width:6px;border-radius:9px;background:linear-gradient(160deg,#54585b 0%,#32363a 54%,#24272a 100%);box-shadow:inset 0 2px 1px #e0e8e13b,inset 0 -2px 4px #0009,0 4px 0 #111,0 7px 9px #0009;transform:none;transition:box-shadow .12s,transform .12s}
+.home-refresh .receiver .receiver-transport-button .transport-symbol{display:grid;place-items:center;font:bold 22px/1 monospace;color:#888e90;text-shadow:0 1px 1px #000;filter:none}
+.home-refresh .receiver .receiver-transport-button[aria-pressed=true]:not(:disabled){transform:translateY(3px);border-bottom-width:3px;background:linear-gradient(160deg,#303a30,#202923);box-shadow:inset 0 3px 8px #000e,0 1px 0 #131716}
+.home-refresh .receiver .receiver-transport-button[aria-pressed=true]:not(:disabled) .transport-symbol{color:#ffab59;text-shadow:0 0 8px #ff962b,0 0 17px #ff8c3599}
+.home-refresh .receiver .receiver-transport-button:disabled{cursor:not-allowed;opacity:.6}
+.home-refresh .receiver-tuner .receiver-volume{display:grid;grid-template-columns:1fr auto;justify-items:center;align-items:center;gap:8px;min-height:0;width:100%;font:700 10px/1.3 monospace}
+.home-refresh .receiver-tuner .receiver-volume>label{grid-column:1/-1;text-align:center}
+.home-refresh .receiver-tuner .receiver-volume-knob{grid-column:1/-1}
+.home-refresh .receiver-tuner .receiver-volume output{grid-column:1/-1;text-align:center;width:auto}
+/* Every signal uses identical text geometry regardless of Twitch player state. */
+.home-refresh .receiver-screen>.receiver-readout,
+.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~.receiver-readout{font:700 clamp(8px,.9vw,11px)/1.3 monospace!important;letter-spacing:.09em;margin:0!important;padding:0!important;background:transparent!important;filter:none!important;text-shadow:none!important}
+.home-refresh .receiver-screen>.receiver-channel,
+.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel{margin:0!important;padding:0!important;background:transparent!important;filter:none!important;text-shadow:none!important}
+.home-refresh .receiver-screen>.receiver-channel output,
+.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel output{font:500 clamp(23px,4.1vw,48px)/1 monospace!important}
+.home-refresh .receiver-screen>h3,
+.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~h3{font-size:clamp(13px,1.7vw,23px)!important;line-height:1.12!important;margin:0!important;padding:0!important;background:transparent!important;filter:none!important;text-shadow:0 1px 4px #000!important}
+.home-refresh .receiver-screen>[data-home-radio-description],
+.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-description]{display:block!important;font-size:clamp(9px,.85vw,12px)!important;line-height:1.3!important;margin:0!important;padding:0!important;background:transparent!important;filter:none!important;text-shadow:0 1px 4px #000!important}
+.home-refresh .receiver-screen>[data-home-radio-status],
+.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-status]{font-size:clamp(9px,.83vw,12px)!important;line-height:1.25!important;margin:0!important;padding:0!important;background:transparent!important;filter:none!important;text-shadow:0 1px 4px #000!important}
+@media(max-width:700px){
+ .home-refresh .receiver-tuner{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:10px}
+ .home-refresh .receiver-tuner>label{grid-column:1/-1;width:auto}
+ .home-refresh .receiver-stamp{display:block;font-size:10px;padding:4px}
+ .home-refresh .receiver-tuner .receiver-controls{grid-column:1/-1;flex-direction:row;justify-content:space-evenly;margin:0;padding:10px 0 0;gap:12px}
+ .home-refresh .receiver-transport{width:auto}
+ .home-refresh .receiver-tuner .receiver-volume{width:auto;gap:3px}
+ .home-refresh .receiver-tuner .receiver-volume-knob{width:50px;height:50px}
+ .home-refresh .receiver #receiver-volume{width:50px;height:50px}
+}
+@media(max-width:420px){
+ .home-refresh .receiver-tuner{grid-template-columns:auto 1fr;justify-items:center}
+ .home-refresh .receiver-stamp{display:none}
+ .home-refresh .receiver-tuner .receiver-controls{grid-column:1/-1}
+ .home-refresh .receiver .receiver-transport-button{width:52px;height:48px;min-height:48px}
+}
+
+/* RX-06: follow existing site breakpoints without adding extra control rows.
+   Desktop 992+: screen and vertical hardware; tablet 576-991: single hardware rail. */
+.home-refresh .receiver-main{min-width:0}
+.home-refresh .receiver-screen{min-width:0;aspect-ratio:16 / 9;height:auto;overflow:hidden}
+
+@media (min-width:992px) and (max-width:1199.98px){
+  .home-refresh .receiver-main{grid-template-columns:minmax(0,1fr) 170px;gap:18px;align-items:start}
+  .home-refresh .receiver-tuner{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:12px;min-width:0;padding-top:12px}
+  .home-refresh .receiver-tuner>label{width:100%;margin:0;text-align:center}
+  .home-refresh .receiver-dial{width:118px;height:118px;border-width:9px}
+  .home-refresh .receiver #home-frequency{width:118px;height:118px;inset:-9px}
+  .home-refresh .receiver-stamp{display:block;align-self:center;font-size:10px}
+  .home-refresh .receiver-tuner .receiver-controls{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;width:100%;min-width:0;margin:4px 0 0;padding:14px 0 0;border-top:1px solid #57595c}
+  .home-refresh .receiver-transport{width:100%;justify-content:center;gap:8px}
+  .home-refresh .receiver .receiver-transport-button{width:52px;height:50px;min-height:50px}
+  .home-refresh .receiver-tuner .receiver-volume{width:100%;gap:5px}
+  .home-refresh .receiver-tuner .receiver-volume-knob{width:54px;height:54px}
+  .home-refresh .receiver #receiver-volume{width:54px;height:54px}
+}
+
+@media (min-width:576px) and (max-width:991.98px){
+  .home-refresh .receiver-main{grid-template-columns:minmax(0,1fr);align-items:start;gap:16px}
+  .home-refresh .receiver-tuner{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;justify-items:start;column-gap:clamp(8px,1.3vw,16px);row-gap:8px;min-width:0;padding:0}
+  .home-refresh .receiver-tuner>label{grid-column:1/-1;grid-row:1;width:auto;margin:0;text-align:left}
+  .home-refresh .receiver-dial{grid-column:1;grid-row:2;width:96px;height:96px;border-width:8px}
+  .home-refresh .receiver #home-frequency{width:96px;height:96px;inset:-8px}
+  .home-refresh .receiver-step{grid-column:2;grid-row:2;min-width:0}
+  .home-refresh .receiver-stamp{display:block;grid-column:3;grid-row:2;justify-self:center;font-size:9px;min-width:0}
+  .home-refresh .receiver-tuner .receiver-controls{display:flex;grid-column:4;grid-row:2;flex-direction:row;align-items:center;justify-content:flex-end;gap:10px;min-width:0;width:auto;margin:0;padding:0;border:0}
+  .home-refresh .receiver-transport{width:auto;gap:6px;flex:none}
+  .home-refresh .receiver .receiver-transport-button{width:46px;height:46px;min-height:46px}
+  .home-refresh .receiver-tuner .receiver-volume{width:auto;gap:4px;flex:none}
+  .home-refresh .receiver-tuner .receiver-volume-knob{width:48px;height:48px}
+  .home-refresh .receiver #receiver-volume{width:48px;height:48px}
+  .home-refresh .receiver-screen>.receiver-channel output,
+  .home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel output{font-size:clamp(24px,4vw,46px)}
+}
+@media (min-width:768px) and (max-width:991.98px){
+  .home-refresh .receiver{padding:20px}
+  .home-refresh .receiver-plate{margin-bottom:14px}
+}
+@media (min-width:576px) and (max-width:767.98px){
+  .home-refresh .receiver{padding:14px}
+  .home-refresh .receiver-screen{border-width:5px;padding:clamp(7px,2vw,13px)}
+  .home-refresh .receiver-plate{font-size:9px;letter-spacing:.06em;gap:8px}
+  .home-refresh .receiver-tuner{grid-template-columns:auto auto minmax(0,1fr);column-gap:9px}
+  .home-refresh .receiver-dial{width:82px;height:82px;border-width:7px}
+  .home-refresh .receiver #home-frequency{width:82px;height:82px;inset:-7px}
+  /* The property stamp is decorative. On narrow tablets, reserve rail space for real controls. */
+  .home-refresh .receiver-stamp{display:none}
+  .home-refresh .receiver-tuner .receiver-controls{grid-column:3;grid-row:2;justify-self:end;gap:8px}
+  .home-refresh .receiver .receiver-transport-button{width:44px;height:44px;min-height:44px}
+  .home-refresh .receiver-tuner .receiver-volume-knob{width:44px;height:44px}
+  .home-refresh .receiver #receiver-volume{width:44px;height:44px}
+}
+@media (max-width:575.98px){
+  .home-refresh .receiver{padding:12px}
+  .home-refresh .receiver-plate{align-items:flex-start;margin-bottom:12px}
+  .home-refresh .receiver-plate span:last-child{font-size:8px;padding:3px 5px}
+  .home-refresh .receiver-main{grid-template-columns:minmax(0,1fr);gap:13px}
+  .home-refresh .receiver-screen{border-width:5px;padding:clamp(7px,2vw,11px)}
+  .home-refresh .receiver-tuner{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:auto auto auto;align-items:center;gap:9px}
+  .home-refresh .receiver-tuner>label{grid-column:1/-1;grid-row:1;width:auto;margin:0;text-align:center}
+  .home-refresh .receiver-dial{grid-column:1;grid-row:2;width:88px;height:88px;border-width:7px}
+  .home-refresh .receiver #home-frequency{width:88px;height:88px;inset:-7px}
+  .home-refresh .receiver-step{grid-column:2;grid-row:2}
+  .home-refresh .receiver-stamp{display:block;grid-column:3;grid-row:2;justify-self:center;font-size:8px;letter-spacing:.05em;padding:3px 5px}
+  .home-refresh .receiver-tuner .receiver-controls{display:flex;grid-column:1/-1;grid-row:3;flex-direction:row;align-items:center;justify-content:space-around;gap:8px;width:100%;margin:0;padding:10px 0 0;border-top:1px solid #57595c}
+  .home-refresh .receiver-transport{width:auto;gap:8px}
+  .home-refresh .receiver .receiver-transport-button{width:46px;height:46px;min-height:46px}
+  .home-refresh .receiver-tuner .receiver-volume{width:auto;gap:3px}
+  .home-refresh .receiver-tuner .receiver-volume-knob{width:50px;height:50px}
+  .home-refresh .receiver #receiver-volume{width:50px;height:50px}
+  .home-refresh .receiver-screen>.receiver-meter .radio-bars{height:15px;margin:0}
+  .home-refresh .receiver-screen>.receiver-meter{min-height:15px}
+  .home-refresh .receiver-screen>.receiver-channel output,
+  .home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~.receiver-channel output{font-size:clamp(20px,5vw,29px)}
+  .home-refresh .receiver-screen>h3,.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~h3{font-size:clamp(11px,2.8vw,16px)!important}
+  .home-refresh .receiver-screen>[data-home-radio-description],.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-description]{font-size:9px!important}
+  .home-refresh .receiver-screen>[data-home-radio-status],.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-status]{font-size:9px!important}
+}
+@media (max-width:380px){
+  .home-refresh .receiver{padding:10px}
+  .home-refresh .receiver-plate{font-size:8px}
+  .home-refresh .receiver-screen{padding:6px;gap:1px}
+  .home-refresh .receiver-screen>.receiver-readout{font-size:8px!important}
+  .home-refresh .receiver-screen>.receiver-channel{gap:5px}
+  .home-refresh .receiver-screen>.receiver-channel span{font-size:7px}
+  .home-refresh .receiver-screen>[data-home-radio-description],.home-refresh .receiver-screen>.receiver-video-layer:not([hidden])~[data-home-radio-description]{display:none!important}
+  .home-refresh .receiver-screen>.receiver-timeline{font-size:8px}
+  .home-refresh .receiver-screen>#receiver-seek{height:12px}
+  .home-refresh .receiver-stamp{display:none}
+  .home-refresh .receiver-tuner{grid-template-columns:auto 1fr}
+  .home-refresh .receiver-tuner .receiver-controls{grid-column:1/-1}
+}
+
+/* Broadcast volume: the display slider and hardware knob share one value. */
+.home-refresh .receiver-screen>.receiver-volume-bar-head{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:3;min-width:0;gap:10px;margin:0;font:10px/1.2 monospace;color:#b9c9bd}
+.home-refresh .receiver-screen>.receiver-volume-bar-head output{color:#ffad64;font-variant-numeric:tabular-nums}
+.home-refresh .receiver-screen>#receiver-volume-bar{display:block;position:relative;z-index:3;width:100%;height:16px;min-width:0;margin:0;pointer-events:auto;cursor:pointer;accent-color:#ff933f;touch-action:pan-y}
+.home-refresh .receiver-screen>#receiver-volume-bar:focus-visible{outline:2px solid #ffad64;outline-offset:3px}
+@media(max-width:575.98px){.home-refresh .receiver-screen>.receiver-volume-bar-head{font-size:9px}.home-refresh .receiver-screen>#receiver-volume-bar{height:14px}}
+@media(max-width:380px){.home-refresh .receiver-screen>.receiver-volume-bar-head{font-size:8px}.home-refresh .receiver-screen>#receiver-volume-bar{height:12px}}
+
+/* Twitch requires an unobscured video player for playback eligibility. */
+.home-refresh .receiver-screen>.receiver-video-layer[data-live="online"]{
+  z-index:30; inset:0; opacity:1; visibility:visible; pointer-events:auto;
+}
+.home-refresh .receiver-screen>.receiver-video-layer[data-live="online"] .receiver-video-host,
+.home-refresh .receiver-screen>.receiver-video-layer[data-live="online"] iframe{
+  width:100%!important;height:100%!important;opacity:1;visibility:visible;
+}
+.home-refresh .receiver-screen:has(>.receiver-video-layer[data-live="online"])>.receiver-readout,
+.home-refresh .receiver-screen:has(>.receiver-video-layer[data-live="online"])>.receiver-channel,
+.home-refresh .receiver-screen:has(>.receiver-video-layer[data-live="online"])>h3,
+.home-refresh .receiver-screen:has(>.receiver-video-layer[data-live="online"])>[data-home-radio-description],
+.home-refresh .receiver-screen:has(>.receiver-video-layer[data-live="online"])>.receiver-meter,
+.home-refresh .receiver-screen:has(>.receiver-video-layer[data-live="online"])>[data-home-radio-status],
+.home-refresh .receiver-screen:has(>.receiver-video-layer[data-live="online"])>.receiver-volume-bar-head,
+.home-refresh .receiver-screen:has(>.receiver-video-layer[data-live="online"])>#receiver-volume-bar{
+  visibility:hidden!important; pointer-events:none!important;
+}
+.home-refresh .receiver-embed-status{font:11px/1.5 monospace;color:#ffc282;text-align:center;margin:6px 0 0;max-width:100%;overflow-wrap:anywhere}
+.home-refresh .receiver-embed-status[hidden]{display:none!important}
+
+/* Diagnostic: Twitch rejects programmatic play when a transformed ancestor
+   fails its style-visibility check. Keep the receiver chassis untransformed;
+   the tuning/volume dials and pushbuttons retain their own transforms. */
+.home-refresh .receiver {
+    transform: none !important;
+    animation-name: none !important;
+}
+
+/* RX-06: confirmed by Twitch isolation tests 9-15.
+   When Twitch is live, keep every receiver telemetry overlay out of the
+   iframe's painted region. The physical chassis and controls remain intact. */
+.home-refresh .receiver-screen.receiver-twitch-unobstructed > :not(.receiver-video-layer) {
+  display: none !important;
+}
+.home-refresh .receiver-screen.receiver-twitch-unobstructed > .receiver-video-layer {
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  z-index: 50 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+.home-refresh .receiver-screen.receiver-twitch-unobstructed > .receiver-video-layer .receiver-video-host,
+.home-refresh .receiver-screen.receiver-twitch-unobstructed > .receiver-video-layer iframe {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* BEGIN GURISTAS TWITCH PORTAL FIX */
+/* Only the Twitch video clears the CRT layers; the receiver and theme remain unchanged. */
+body.home-refresh > .receiver-twitch-portal {
+    position: fixed;
+    z-index: 305;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    pointer-events: auto;
+    background: #000;
+    border-radius: 0;
+    transform: none;
+    filter: none;
+    opacity: 1;
+}
+body.home-refresh > .receiver-twitch-portal .receiver-video-host,
+body.home-refresh > .receiver-twitch-portal iframe {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none;
+    opacity: 1;
+    visibility: visible;
+}
+/* END GURISTAS TWITCH PORTAL FIX */
+
+
+/* RX-06 stability: status messages must not move the hardware controls. */
+.home-refresh .receiver-tuner > .receiver-embed-status {
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* Desktop: keep the message after the controls, not between the stamp
+   and the transport buttons. */
+@media (min-width: 992px) {
+    .home-refresh .receiver-tuner > .receiver-controls { order: 4; }
+    .home-refresh .receiver-tuner > .receiver-embed-status {
+        order: 5;
+        align-self: stretch;
+    }
+}
+
+/* Tablet: dedicate the third row to channel status. Never allow the
+   status text to participate in the control row's column sizing. */
+@media (min-width: 576px) and (max-width: 991.98px) {
+    .home-refresh .receiver-tuner {
+        grid-template-rows: auto auto minmax(24px, auto);
+    }
+    .home-refresh .receiver-tuner > .receiver-embed-status {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        justify-self: stretch;
+        align-self: start;
+        text-align: left;
+    }
+}
+
+/* Mobile: the third row already contains the transport and volume
+   controls, so reserve a fourth row for status. */
+@media (max-width: 575.98px) {
+    .home-refresh .receiver-tuner {
+        grid-template-rows: auto auto auto minmax(24px, auto);
+    }
+    .home-refresh .receiver-tuner > .receiver-embed-status {
+        grid-column: 1 / -1;
+        grid-row: 4;
+        justify-self: stretch;
+        align-self: start;
+        text-align: center;
+    }
 }
