@@ -107,6 +107,7 @@ public/api/industry/quote.php
 public/api/status.php
 public/api/stream/intelligence.php
 public/api/stream/messages.php
+public/api/twitch/status.php
 public/api/venal/history.php
 public/api/venal/map.php
 public/api/venal/overlay.php
@@ -192,6 +193,7 @@ public/community/media.php
 public/community/read.php
 public/community/submissions.php
 public/community/submit.php
+public/favicon.ico
 public/index.php
 public/industry/index.php
 public/join/index.php

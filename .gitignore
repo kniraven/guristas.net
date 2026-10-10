@@ -57,3 +57,10 @@ desktop.ini
 /storage/pilot-record/
 
 /storage/community/
+
+# Temporary installation backups
+/receiver-backup-*/
+/twitch-clean-console-backup-*/
+/guristas-homepage-backup-*/
+/guristas-receiver-backup-*/
+/public/**/*.backup-*
