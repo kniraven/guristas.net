@@ -1,6 +1,0 @@
-<?php
-// Copy to storage-backends.local.php (ignored by Git). Change one feature at a time AFTER migration.
-return [
-    'pilot' => 'json',
-    'stream' => 'json',
-];

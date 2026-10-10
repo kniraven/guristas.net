@@ -7,18 +7,9 @@ require_once __DIR__ . '/PilotRecordStore.php';
 
 final class GuristasStreamMessageService
 {
-    /** @var string */
-    private $directory;
-    private bool $useSql = false;
-
     public function __construct(string $directory)
     {
-        $this->directory = rtrim($directory, DIRECTORY_SEPARATOR);
-        $this->useSql = guristas_storage_backend('stream') === 'sql';
-        if ($this->useSql) return;
-        if (!is_dir($this->directory) && !mkdir($this->directory, 0775, true) && !is_dir($this->directory)) {
-            throw new RuntimeException('Unable to create stream storage directory.');
-        }
+        // Kept as a constructor argument for existing call sites; persistence is SQL-only.
     }
 
     public function publicBundle(): array
@@ -125,20 +116,15 @@ final class GuristasStreamMessageService
         }
         unset($message);
 
-        if ($this->useSql) {
-            $db = eve_db();
-            $db->beginTransaction();
-            try {
-                $this->writeJson('message-types.json', $types);
-                $this->writeJson('messages.json', $messages);
-                $db->commit();
-            } catch (Throwable $e) {
-                if ($db->inTransaction()) $db->rollBack();
-                throw $e;
-            }
-        } else {
+        $db = eve_db();
+        $db->beginTransaction();
+        try {
             $this->writeJson('message-types.json', $types);
             $this->writeJson('messages.json', $messages);
+            $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
         }
         return ['deleted' => $id, 'reassigned_messages' => $reassigned, 'fallback_type' => $fallback];
     }
@@ -273,52 +259,24 @@ final class GuristasStreamMessageService
 
     private function readJson(string $file)
     {
-        if ($this->useSql) {
-            require_once __DIR__ . '/EveAuth.php';
-            $q = eve_db()->prepare('SELECT document FROM guristas_stream_documents WHERE filename = ?');
-            $q->execute([$file]);
-            $raw = $q->fetchColumn();
-            if ($raw === false) throw new RuntimeException('Missing SQL stream configuration: ' . $file);
-            return json_decode((string)$raw, true, 512, JSON_THROW_ON_ERROR);
-        }
-        $path = $this->directory . DIRECTORY_SEPARATOR . $file;
-        if (!is_file($path)) {
-            throw new RuntimeException('Missing stream configuration file: ' . $file);
-        }
-        $raw = file_get_contents($path);
-        if ($raw === false) {
-            throw new RuntimeException('Unable to read ' . $file);
-        }
-        return json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        require_once __DIR__ . '/EveAuth.php';
+        $q = eve_db()->prepare('SELECT document FROM guristas_stream_documents WHERE filename = ?');
+        $q->execute([$file]);
+        $raw = $q->fetchColumn();
+        if ($raw === false) throw new RuntimeException('Missing SQL stream configuration: ' . $file);
+        return json_decode((string)$raw, true, 512, JSON_THROW_ON_ERROR);
     }
 
     private function writeJson(string $file, array $data): void
     {
-        if ($this->useSql) {
-            require_once __DIR__ . '/EveAuth.php';
-            $encoded = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            $q = eve_db()->prepare('UPDATE guristas_stream_documents SET document = ? WHERE filename = ?');
-            $q->execute([$encoded, $file]);
-            if ($q->rowCount() === 0) {
-                // A no-op update (identical JSON) is fine; missing rows are not.
-                $q = eve_db()->prepare('SELECT 1 FROM guristas_stream_documents WHERE filename = ?');
-                $q->execute([$file]);
-                if (!$q->fetchColumn()) throw new RuntimeException('Missing SQL stream configuration: ' . $file);
-            }
-            return;
-        }
-        $path = $this->directory . DIRECTORY_SEPARATOR . $file;
-        $tmp = $path . '.tmp-' . bin2hex(random_bytes(4));
-        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . PHP_EOL;
-        if (file_put_contents($tmp, $json, LOCK_EX) === false) {
-            throw new RuntimeException('Unable to write temporary stream configuration.');
-        }
-        if (DIRECTORY_SEPARATOR === '\\' && is_file($path)) {
-            @unlink($path);
-        }
-        if (!@rename($tmp, $path)) {
-            @unlink($tmp);
-            throw new RuntimeException('Unable to replace stream configuration file.');
+        require_once __DIR__ . '/EveAuth.php';
+        $encoded = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $q = eve_db()->prepare('UPDATE guristas_stream_documents SET document = ? WHERE filename = ?');
+        $q->execute([$encoded, $file]);
+        if ($q->rowCount() === 0) {
+            $q = eve_db()->prepare('SELECT 1 FROM guristas_stream_documents WHERE filename = ?');
+            $q->execute([$file]);
+            if (!$q->fetchColumn()) throw new RuntimeException('Missing SQL stream configuration: ' . $file);
         }
     }
 
