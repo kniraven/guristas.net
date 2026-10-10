@@ -89,9 +89,7 @@ docs/GURI-045-batch-6-files.txt
 docs/GURI-045-batch-6.md
 docs/GURI-045-production-review.md
 docs/GURI-045-public-inventory.md
-docs/dossier-package-files.txt
 docs/guristas-dossier-ux.md
-docs/public-features-package-files.txt
 file-structure.txt
 public/account/index.php
 public/admin/community/index.php
@@ -249,9 +247,5 @@ tests/test_public_industry.php
 tests/test_public_pages.php
 tests/test_venal_directory.js
 tools/build-industry-reference.py
-tools/deploy-dossier.ps1
-tools/deploy-dossier.sh
-tools/deploy-public-features.ps1
-tools/deploy-public-features.sh
 tools/prepare-community-runtime.ps1
 update-file-structure.bat
