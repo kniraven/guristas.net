@@ -18,8 +18,7 @@ function community_upload_limits(): array
 }
 function community_post_limit(): void
 {
-    $limit=trim((string)ini_get('post_max_size'));$unit=strtolower(substr($limit,-1));$bytes=(float)$limit;
-    $bytes*=match($unit){'g'=>1073741824,'m'=>1048576,'k'=>1024,default=>1};
+    $bytes=community_ini_bytes((string)ini_get('post_max_size'));
     if($bytes>0 && (float)($_SERVER['CONTENT_LENGTH']??0)>$bytes){http_response_code(413);exit('This upload exceeds the server request limit. Use fewer or smaller images.');}
 }
 function community_message(Throwable $e): string

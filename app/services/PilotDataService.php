@@ -12,15 +12,7 @@ final class GuristasPilotDataService
     public function __construct(GuristasEsiClient $client, ?callable $authorize = null)
     {
         $this->client = $client;
-        $this->authorize = $authorize ?? static function (int $id, string $scope): array {
-            // Validate the scope even for a fresh cached response.
-            $token = eve_access_token($id, $scope);
-            $q = eve_db()->prepare('SELECT refresh_token_sealed, scopes_json FROM ' . eve_token_table() . ' WHERE character_id = ?');
-            $q->execute([$id]);
-            $grant = $q->fetch();
-            if (!$grant) throw new GuristasAuthorizationRequired('Connect this feature.');
-            return ['token' => $token, 'identity' => eve_token_table() . '|' . hash('sha256', $grant['refresh_token_sealed'] . '|' . $grant['scopes_json'])];
-        };
+        $this->authorize = $authorize ?? 'eve_authorized_esi_grant';
     }
     public function read(int $characterId): array
     {
@@ -116,13 +108,7 @@ function eve_pilot_data(int $characterId, bool $syncCombat = false): array
     require_once __DIR__ . '/PilotRecommendations.php';
     $result += eve_read_pilot_context(new GuristasEsiClient($config, $cache), $characterId);
     $combatCache = new GuristasEsiCache(dirname(__DIR__, 2) . '/storage/cache/pilot/' . eve_token_table() . '/combat');
-    $authorizeCombat = static function (int $id, string $scope): array {
-        $token = eve_access_token($id, $scope);
-        $q = eve_db()->prepare('SELECT refresh_token_sealed, scopes_json FROM ' . eve_token_table() . ' WHERE character_id = ?');
-        $q->execute([$id]); $grant = $q->fetch();
-        if (!$grant) throw new GuristasAuthorizationRequired('Sign in again.');
-        return ['token' => $token, 'identity' => eve_token_table() . '|' . hash('sha256', $grant['refresh_token_sealed'] . '|' . $grant['scopes_json'])];
-    };
+    $authorizeCombat = 'eve_authorized_esi_grant';
     $result['combat'] = (new GuristasPilotCombat(new GuristasEsiClient($config, $combatCache), eve_pilot_record_store(), $authorizeCombat))->read($characterId, $syncCombat);
     try { $result['romance'] = eve_pilot_record_store()->read($characterId)['romance']; }
     catch (Throwable $error) { $result['romance'] = null; }

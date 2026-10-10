@@ -10,13 +10,7 @@ function eve_readiness_reference(): array
 }
 function eve_read_pilot_context(GuristasEsiClient $client, int $characterId, ?callable $authorize = null): array
 {
-    $authorize = $authorize ?? static function ($id, $scope) {
-        $token = eve_access_token($id, $scope);
-        $q = eve_db()->prepare('SELECT refresh_token_sealed, scopes_json FROM ' . eve_token_table() . ' WHERE character_id = ?');
-        $q->execute([$id]); $grant = $q->fetch();
-        if (!$grant) throw new GuristasAuthorizationRequired('Sign in again.');
-        return ['token' => $token, 'identity' => eve_token_table() . '|' . hash('sha256', $grant['refresh_token_sealed'] . '|' . $grant['scopes_json'])];
-    };
+    $authorize = $authorize ?? 'eve_authorized_esi_grant';
     $result = [];
     foreach (['location', 'ship', 'assets'] as $feature) {
         try {

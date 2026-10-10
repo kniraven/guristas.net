@@ -314,6 +314,18 @@ function eve_validate_feature_consent(array $pending, array $claims): bool
     }
     return $requested !== [];
 }
+/** Revalidate the grant before any private ESI cache access. */
+function eve_authorized_esi_grant(int $id, string $scope): array
+{
+    $token = eve_access_token($id, $scope);
+    $q = eve_db()->prepare('SELECT refresh_token_sealed, scopes_json FROM ' . eve_token_table() . ' WHERE character_id = ?');
+    $q->execute([$id]);
+    $grant = $q->fetch();
+    if (!$grant) throw new GuristasAuthorizationRequired('Connect this feature through EVE Online.');
+    return ['token' => $token,
+        'identity' => eve_token_table() . '|' . hash('sha256', $grant['refresh_token_sealed'] . '|' . $grant['scopes_json'])];
+}
+
 function eve_token_table(): string
 {
     return (eve_config()['token_environment'] ?? 'production') === 'local'
