@@ -1,5 +1,4 @@
 <?php
-// Copy to auth.local.php outside public/ and fill in your own values.
 return [
     'client_id' => 'YOUR_EVE_SSO_CLIENT_ID',
     'redirect_uri' => 'https://guristas.net/auth/callback.php',
