@@ -91,6 +91,22 @@
                 else step('BUY',order.source_station,order.source_system,order.source_region);
                 step(order.listing?'CREATE SELL ORDER':'FILL BUY ORDER',order.destination_station,order.destination_system,order.destination_region);
                 card.appendChild(route);
+                // Unit prices derive from the same gross purchase and target-sale totals
+                // used by the server; never modify the calculated profit here.
+                const units=Number(order.unit_count||String(order.quantity||'').match(/QTY\s*\/\/\s*([\d,]+)/i)?.[1]?.replace(/,/g,''));
+                if(Number.isFinite(units)&&units>0){
+                    const moneyPerUnit=n=>Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' ISK';
+                    const priceRow=document.createElement('div');priceRow.className='trade-order-prices';
+                    const buy=document.createElement('span');
+                    const selling=document.createElement('span');
+                    if(method.includes('REDEEM')||method.includes('MANUFACTURE')){
+                        buy.textContent='INPUTS / '+moneyPerUnit(Number(order.cost_isk)/units)+' + LP';
+                    }else{
+                        buy.textContent='BUY / '+moneyPerUnit(Number(order.cost_isk)/units);
+                    }
+                    selling.textContent=(order.listing?'ASK':'SELL')+' / '+moneyPerUnit(Number(order.revenue_isk)/units);
+                    priceRow.append(buy,selling);card.appendChild(priceRow);
+                }
                 const metrics=document.createElement('div');metrics.className='trade-order-metric-row';
                 const quantity=Number.isFinite(Number(order.roi_ratio))
                     ? String(order.quantity||'').replace(/ROI\s+[\d,.]+%/i,'ROI '+(Number(order.roi_ratio)*100).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'%')

@@ -1109,3 +1109,30 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
 }
 .home-refresh .directive-row .trade-order-card[data-trade-slot="4"]{border-style:dashed}
 .home-refresh .directive-row .trade-order-standby-note{font-size:.7rem;line-height:1.4;color:var(--muted);overflow:auto}
+
+/* TR-13: readable four-card pricing without growing the console.
+   Prices are gross per-unit; net profit remains independently calculated. */
+@media(min-width:1101px){
+  .home-refresh .directive-row .trade-order-card{
+    padding:7px 8px;gap:3px;
+    grid-template-rows:auto auto minmax(0,1fr) auto auto auto;
+  }
+  .home-refresh .directive-row .trade-order-card .trade-order-item{font-size:.76rem;line-height:1.15}
+  .home-refresh .directive-row .trade-order-step{grid-template-columns:4.9rem minmax(0,1fr);font-size:.63rem;line-height:1.14;gap:4px}
+  .home-refresh .directive-row .trade-order-verb{font-size:.55rem}
+  .home-refresh .directive-row .trade-order-place{font-size:.61rem;line-height:1.15}
+  .home-refresh .directive-row .trade-order-system{font-size:.57rem;line-height:1.12}
+  .home-refresh .directive-row .trade-order-heading .trade-order-kind{font-size:.53rem}
+  .home-refresh .directive-row .trade-order-heading .trade-order-assumptions{font-size:.52rem}
+  .home-refresh .directive-row .trade-order-metric-row{font-size:.59rem;line-height:1.15}
+  .home-refresh .directive-row .trade-order-metric-row span+span{font-size:.58rem}
+}
+.home-refresh .directive-row .trade-order-prices{
+  display:flex;justify-content:space-between;gap:3px 6px;align-items:center;
+  border-top:1px solid var(--line-strong);padding-top:3px;
+  font:750 .59rem/1.2 ui-monospace,monospace;color:var(--accent-bright);
+}
+.home-refresh .directive-row .trade-order-prices span{min-width:0;overflow-wrap:anywhere}
+.home-refresh .directive-row .trade-order-prices span:last-child{color:var(--text);text-align:right}
+.home-refresh .directive-row .trade-order-metric-row{border-top:0;padding-top:1px}
+@media(max-width:900px){.home-refresh .directive-row .trade-order-card{grid-template-rows:auto auto minmax(0,1fr) auto auto auto}}
