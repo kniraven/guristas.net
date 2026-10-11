@@ -45,25 +45,31 @@
                 const heading=document.createElement('div');heading.className='trade-order-heading';
                 const kind=document.createElement('span');kind.className='trade-order-kind';kind.textContent=String(i+1).padStart(2,'0')+' // '+(order.category||'ORDER');
                 const assumptions=document.createElement('button');assumptions.type='button';assumptions.className='trade-order-assumptions';
-                assumptions.textContent='ORDER BASIS / ASSUMPTIONS ↗';
+                assumptions.textContent='INTEL ▸';
                 assumptions.setAttribute('aria-label','View order basis and assumptions for '+(order.item||'trade order'));
-                assumptions.addEventListener('click',()=>{
-                    let modal=document.getElementById('trade-order-assumptions-modal');
-                    if(!modal){
-                        modal=document.createElement('dialog');modal.id='trade-order-assumptions-modal';modal.className='trade-assumptions-modal';
-                        const headingRow=document.createElement('div');headingRow.className='trade-assumptions-modal-heading';
-                        const title=document.createElement('strong');title.className='trade-assumptions-modal-title';
-                        const close=document.createElement('button');close.type='button';close.className='trade-assumptions-modal-close';close.textContent='CLOSE ×';
-                        close.addEventListener('click',()=>modal.close());
-                        const content=document.createElement('p');content.className='trade-assumptions-modal-body';
-                        headingRow.append(title,close);modal.append(headingRow,content);
-                        modal.addEventListener('click',event=>{if(event.target===modal)modal.close();});
-                        document.body.appendChild(modal);
-                    }
-                    modal.querySelector('.trade-assumptions-modal-title').textContent=(order.item||'TRADE ORDER')+' // ORDER BASIS';
-                    modal.querySelector('.trade-assumptions-modal-body').textContent=order.reason||'No supporting assumptions were published for this order.';
-                    if(!modal.open)modal.showModal();
-                });
+                // The dossier flips over this card, leaving the command console unchanged.
+                const dossier=document.createElement('section');dossier.className='trade-order-dossier';
+                dossier.hidden=true;dossier.setAttribute('aria-label','Trade intelligence for '+(order.item||'order'));
+                const dossierHead=document.createElement('div');dossierHead.className='trade-order-dossier-head';
+                const dossierName=document.createElement('strong');dossierName.textContent='INTEL // '+(order.item||'ORDER');
+                const dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent='RETURN ↩';
+                const dossierText=document.createElement('div');dossierText.className='trade-order-dossier-text';
+                const line=(label,value)=>{const p=document.createElement('p');const lead=document.createElement('strong');lead.textContent=label+' // ';p.append(lead,document.createTextNode(value));dossierText.appendChild(p);};
+                const listing=Boolean(order.listing);
+                line('THE PLAY',listing?'We can post an asking price, but no buyer has promised to pay it. This is a gamble, not money in the hold.':'A buyer has posted an order for these goods. Buy at the source, haul them to the destination, then fill that order before someone else does.');
+                const isk=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:0})+' ISK';
+                if(Number.isFinite(Number(order.cost_isk)))line('SUPPLY COST',isk(order.cost_isk));
+                if(Number.isFinite(Number(order.revenue_isk)))line('TARGET SALE',isk(order.revenue_isk));
+                if(Number.isFinite(Number(order.sales_tax_isk)))line('SALES TAX',isk(order.sales_tax_isk)+' (base Accounting 0 estimate)');
+                if(Number(order.broker_fee_isk)>0)line('LISTING FEE',isk(order.broker_fee_isk)+' estimated');
+                if(Number(order.lp_required)>0)line('LP SPENT',Number(order.lp_required).toLocaleString('en-US')+' LP, valued at 1,000 ISK per LP');
+                line('THE CATCH','The profit shown is before hauling costs, ambushes, cargo losses, and price changes. Verify the orders in EVE before flying.');
+                dossierHead.append(dossierName,dismiss);dossier.append(dossierHead,dossierText);
+                const setExpanded=open=>{dossier.hidden=!open;assumptions.setAttribute('aria-expanded',String(open));assumptions.textContent=open?'INTEL ▴':'INTEL ▸';};
+                assumptions.setAttribute('aria-expanded','false');
+                assumptions.addEventListener('click',()=>setExpanded(dossier.hidden));
+                dismiss.addEventListener('click',()=>{setExpanded(false);assumptions.focus();});
+                card.addEventListener('keydown',event=>{if(event.key==='Escape'&&!dossier.hidden){event.stopPropagation();setExpanded(false);assumptions.focus();}});
                 heading.append(kind,assumptions);card.appendChild(heading);
                 add('strong','trade-order-item',order.item||'ITEM NAME UNAVAILABLE');
                 const route=document.createElement('div');route.className='trade-order-steps';
@@ -88,6 +94,7 @@
                     : String(order.quantity||'').replace(/(ROI\s+[\d,]+\.\d)\d+%/i,'$1%');
                 for(const value of [order.margin,quantity]){const el=document.createElement('span');el.textContent=value||'';metrics.appendChild(el);}
                 card.appendChild(metrics);
+                card.appendChild(dossier);
                 host.appendChild(card);
             });
             const stamp=Date.parse(report.as_of||'');

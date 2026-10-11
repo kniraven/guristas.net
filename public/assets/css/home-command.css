@@ -1060,3 +1060,29 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
 .trade-assumptions-modal-body{margin:14px 0 2px;white-space:pre-wrap;overflow-wrap:anywhere;
   font:400 .85rem/1.65 system-ui,sans-serif;color:var(--text,#fff)}
 @media(max-width:650px){.home-refresh .directive-row .trade-order-heading .trade-order-assumptions{font-size:.46rem}.trade-assumptions-modal{padding:15px}}
+
+/* TR-11: card-local intelligence flip, without changing the briefing height. */
+.home-refresh .directive-row .trade-order-card .trade-order-dossier[hidden]{display:none!important}
+.home-refresh .directive-row .trade-order-card .trade-order-dossier{
+  position:absolute;inset:0;z-index:15;padding:10px 12px;box-sizing:border-box;
+  border-radius:5px;background:var(--panel-solid,#180f20);color:var(--text,#fff);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.home-refresh .directive-row .trade-order-dossier-head{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  flex:0 0 auto;padding-bottom:6px;border-bottom:1px solid var(--line-strong,#8d6085);
+  font:700 .63rem/1.25 ui-monospace,monospace;color:var(--accent-bright);
+}
+.home-refresh .directive-row .trade-order-dossier-head strong{min-width:0;overflow-wrap:anywhere}
+.home-refresh .directive-row .trade-order-dossier-head button{
+  flex:none;border:1px solid var(--line-strong,#8d6085);border-radius:3px;
+  padding:3px 5px;background:transparent;color:var(--accent-bright);
+  font:700 .55rem/1.2 ui-monospace,monospace;cursor:pointer;
+}
+.home-refresh .directive-row .trade-order-dossier-text{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;padding:7px 2px 1px;
+  font:400 .72rem/1.4 system-ui,sans-serif;
+}
+.home-refresh .directive-row .trade-order-dossier-text p{margin:0 0 9px;color:var(--text,#fff)}
+.home-refresh .directive-row .trade-order-dossier-text strong{color:var(--accent-bright);font:750 .64rem ui-monospace,monospace}
