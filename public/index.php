@@ -150,7 +150,7 @@ $currentYear = (int) date('Y');
         defer
     ></script>
     <link rel="stylesheet" href="/assets/css/auth.css?v=<?= filemtime(__DIR__ . '/assets/css/auth.css') ?>">
-    
+
     <script src="/assets/js/auth.js?v=<?= filemtime(__DIR__ . '/assets/js/auth.js') ?>" defer></script>
 
 <link rel="stylesheet" href="/assets/css/site-usability.css?v=<?= filemtime(__DIR__ . '/assets/css/site-usability.css') ?>">
@@ -181,7 +181,7 @@ $currentYear = (int) date('Y');
         aria-hidden="true"
     ></div>
 
-    
+
 
 
 
@@ -474,7 +474,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         <div class="receiver-dial"><span class="dial-pointer"></span><input id="home-frequency" type="range" min="0" max="4" step="1" value="0" aria-label="Tune channel" aria-valuetext="Fatal Mistake"></div>
                         <div class="receiver-step"><button type="button" data-radio-prev aria-label="Previous channel">◀</button><button type="button" data-home-radio-next aria-label="Next channel">▶</button></div>
                         <span class="receiver-stamp">GURISTAS<br>PROPERTY</span>
-                        <p class="receiver-embed-status" data-receiver-embed-status role="status" aria-live="polite" hidden></p>
+
                         <div class="receiver-controls" aria-label="Receiver playback and volume">
                             <div class="receiver-transport" role="group" aria-label="Transmission controls">
                                 <button type="button" class="receiver-transport-button" data-home-radio-play aria-label="Play transmission" aria-pressed="false" title="Play"><span aria-hidden="true" class="transport-symbol transport-play">▶</span></button>

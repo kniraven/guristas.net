@@ -358,8 +358,6 @@ body.home-refresh .hero-visual img{max-height:390px}
 .home-refresh .receiver-screen:has(>.receiver-video-layer[data-live="online"])>#receiver-volume-bar{
   visibility:hidden!important; pointer-events:none!important;
 }
-.home-refresh .receiver-embed-status{font:11px/1.5 monospace;color:#ffc282;text-align:center;margin:6px 0 0;max-width:100%;overflow-wrap:anywhere}
-.home-refresh .receiver-embed-status[hidden]{display:none!important}
 
 /* Diagnostic: Twitch rejects programmatic play when a transformed ancestor
    fails its style-visibility check. Keep the receiver chassis untransformed;
@@ -418,54 +416,3 @@ body.home-refresh > .receiver-twitch-portal iframe {
     visibility: visible;
 }
 /* END GURISTAS TWITCH PORTAL FIX */
-
-
-/* RX-06 stability: status messages must not move the hardware controls. */
-.home-refresh .receiver-tuner > .receiver-embed-status {
-    box-sizing: border-box;
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    overflow-wrap: anywhere;
-}
-
-/* Desktop: keep the message after the controls, not between the stamp
-   and the transport buttons. */
-@media (min-width: 992px) {
-    .home-refresh .receiver-tuner > .receiver-controls { order: 4; }
-    .home-refresh .receiver-tuner > .receiver-embed-status {
-        order: 5;
-        align-self: stretch;
-    }
-}
-
-/* Tablet: dedicate the third row to channel status. Never allow the
-   status text to participate in the control row's column sizing. */
-@media (min-width: 576px) and (max-width: 991.98px) {
-    .home-refresh .receiver-tuner {
-        grid-template-rows: auto auto minmax(24px, auto);
-    }
-    .home-refresh .receiver-tuner > .receiver-embed-status {
-        grid-column: 1 / -1;
-        grid-row: 3;
-        justify-self: stretch;
-        align-self: start;
-        text-align: left;
-    }
-}
-
-/* Mobile: the third row already contains the transport and volume
-   controls, so reserve a fourth row for status. */
-@media (max-width: 575.98px) {
-    .home-refresh .receiver-tuner {
-        grid-template-rows: auto auto auto minmax(24px, auto);
-    }
-    .home-refresh .receiver-tuner > .receiver-embed-status {
-        grid-column: 1 / -1;
-        grid-row: 4;
-        justify-self: stretch;
-        align-self: start;
-        text-align: center;
-    }
-}
