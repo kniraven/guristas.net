@@ -1206,3 +1206,104 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
   }
   .home-refresh .directive-row .trade-order-metric-row .trade-stats-line{text-align:left}
 }
+
+/* TR-17: readable no-scroll three-card tactical display.
+   Use width for the BUY and SELL endpoints instead of stacking long station
+   names into a tiny scrollable strip. Preserve the 300px shared briefing. */
+@media (min-width:901px){
+  .home-refresh .directive-row .trade-order-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    min-height:0;overflow:visible;
+  }
+  .home-refresh .directive-row .trade-order-card{
+    display:grid;
+    grid-template-rows:min-content min-content minmax(0,1fr) min-content min-content;
+    gap:3px;
+    padding:7px 9px;
+    min-width:0;min-height:0;
+    overflow:hidden;
+  }
+  .home-refresh .directive-row .trade-order-card .trade-order-item{
+    font-size:.83rem;line-height:1.12;
+    max-height:none;-webkit-line-clamp:2;
+  }
+  .home-refresh .directive-row .trade-order-steps{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    align-content:start;
+    align-items:start;
+    justify-content:stretch;
+    gap:0;
+    min-height:0;
+    padding:2px 0 0;
+    overflow:visible;
+    scrollbar-width:none;
+  }
+  .home-refresh .directive-row .trade-order-step{
+    display:flex;flex-direction:column;
+    align-items:stretch;
+    gap:2px;
+    padding:0 7px 0 0;
+    min-width:0;
+    font-size:.66rem;
+    line-height:1.13;
+  }
+  .home-refresh .directive-row .trade-order-step+.trade-order-step{
+    border-left:1px solid var(--line-strong);
+    padding-left:9px;
+    padding-right:0;
+  }
+  .home-refresh .directive-row .trade-order-verb{
+    display:block;
+    grid-row:auto;
+    padding:0;
+    font-size:.56rem;
+    line-height:1.1;
+    overflow-wrap:normal;
+  }
+  .home-refresh .directive-row .trade-order-location{
+    display:flex;flex-direction:column;
+    gap:2px;
+    min-width:0;
+  }
+  .home-refresh .directive-row .trade-order-place{
+    display:block;
+    font-size:.66rem;
+    line-height:1.13;
+    white-space:normal;
+    overflow:visible;
+    text-overflow:clip;
+    overflow-wrap:normal;
+    word-break:normal;
+    hyphens:none;
+  }
+  .home-refresh .directive-row .trade-order-system{
+    display:block;
+    font-size:.59rem;
+    line-height:1.12;
+    white-space:normal;
+    overflow:visible;
+    text-overflow:clip;
+    overflow-wrap:normal;
+    word-break:normal;
+  }
+  .home-refresh .directive-row .trade-order-prices{
+    min-width:0;
+    padding-top:3px;
+    border-top:1px solid var(--line-strong);
+  }
+  .home-refresh .directive-row .trade-order-metric-row{
+    gap:1px;
+    padding-top:2px;
+    border-top:0;
+  }
+  .home-refresh .directive-row .trade-order-metric-row .trade-profit-line{
+    font-size:.72rem;
+    line-height:1.1;
+  }
+  .home-refresh .directive-row .trade-order-metric-row .trade-stats-line{
+    font-size:.66rem;
+    line-height:1.1;
+    text-align:right;
+  }
+}
