@@ -37,13 +37,13 @@
         try {
             const payload=await json('/api/industry/trade-orders.php',control.signal);
             const report=payload.data;
-            if(!Array.isArray(report?.orders)||report.orders.length!==3)throw new Error('Invalid market intelligence');
+            if(!Array.isArray(report?.orders)||report.orders.length!==4)throw new Error('Invalid market intelligence');
             host.replaceChildren();
             report.orders.forEach((order,i)=>{
-                const card=document.createElement('article');card.className='trade-order-card';card.dataset.tradeStatus=order.status||'standby';
+                const card=document.createElement('article');card.className='trade-order-card';card.dataset.tradeStatus=order.status||'standby';card.dataset.tradeSlot=String(i+1);
                 const add=(tag,className,value)=>{const el=document.createElement(tag);el.className=className;el.textContent=value||'';card.appendChild(el);};
                 const heading=document.createElement('div');heading.className='trade-order-heading';
-                const kind=document.createElement('span');kind.className='trade-order-kind';kind.textContent=String(i+1).padStart(2,'0')+' // '+(order.category||'ORDER');
+                const kind=document.createElement('span');kind.className='trade-order-kind';kind.textContent=String(i+1).padStart(2,'0')+' // '+(i===3?'SPECULATIVE LISTING':(order.category||'ORDER'));
                 const assumptions=document.createElement('button');assumptions.type='button';assumptions.className='trade-order-assumptions';
                 assumptions.textContent='INTEL ▸';
                 assumptions.setAttribute('aria-label','View order basis and assumptions for '+(order.item||'trade order'));
@@ -56,6 +56,8 @@
                 const dossierText=document.createElement('div');dossierText.className='trade-order-dossier-text';
                 const line=(label,value)=>{const p=document.createElement('p');const lead=document.createElement('strong');lead.textContent=label+' // ';p.append(lead,document.createTextNode(value));dossierText.appendChild(p);};
                 const listing=Boolean(order.listing);
+                if(listing){card.title='CONDITIONAL: Regional sales history and local bids support this price. Station sales and fill time cannot be verified.';}else if(order.status!=='standby'){card.title='FIRM BID SNAPSHOT: Buyer order observed; verify it remains available before hauling.';}
+                line('CONFIDENCE',listing?'CONDITIONAL. Regional sales and local buy orders support this possible listing. A sale at this station is not confirmed.':(order.status==='standby'?'No qualifying order has been verified.':'An actual destination buy order was observed. It could change before you arrive.'));
                 line('THE PLAY',listing?'We can post an asking price, but no buyer has promised to pay it. This is a gamble, not money in the hold.':'A buyer has posted an order for these goods. Buy at the source, haul them to the destination, then fill that order before someone else does.');
                 const isk=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:0})+' ISK';
                 if(Number.isFinite(Number(order.cost_isk)))line('SUPPLY COST',isk(order.cost_isk));
@@ -71,6 +73,7 @@
                 dismiss.addEventListener('click',()=>{setExpanded(false);assumptions.focus();});
                 card.addEventListener('keydown',event=>{if(event.key==='Escape'&&!dossier.hidden){event.stopPropagation();setExpanded(false);assumptions.focus();}});
                 heading.append(kind,assumptions);card.appendChild(heading);
+                if(order.status==='standby'){add('strong','trade-order-item','NO VERIFIED SELL LISTING');add('p','trade-order-standby-note',order.route||'Evidence is not strong enough yet.');card.appendChild(dossier);host.appendChild(card);return;}
                 add('strong','trade-order-item',order.item||'ITEM NAME UNAVAILABLE');
                 const route=document.createElement('div');route.className='trade-order-steps';
                 const step=(verb,station,system,region,note='')=>{
@@ -103,7 +106,7 @@
             if(!report.stale)tradeLastSuccess=Date.now();
         }catch(error){
             host.replaceChildren();
-            ['FULCRUM DEMAND','VENAL DEMAND','GURISTAS LP ADVANTAGE'].forEach((category,i)=>{
+            ['FULCRUM DEMAND','VENAL DEMAND','GURISTAS LP ADVANTAGE','SPECULATIVE // EVIDENCE REQUIRED'].forEach((category,i)=>{
                 const card=document.createElement('article');card.className='trade-order-card';card.dataset.tradeStatus='standby';
                 const heading=document.createElement('span');heading.className='trade-order-kind';heading.textContent=`0${i+1} // ${category}`;
                 const title=document.createElement('strong');title.textContent='HOLD CARGO';
@@ -115,6 +118,8 @@
     }
     document.addEventListener('guristas:directive-selected', event => brief(event.detail.key));
     brief(document.documentElement.dataset.operation);
+    // Shared published intelligence: polling does not trigger CCP ESI scans.
+    setInterval(()=>{if(document.visibilityState==='visible' && $('#directive-briefing')?.dataset.mode==='trade')loadTrade();},60000);
 
     async function json(url, signal) {
         const response=await fetch(url,{signal,credentials:'omit',headers:{Accept:'application/json'}});

@@ -20,12 +20,26 @@ try{
     }
     if($command==='region')$log[]=$intel->collectRegion((int)($argv[2]??0));
     if(in_array($command,['rotate','trade-cycle'],true)){
+        // Rotating worker: favor the five outside trade-hub regions when stale,
+        // but preserve every other rotation for broader New Eden discovery.
+        // Existing dedicated hub/priority cron tasks remain unchanged.
+        $hubRegions=[10000002,10000032,10000043,10000042,10000030]; // Jita, Dodixie, Amarr, Hek, Rens
         $ids=array_values(array_diff($intel->regionIds(),[10001000,10000015]));
         if($ids){
             $cursor=(int)($intel->read('rotation')['index']??0);
-            $region=$ids[$cursor%count($ids)];
-            // Advance even if a region later fails, so a permanently unsupported region does not block the sweep.
-            $intel->publish('rotation',['index'=>$cursor+1,'region'=>$region,'fetched_at'=>gmdate('c')]);
+            $background=array_values(array_diff($ids,$hubRegions));
+            $candidates=[];
+            foreach($hubRegions as $region){
+                if(!in_array($region,$ids,true))continue;
+                $snap=$intel->read('region-'.$region);
+                $stamp=strtotime((string)($snap['fetched_at']??''))?:0;
+                if(time()-$stamp>3600)$candidates[]=['id'=>$region,'age'=>time()-$stamp];
+            }
+            usort($candidates,static fn($a,$b)=>$b['age']<=>$a['age']);
+            $useHub=($cursor%2===0)&&$candidates;
+            $region=$useHub?$candidates[0]['id']:($background?$background[intdiv($cursor,2)%count($background)]:$ids[$cursor%count($ids)]);
+            // Advance before scanning so a failed region does not stall rotation.
+            $intel->publish('rotation',['index'=>$cursor+1,'region'=>$region,'fetched_at'=>gmdate('c'),'priority_hub'=>(bool)$useHub]);
             $log[]=$intel->collectRegion($region);
         }
     }

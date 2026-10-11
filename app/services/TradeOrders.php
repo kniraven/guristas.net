@@ -320,14 +320,8 @@ final class GuristasTradeOrders {
             }
             if(count($picked)>=3)break;
         }
-        // Only one history-supported, explicitly conditional listing at most.
-        // It can fill an empty third slot, never replace verified bid execution.
-        if(count($picked)<3){
-            foreach($pool as $p){
-                if(empty($p['listing'])||empty($p['evidence'])||isset($used[(string)$p['type']]))continue;
-                $used[(string)$p['type']]=true;$picked[]=$p;break;
-            }
-        }
+        // Reserve the first three slots for the original executable/LP recommendations.
+        // A speculative listing is considered only for the independent fourth slot.
         if(count($picked)<3){
             foreach($pool as $p){
                 if(!empty($p['listing'])||isset($used[(string)$p['type']]))continue;
@@ -335,6 +329,14 @@ final class GuristasTradeOrders {
                 if(count($picked)>=3)break;
             }
         }
+        // Find the best history-verified listing independently, without taking a
+        // slot from the three regular recommendations. Prefer a different item.
+        $fourth=null;
+        foreach($validatedListings as $p){
+            if($fourth===null || ((!isset($used[(string)$p['type']]) && isset($used[(string)$fourth['type']]))) ||
+                (isset($used[(string)$p['type']])===isset($used[(string)$fourth['type']]) && $p['score']>$fourth['score']))$fourth=$p;
+        }
+        if($fourth!==null)$picked[]=$fourth;
         $orders=[];
         foreach($picked as $p){
             $lp=$p['kind']!=='MARKET';$conditional=$p['conditional'];
@@ -350,6 +352,7 @@ final class GuristasTradeOrders {
                 'reason'=>$p['note'].' Total source ISK: '.$this->money($p['cost']).'; LP: '.number_format($p['lp']).'; target gross sale: '.$this->money($p['revenue']).'. Includes '.number_format(self::BASE_SALES_TAX*100,1).'% base sales tax (assumed Accounting 0) and '.($p['listing']?'3% assumed NPC broker fee for listing; sale is NOT confirmed':'no new broker fee for fulfilling an existing buy order').'. LP valued at an assumed 1,000 ISK each. Hauling costs, route safety, cargo loss and future market movement are not modeled. '.($p['listing']?'Unrealized profit only: competing sell prices and current local bids do not guarantee a buyer.':'Pre-haul profit, not risk-adjusted profit.').' Verify current orders and route before committing ISK.'];
         }
         while(count($orders)<3)$orders[]=$this->hold('ECONOMIC INTELLIGENCE','No independent qualifying order from sufficiently fresh covered public markets.');
+        if(count($orders)<4)$orders[]=$this->hold('SPECULATIVE // EVIDENCE REQUIRED','No sale listing passed the regional trade-history, pricing and local bid checks. We will not invent projected sales.');
         return ['orders'=>$orders,'as_of'=>$coverage?gmdate('c',$oldest):null,'stale'=>false,
             'coverage'=>['complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'history_supported_listings'=>count($validatedListings),'lp_offers'=>$validOffers?count($offers['offers']):0],
             'disclaimer'=>'Sell listings require corroborating regional completed-trade history and station order book evidence; station sales velocity and actual fill time remain unverified. Maximum one conditional listing is allowed. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional listings assume 3% NPC broker fee and are NOT guaranteed sales. Ranking blends pre-haul ISK profit, ROI, and available order quantities; explores several acquisition stations and firm bid prices, but cannot guarantee global highest profit across unscanned/stale regions. Route security remains unmeasured. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
