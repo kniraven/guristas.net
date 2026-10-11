@@ -286,9 +286,13 @@ final class GuristasTradeOrders {
                             $c['buy_order_broker_fee']=$fee;
                             $c['source_lowest_ask']=$lowestAsk;
                             $c['source_ask_units']=$askVolume;
-                            // At least one firm exit and actual active local orders;
-                            // score new buy orders below confirmed trades.
-                            $c['score']*=.62;
+                            // Conditional bid: observed competing orders establish a
+                            // price, not a fill probability. Reward deeper visible
+                            // supply only within a bounded ranking adjustment.
+                            $askCoverage=min(3.0,$askVolume/max(1,$qty));
+                            $bidCoverage=min(3.0,count($allBuy[$type][$sourceStation]));
+                            $c['order_evidence']=['source_ask_coverage'=>$askCoverage,'source_bid_count'=>(int)$bidCoverage,'destination_bid_units'=>$qty];
+                            $c['score']*=.62*(0.85+0.10*min(1.0,$askCoverage/3.0)+0.05*min(1.0,$bidCoverage/3.0));
                             $buyOrderPool[]=$c;
                         }
                     }
@@ -400,6 +404,12 @@ final class GuristasTradeOrders {
                 $this->highestBid($listingDestinations[$c['goal']][$c['type']][$c['destStation']]??[]),$bidDepth,$competingAskUnits);
             if(isset($evidence['reject'])){$rejects[$evidence['reject']]++;continue;}
             $c['evidence']=$evidence;
+            // Regional history is evidence of real trading, not proof that
+            // this station will fill the listing. Use small bounded scoring
+            // adjustments for volume and visible local competition only.
+            $historyCoverage=min(1.0,((float)($evidence['regional_14d_units']??0))/max(1,$c['qty']*30));
+            $supplyPressure=min(1.0,$competingAskUnits/max(1,$bidDepth));
+            $c['score']*=0.90+0.15*$historyCoverage-0.05*$supplyPressure;
             $c['note'].=' CCP regional 14-day completed volume '.number_format($evidence['regional_14d_units']).
                 ' units across '.$evidence['regional_14d_active_days'].' active days; 14-day volume-weighted average '.
                 $this->money($evidence['regional_14d_vwap_isk']).'/unit. Destination local bid depth '.
@@ -481,7 +491,29 @@ final class GuristasTradeOrders {
             }
         }
         usort($shortlist,static fn($a,$b)=>$b['score']<=>$a['score']);
-        $best=null;$bestScore=-INF;$bestMask=0;
+        // All four requirements are an ELIGIBILITY RULE, not a monetary
+        // multiplier. Among fully eligible sets, optimize combined quality.
+        // If none exists, select the strongest set with maximum coverage and
+        // disclose the missing goals. Never invent a trade to fill a slot.
+        $best=null;$bestScore=-INF;$bestMask=0;$bestCovered=-1;
+        $bestEconomic=-INF;$bestVariety=0;
+        $consider=static function(array $trio,int $mask)use(&$best,&$bestScore,&$bestMask,&$bestCovered,&$bestEconomic,&$bestVariety):void{
+            $covered=substr_count(decbin($mask),'1');
+            if($covered<$bestCovered)return;
+            $economic=array_sum(array_map(static fn($x)=>(float)$x['score'],$trio));
+            // A maximum 1.5% preference for diverse transaction strategies.
+            // Do not sacrifice a materially better trade just for variety.
+            $strategies=[];
+            foreach($trio as $x){
+                $strategies[!empty($x['buy_order'])?'CREATE BUY':(!empty($x['listing'])?'CREATE SELL':(str_starts_with($x['kind'],'LP ')?'LP REDEEM':'IMMEDIATE'))]=true;
+            }
+            $variety=count($strategies);
+            $adjusted=$economic*(1+0.0075*max(0,$variety-1));
+            if($covered>$bestCovered||$adjusted>$bestScore){
+                $best=$trio;$bestScore=$adjusted;$bestMask=$mask;
+                $bestCovered=$covered;$bestEconomic=$economic;$bestVariety=$variety;
+            }
+        };
         // Max 15 coverage masks x 12 unique item candidates each.
         $n=count($shortlist);
         for($i=0;$i<$n;$i++)for($j=$i+1;$j<$n;$j++){
@@ -491,17 +523,10 @@ final class GuristasTradeOrders {
             for($k=$j+1;$k<$n;$k++){
                 $c=$shortlist[$k];
                 if($c['type']===$a['type']||$c['type']===$b['type'])continue;
-                $mask=$mask2|$c['coverage_mask'];
-                $covered=substr_count(decbin($mask),'1');
-                // All four obligations win over incomplete coverage; within
-                // equal coverage prefer stronger economic and evidence scores.
-                $score=($covered*1e16)+$a['score']+$b['score']+$c['score'];
-                if($score>$bestScore){$bestScore=$score;$best=[$a,$b,$c];$bestMask=$mask;}
+                $consider([$a,$b,$c],$mask2|$c['coverage_mask']);
             }
         }
         $picked=$best??[];
-        // If the market cannot support three distinct items, publish only
-        // verified candidates and explicit gaps; do not claim full coverage.
         if(!$picked){
             $used=[];$mask=0;
             foreach($shortlist as $c){
@@ -510,6 +535,7 @@ final class GuristasTradeOrders {
                 if(count($picked)>=3)break;
             }
             $bestMask=$mask;
+            $bestEconomic=array_sum(array_map(static fn($x)=>(float)$x['score'],$picked));
         }
         usort($picked,static function($a,$b){
             $rank=static function($c){
@@ -541,7 +567,7 @@ final class GuristasTradeOrders {
                 'Insufficient market evidence for: '.implode(', ',$missing).'. We will not invent an order or promise a fill.');
         }
         return ['orders'=>$orders,'as_of'=>$coverage?gmdate('c',$oldest):null,'stale'=>false,
-            'coverage'=>['selection_mask'=>$bestMask,'selection_requirements_met'=>$bestMask===15,'missing_requirements'=>array_values(array_keys(array_filter(['FULCRUM'=>(bool)(~$bestMask&1),'VENAL'=>(bool)(~$bestMask&2),'GURISTAS_LP'=>(bool)(~$bestMask&4),'NEW_ORDER'=>(bool)(~$bestMask&8)]))),'complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'history_supported_listings'=>count($validatedListings),'qualified_buy_order_proposals'=>count($buyOrderPool),'listing_candidates'=>count($listingPool),'listing_rejections'=>$rejects,'excluded_outside_pirate_economy'=>$this->excludedOutsidePirateEconomy,'lp_offers'=>$validOffers?count($offers['offers']):0],
-            'disclaimer'=>'Three cards are jointly selected to cover Fulcrum, Venal, Guristas LP and at least one newly created buy/sell order wherever supporting evidence exists. Gaps are explicitly reported. Market trades must start or end at a verified station in Venal or The Fulcrum. Commando Guri LP redemptions and their associated blueprint production are exempt because they directly use pirate LP, even where the redemption station is unspecified. Sell listings require corroborating regional completed-trade history and station order book evidence, including selected outside trade hubs; station sales velocity and actual fill time remain unverified. At least one of the three selected trades should create a buy or sell order when credible evidence exists; neither kind is guaranteed to fill. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional listings assume 3% NPC broker fee and are NOT guaranteed sales. Ranking blends pre-haul ISK profit, ROI, and available order quantities; explores several acquisition stations and firm bid prices, but cannot guarantee global highest profit across unscanned/stale regions. Route security remains unmeasured. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
+            'coverage'=>['selection_mask'=>$bestMask,'selection_combined_score'=>round($bestEconomic,2),'selection_distinct_strategies'=>$bestVariety,'selection_requirements_met'=>$bestMask===15,'missing_requirements'=>array_values(array_keys(array_filter(['FULCRUM'=>(bool)(~$bestMask&1),'VENAL'=>(bool)(~$bestMask&2),'GURISTAS_LP'=>(bool)(~$bestMask&4),'NEW_ORDER'=>(bool)(~$bestMask&8)]))),'complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'history_supported_listings'=>count($validatedListings),'qualified_buy_order_proposals'=>count($buyOrderPool),'listing_candidates'=>count($listingPool),'listing_rejections'=>$rejects,'excluded_outside_pirate_economy'=>$this->excludedOutsidePirateEconomy,'lp_offers'=>$validOffers?count($offers['offers']):0],
+            'disclaimer'=>'Three distinct trade candidates are selected as a group. Full coverage of Fulcrum, Venal, Guristas LP and one newly created buy/sell order is an eligibility condition, not an inflated score; when unsupported, maximum verified coverage is selected and gaps reported. Economic ranking uses pre-haul profit, ROI, order depth and bounded supporting evidence; a maximum 1.5% near-tie preference favors distinct strategies. Gaps are explicitly reported. Market trades must start or end at a verified station in Venal or The Fulcrum. Commando Guri LP redemptions and their associated blueprint production are exempt because they directly use pirate LP, even where the redemption station is unspecified. Sell listings require corroborating regional completed-trade history and station order book evidence, including selected outside trade hubs; station sales velocity and actual fill time remain unverified. At least one of the three selected trades should create a buy or sell order when credible evidence exists; neither kind is guaranteed to fill. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional listings assume 3% NPC broker fee and are NOT guaranteed sales. Ranking blends pre-haul ISK profit, ROI, and available order quantities; explores several acquisition stations and firm bid prices, but cannot guarantee global highest profit across unscanned/stale regions. Route security remains unmeasured. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
     }
 }
