@@ -65,8 +65,8 @@ config/esi.php
 config/stream-defaults/message-types.json
 config/stream-defaults/messages.json
 config/stream-defaults/settings.json
-config/stream.local.php.example
 config/stream.php
+config/stream.php.example
 config/ticket-storage.local.php.example
 config/tickets.local.php.example
 deploy/systemd/guristas-cache-cleanup.service
@@ -223,6 +223,7 @@ sql/004_staff_tickets.sql
 sql/005_ticket_statuses.sql
 sql/006_ticket_editor_attachments.sql
 sql/007_ticket_summary_html.sql
+sql/20261010_optional_persistent_stores.sql
 storage/.gitkeep
 tests/fixtures/frontlines-campaigns.json
 tests/test_community_concurrency.php

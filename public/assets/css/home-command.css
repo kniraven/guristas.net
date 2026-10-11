@@ -416,3 +416,472 @@ body.home-refresh > .receiver-twitch-portal iframe {
     visibility: visible;
 }
 /* END GURISTAS TWITCH PORTAL FIX */
+
+/* GC-01 campaign console: all component rules remain scoped to its root. */
+.home-refresh .guri-console{position:relative;z-index:2;padding-top:18px;padding-bottom:4px;--gc-glow:var(--accent-bright);color:var(--text)}
+.guri-console .gc-housing{position:relative;border:1px solid var(--line-strong);border-radius:var(--panel-radius,0);padding:14px 18px 10px;background:linear-gradient(160deg,#ffffff0b,transparent 45%,#00000026),var(--panel-solid);box-shadow:inset 0 1px 0 #ffffff26,inset 0 -3px 0 #0005,0 8px 24px #0004}
+.guri-console .gc-housing::before,.guri-console .gc-housing::after{content:'';position:absolute;top:9px;width:5px;height:5px;border-radius:50%;background:var(--muted);box-shadow:inset 1px 1px 2px #000b;opacity:.5;pointer-events:none}.guri-console .gc-housing::before{left:7px}.guri-console .gc-housing::after{right:7px}
+.guri-console .gc-plate{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.guri-console .gc-plate h2{margin:0;color:var(--accent-bright);font:700 .7rem/1.4 ui-monospace,monospace;letter-spacing:.12em}
+.guri-console .gc-plate h2 span,.guri-console .gc-model{color:var(--muted)}
+.guri-console .gc-model{font:600 .65rem/1.4 ui-monospace,monospace;white-space:nowrap}
+.guri-console .gc-instruments{display:grid;grid-template-columns:1fr 1fr 1.65fr;gap:10px}
+.guri-console .gc-screen{min-width:0;padding:12px 14px;background:linear-gradient(180deg,#00000020,transparent),var(--background);border:1px solid var(--line);box-shadow:inset 0 2px 6px #0009,0 1px 0 #ffffff13;border-radius:var(--panel-radius,0);display:flex;flex-direction:column;justify-content:center;gap:7px}
+.guri-console .gc-label{font:600 .59rem/1.3 ui-monospace,monospace;letter-spacing:.12em;color:var(--muted)}
+.guri-console .gc-screen>strong{font:700 clamp(.88rem,1.45vw,1.15rem)/1.3 ui-monospace,monospace;color:var(--accent-bright);overflow-wrap:anywhere}
+.guri-console .gc-phase::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;background:var(--muted);box-shadow:inset 0 1px 2px #0007}
+.guri-console[data-state=active] .gc-phase::before{background:var(--success);box-shadow:0 0 8px var(--success)}
+.guri-console[data-state=forecast] .gc-phase::before{background:var(--secondary-bright);box-shadow:0 0 8px var(--secondary)}
+.guri-console .gc-time,.guri-console .gc-condition{font:.69rem/1.5 ui-monospace,monospace;color:var(--text)}
+.guri-console .gc-base[data-threat=true]{border-color:var(--danger)}
+.guri-console .gc-base[data-threat=true] .gc-condition{color:var(--danger);font-weight:700}
+.guri-console .gc-objectives{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:center}
+.guri-console .gc-objective{min-width:0;--gc-meter:var(--accent-bright)}
+.guri-console .gc-enemy{--gc-meter:var(--danger)}
+.guri-console .gc-meter-heading{display:flex;gap:8px;justify-content:space-between;align-items:baseline;font:700 .64rem/1.4 ui-monospace,monospace;color:var(--text)}
+.guri-console .gc-meter-heading strong{font-size:1.3rem;color:var(--gc-meter);font-variant-numeric:tabular-nums}
+.guri-console .gc-segments{display:flex;gap:3px;height:13px;margin:6px 0 7px}
+.guri-console .gc-segments i{flex:1;min-width:0;border:1px solid var(--line-strong);background:var(--panel-soft);box-shadow:inset 0 1px 3px #0006}
+.guri-console .gc-segments i[data-lit=true]{background:var(--gc-meter);border-color:var(--gc-meter);box-shadow:0 0 5px color-mix(in srgb,var(--gc-meter) 35%,transparent)}
+.guri-console .gc-enemy .gc-segments i{transform:skewX(-12deg)}
+.guri-console .gc-ambition{display:block;font:.62rem/1.4 ui-monospace,monospace;color:var(--muted)}
+.guri-console .gc-footer{display:flex;justify-content:space-between;align-items:center;gap:8px 20px;flex-wrap:wrap;margin-top:9px;font:.65rem/1.5 ui-monospace,monospace}
+.guri-console .gc-occupation{color:var(--text);flex:1;min-width:180px}
+.guri-console .gc-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:var(--muted)}
+.guri-console .gc-actions button,.guri-console .gc-actions a{border:1px solid var(--line-strong);background:var(--panel);color:var(--accent-bright);padding:7px 10px;min-height:34px;font:inherit;text-decoration:none;cursor:pointer}
+.guri-console .gc-actions button:disabled{opacity:.6;cursor:wait}
+.guri-console .gc-actions :is(a,button):focus-visible,.guri-console .gc-details summary:focus-visible{outline:2px solid var(--secondary-bright);outline-offset:3px}
+.home-refresh .guri-console .gc-details{padding:0;margin-top:4px;background:transparent;border:0}
+.home-refresh .guri-console .gc-details summary{padding:4px 0;min-height:24px;color:var(--muted);font:.62rem/1.5 ui-monospace,monospace}
+.home-refresh .guri-console .gc-details p,.guri-console .gc-noscript{margin:6px 0;font:.75rem/1.6 system-ui,sans-serif;color:var(--text)}
+.guri-console[data-state=stale] .gc-segments,.guri-console[data-state=unavailable] .gc-segments{opacity:.35}
+@media(max-width:900px){.guri-console .gc-instruments{grid-template-columns:1fr 1fr}.guri-console .gc-objectives{grid-column:1/-1}.guri-console .gc-screen{padding:10px 12px}}
+@media(max-width:480px){.home-refresh .guri-console{padding-top:12px}.guri-console .gc-housing{padding:12px 12px 8px}.guri-console .gc-plate h2{font-size:.62rem;letter-spacing:.05em}.guri-console .gc-plate h2 span{display:block}.guri-console .gc-instruments{gap:7px}.guri-console .gc-objectives{gap:16px}.guri-console .gc-screen{padding:9px}.guri-console .gc-meter-heading{font-size:.58rem}.guri-console .gc-footer{gap:6px}.guri-console .gc-actions{gap:8px}.guri-console .gc-actions button,.guri-console .gc-actions a{min-height:44px}.guri-console .gc-time{font-size:.62rem}}
+
+/* FOB faction and insurgency countdown telemetry. */
+.guri-console .gc-faction{display:block;font:700 .65rem/1.4 ui-monospace,monospace;color:var(--accent-bright);letter-spacing:.035em;overflow-wrap:anywhere}
+.guri-console .gc-time{font-variant-numeric:tabular-nums}
+
+/* Full-width directive deck below the hero. The RAID directive owns the campaign console. */
+.home-refresh .directive-row{position:relative;z-index:2;margin-top:8px;margin-bottom:22px}
+.home-refresh .directive-row .directive-terminal{width:100%;box-sizing:border-box}
+.home-refresh .directive-row .home-briefing{min-height:0}
+.home-refresh .directive-raid-console{width:100%;min-width:0;margin-top:12px}
+.home-refresh .directive-raid-console[hidden],.home-refresh [data-directive-links][hidden],.home-refresh [data-directive-copy][hidden]{display:none!important}
+.home-refresh .directive-raid-console .guri-console{padding:0;max-width:none;width:100%}
+.home-refresh .directive-raid-console .gc-housing{margin:0}
+@media(max-width:760px){.home-refresh .directive-row{margin-top:0;margin-bottom:16px}}
+
+/* Compact command-deck hero: keep the ship visible while prioritizing live intel. */
+@media (min-width:761px){
+  .home-refresh .hero{align-items:center;gap:clamp(18px,2vw,30px);padding-top:clamp(12px,1.5vw,22px);padding-bottom:clamp(8px,1vw,14px)}
+  .home-refresh .hero-visual{min-width:0}
+  body.home-refresh .hero-visual .ship-frame{min-height:0;height:clamp(235px,21vw,295px);box-sizing:border-box;overflow:hidden}
+  body.home-refresh .hero-visual img{max-height:100%;height:100%;width:100%;object-fit:contain}
+  .home-refresh .directive-row{margin-top:0}
+}
+/* Six across when space allows; then three, two, and one without overflow. */
+@media (min-width:1200px){.home-refresh .home-directives{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media (min-width:761px) and (max-width:1199.98px){.home-refresh .home-directives{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:421px) and (max-width:760px){.home-refresh .home-directives{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:420px){.home-refresh .home-directives{grid-template-columns:minmax(0,1fr)}
+  .home-refresh .home-directives .operation-chip{min-height:43px;flex-direction:row;align-items:center;justify-content:space-between;gap:8px}
+}
+
+/* Deck revision: physical console shell, shared fixed-height readout and contained ship. */
+.home-refresh .directive-row .directive-terminal{
+  position:relative;isolation:isolate;overflow:hidden;padding:18px 20px 20px;
+  border:2px solid color-mix(in srgb,var(--accent-bright) 48%,#25232a);
+  border-radius:14px 14px 8px 8px;
+  background:repeating-linear-gradient(0deg,#ffffff05 0 1px,transparent 1px 4px),linear-gradient(155deg,#343239 0%,#17171c 15%,#100e13 60%,#25232b 100%);
+  box-shadow:inset 0 2px 1px #ffffff55,inset 0 -5px 8px #000c,0 10px 0 #0b090d,0 16px 25px #0008;
+}
+.home-refresh .directive-row .directive-terminal::before,.home-refresh .directive-row .directive-terminal::after{
+  content:"";position:absolute;top:9px;width:8px;height:8px;border:1px solid #090909;border-radius:50%;background:linear-gradient(135deg,#8b8792,#35333a 47%,#111 49%,#59565e);box-shadow:0 1px 2px #000;
+}
+.home-refresh .directive-row .directive-terminal::before{left:9px}
+.home-refresh .directive-row .directive-terminal::after{right:9px}
+.home-refresh .directive-row .terminal-label{margin:0 8px 13px;color:var(--accent-bright);text-shadow:0 0 9px color-mix(in srgb,var(--accent-bright) 30%,transparent)}
+.home-refresh .directive-row .home-directives{gap:7px}
+.home-refresh .directive-row .operation-chip{
+  position:relative;min-height:60px;clip-path:none;border:1px solid #09090c;border-bottom:4px solid #09090b;
+  border-radius:5px;background:linear-gradient(180deg,#414047,#25242d 48%,#17161b);color:#f4eeee;
+  box-shadow:inset 0 1px 1px #ffffff4d,0 2px 2px #0008;
+  transition:background .16s,box-shadow .16s,transform .16s;
+}
+.home-refresh .directive-row .operation-chip:hover{filter:brightness(1.15)}
+.home-refresh .directive-row .operation-chip[aria-pressed=true]{
+  border-color:color-mix(in srgb,var(--accent-bright) 65%,#1a1310);border-bottom-width:2px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--accent-bright) 34%,#222),color-mix(in srgb,var(--accent-bright) 13%,#141219));
+  box-shadow:inset 0 3px 10px #0009,0 0 12px color-mix(in srgb,var(--accent-bright) 22%,transparent);
+  transform:translateY(2px);
+}
+.home-refresh .directive-row .operation-chip b{font-family:ui-monospace,monospace;letter-spacing:.06em}
+.home-refresh .directive-row .operation-chip small{color:#c7c1c8}
+.home-refresh .directive-row .selected-operation.home-briefing{
+  box-sizing:border-box;display:flex;flex-direction:column;gap:8px;
+  height:300px;min-height:300px;max-height:300px;overflow:hidden;
+  margin-top:15px;padding:12px 14px 14px;border:5px solid #09090c;border-radius:9px;
+  background:radial-gradient(ellipse at 45% 20%,color-mix(in srgb,var(--accent-bright) 9%,#0b1010),#090b10 75%);
+  box-shadow:inset 0 0 28px #000c,0 1px 0 #85808c;
+}
+.home-refresh .directive-row .selected-operation>.system-label{flex:none;font:700 .6rem/1.4 ui-monospace,monospace;color:var(--muted);letter-spacing:.12em}
+.home-refresh .directive-row .selected-operation>#selectedOperationLabel{flex:none;font:700 .88rem/1.4 ui-monospace,monospace;color:var(--accent-bright)}
+.home-refresh .directive-row .directive-raid-console,
+.home-refresh .directive-row .directive-mission{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-color:var(--accent) #16151b;margin:0;padding:2px 2px 4px}
+.home-refresh .directive-row .directive-mission[hidden],.home-refresh .directive-row .directive-raid-console[hidden]{display:none!important}
+.home-refresh .directive-row .directive-mission{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(190px,.8fr);gap:14px}
+.home-refresh .directive-mission-display,.home-refresh .directive-mission-controls{
+  min-width:0;position:relative;border:1px solid color-mix(in srgb,var(--accent-bright) 25%,#4a4448);border-radius:5px;
+  padding:14px;background:repeating-linear-gradient(0deg,#ffffff04 0 1px,transparent 1px 5px),linear-gradient(155deg,#080d10,#15151c);
+  box-shadow:inset 0 2px 10px #000a;
+}
+.home-refresh .directive-mission-meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font:700 .62rem/1.4 ui-monospace,monospace;letter-spacing:.08em;color:var(--accent-bright)}
+.home-refresh .directive-live-indicator{color:var(--success)}
+.home-refresh .directive-live-indicator::before{content:"";display:inline-block;height:6px;width:6px;background:currentColor;border-radius:50%;box-shadow:0 0 7px currentColor;margin-right:7px}
+.home-refresh .directive-mission-symbol{position:absolute;right:18px;bottom:4px;font:100 96px/1 ui-monospace,monospace;color:color-mix(in srgb,var(--accent-bright) 13%,transparent);pointer-events:none}
+.home-refresh .directive-row .directive-mission p{position:relative;z-index:1;max-width:52ch;font-size:clamp(.86rem,1.1vw,1rem);line-height:1.6;color:var(--text);margin:24px 0 0}
+.home-refresh .directive-controls-label{display:block;font:700 .64rem/1.5 ui-monospace,monospace;color:var(--muted);letter-spacing:.08em}
+.home-refresh .directive-mission-controls{display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.home-refresh .directive-mission-controls .home-links{margin:0;display:flex;align-items:stretch;flex-direction:column;gap:9px}
+.home-refresh .directive-mission-controls .home-links a{display:block;min-height:36px;padding:9px 12px;font-size:.76rem}
+.home-refresh .directive-mission-signal{display:flex;align-items:flex-end;gap:4px;height:19px}
+.home-refresh .directive-mission-signal i{flex:1;height:35%;background:var(--accent-bright);opacity:.75;box-shadow:0 0 4px color-mix(in srgb,var(--accent-bright) 30%,transparent)}
+.home-refresh .directive-mission-signal i:nth-child(3n){height:85%}.home-refresh .directive-mission-signal i:nth-child(4n){height:55%}
+/* The RAID metrics now act as the console's native instrument array, not a second enclosure. */
+.home-refresh .directive-row .directive-raid-console .guri-console{margin:0;padding:0;background:none;border:0;box-shadow:none}
+.home-refresh .directive-row .directive-raid-console .gc-housing{margin:0;padding:0;background:none;border:0;box-shadow:none}
+.home-refresh .directive-row .directive-raid-console .gc-housing::before,.home-refresh .directive-row .directive-raid-console .gc-housing::after{display:none}
+.home-refresh .directive-row .directive-raid-console .gc-screen{background:linear-gradient(180deg,#080c0f,#131218);border:1px solid color-mix(in srgb,var(--accent-bright) 22%,#36323a);box-shadow:inset 0 3px 12px #000b;border-radius:5px}
+.home-refresh .directive-row .directive-raid-console .gc-plate{margin-bottom:8px}
+.home-refresh .directive-row .directive-raid-console .gc-footer{margin-top:9px}
+/* Image dimensions are constrained independently of the ship-frame, including themed ship animations. */
+@media(min-width:761px){
+  body.home-refresh .hero-visual .ship-frame{height:clamp(230px,19vw,275px);min-height:0;display:grid;place-items:center;overflow:hidden}
+  body.home-refresh .hero-visual #heroShip{display:block;width:auto!important;height:auto!important;max-width:78%!important;max-height:78%!important;min-width:0;object-fit:contain;object-position:center;margin:auto}
+  .home-refresh .hero{padding-bottom:4px}
+}
+@media(max-width:900px){
+  .home-refresh .directive-row .selected-operation.home-briefing{height:365px;min-height:365px;max-height:365px}
+}
+@media(max-width:620px){
+  .home-refresh .directive-row .directive-terminal{padding:15px 11px 14px}
+  .home-refresh .directive-row .selected-operation.home-briefing{height:445px;min-height:445px;max-height:445px;padding:10px}
+  .home-refresh .directive-row .directive-mission{grid-template-columns:1fr;grid-template-rows:minmax(130px,1fr) auto}
+  .home-refresh .directive-mission-controls .home-links{flex-direction:row;flex-wrap:wrap}
+  .home-refresh .directive-mission-symbol{font-size:68px}
+}
+@media(max-width:760px){
+  body.home-refresh .hero-visual #heroShip{max-width:86%!important;max-height:86%!important;width:auto!important;height:auto!important;object-fit:contain}
+}
+
+
+/* RX-06 / Directive Deck v6: one equipment family, four active skins.
+   Colors are chosen by the current html[data-theme] without changing RX-06 playback layout. */
+.home-refresh .receiver,
+.home-refresh .directive-row .directive-terminal{
+  --hardware-shell-top:#36383c;
+  --hardware-shell-mid:#181a1d;
+  --hardware-shell-bottom:#27292c;
+  --hardware-bezel:#101214;
+  --hardware-button-top:#54585b;
+  --hardware-button-bottom:#24272a;
+  --hardware-screen-top:#10201a;
+  --hardware-screen-bottom:#07100d;
+  --hardware-ink:#dcece1;
+  --hardware-muted:#a6baa9;
+  --hardware-light:var(--accent-bright);
+  --hardware-rivet:#72767a;
+}
+html[data-theme="commando"] .home-refresh .receiver,
+html[data-theme="commando"] .home-refresh .directive-row .directive-terminal{
+  --hardware-shell-top:#4c4330;--hardware-shell-mid:#29241a;--hardware-shell-bottom:#38301f;
+  --hardware-bezel:#16140e;--hardware-button-top:#756345;--hardware-button-bottom:#33291e;
+  --hardware-screen-top:#292719;--hardware-screen-bottom:#10130b;
+  --hardware-ink:#fff0d6;--hardware-muted:#d4c39e;--hardware-rivet:#a18d68;
+}
+html[data-theme="cryptic"] .home-refresh .receiver,
+html[data-theme="cryptic"] .home-refresh .directive-row .directive-terminal{
+  --hardware-shell-top:#303033;--hardware-shell-mid:#111114;--hardware-shell-bottom:#232125;
+  --hardware-bezel:#050506;--hardware-button-top:#535052;--hardware-button-bottom:#171719;
+  --hardware-screen-top:#1a1715;--hardware-screen-bottom:#060607;
+  --hardware-ink:#fff0de;--hardware-muted:#bbaba1;--hardware-rivet:#757275;
+}
+html[data-theme="cozen"] .home-refresh .receiver,
+html[data-theme="cozen"] .home-refresh .directive-row .directive-terminal{
+  --hardware-shell-top:#443642;--hardware-shell-mid:#221b26;--hardware-shell-bottom:#332635;
+  --hardware-bezel:#120e16;--hardware-button-top:#625063;--hardware-button-bottom:#261c2c;
+  --hardware-screen-top:#241427;--hardware-screen-bottom:#0c0a13;
+  --hardware-ink:#fff0df;--hardware-muted:#c2aabd;--hardware-rivet:#937b94;
+}
+html[data-theme="kniraven"] .home-refresh .receiver,
+html[data-theme="kniraven"] .home-refresh .directive-row .directive-terminal{
+  --hardware-shell-top:#e6dff0;--hardware-shell-mid:#bdb1cc;--hardware-shell-bottom:#d1c7dd;
+  --hardware-bezel:#51415f;--hardware-button-top:#f1eafa;--hardware-button-bottom:#ada0c1;
+  --hardware-screen-top:#faf6ff;--hardware-screen-bottom:#e8e0f3;
+  --hardware-ink:#2a1938;--hardware-muted:#675377;--hardware-rivet:#867596;
+}
+/* RX-06 and directive share identical chassis metallurgy and rivet construction. */
+.home-refresh .receiver,
+.home-refresh .directive-row .directive-terminal{
+  border:2px solid color-mix(in srgb,var(--hardware-rivet) 80%,#111);
+  border-radius:18px;
+  background:repeating-linear-gradient(0deg,#ffffff04 0 1px,transparent 1px 4px),
+    linear-gradient(145deg,var(--hardware-shell-top),var(--hardware-shell-mid) 42%,var(--hardware-shell-bottom));
+  box-shadow:inset 0 2px 2px #ffffff33,inset 0 -5px 8px #0008,0 20px 40px #0007;
+  color:var(--hardware-ink);
+}
+.home-refresh .directive-row .directive-terminal::before,
+.home-refresh .directive-row .directive-terminal::after{
+  width:9px;height:9px;top:11px;border:1px solid var(--hardware-bezel);
+  background:linear-gradient(135deg,var(--hardware-rivet) 43%,#17191b 44% 56%,var(--hardware-rivet) 57%);
+}
+.home-refresh .receiver::before,.home-refresh .receiver::after{
+  background:linear-gradient(135deg,var(--hardware-rivet) 43%,#17191b 44% 56%,var(--hardware-rivet) 57%);
+  border-color:var(--hardware-bezel);
+}
+/* Use the existing receiver's recessed screen and physical button vocabulary. */
+.home-refresh .directive-row .selected-operation.home-briefing{
+  border:7px solid var(--hardware-bezel);
+  border-radius:12px;
+  background:radial-gradient(ellipse at top,var(--hardware-screen-top),var(--hardware-screen-bottom));
+  color:var(--hardware-ink);
+  box-shadow:inset 0 0 25px #0005,0 1px 0 #ffffff55;
+}
+.home-refresh .directive-row .operation-chip{
+  border:2px solid var(--hardware-bezel);
+  border-bottom:5px solid var(--hardware-bezel);
+  border-radius:8px;
+  background:linear-gradient(160deg,var(--hardware-button-top),var(--hardware-button-bottom));
+  color:var(--hardware-ink);
+  box-shadow:inset 0 2px 1px #ffffff3a,inset 0 -2px 4px #0005,0 4px 0 #090909,0 7px 9px #0007;
+}
+.home-refresh .directive-row .operation-chip[aria-pressed=true]{
+  border:2px solid var(--hardware-bezel);border-bottom:3px solid var(--hardware-bezel);
+  background:linear-gradient(160deg,color-mix(in srgb,var(--hardware-light) 23%,var(--hardware-button-top)),var(--hardware-button-bottom));
+  box-shadow:inset 0 3px 8px #0009,0 1px 0 #101010,0 0 9px color-mix(in srgb,var(--hardware-light) 25%,transparent);
+}
+.home-refresh .directive-row .operation-chip[aria-pressed=true] b{color:var(--hardware-light)}
+.home-refresh .directive-row .operation-chip small{color:var(--hardware-muted)}
+.home-refresh .directive-row .selected-operation>.system-label{color:var(--hardware-muted)}
+.home-refresh .directive-row .directive-mission-display,
+.home-refresh .directive-row .directive-mission-controls,
+.home-refresh .directive-row .directive-raid-console .gc-screen{
+  background:linear-gradient(165deg,var(--hardware-screen-top),var(--hardware-screen-bottom));
+  border:1px solid color-mix(in srgb,var(--hardware-light) 22%,var(--hardware-bezel));
+  color:var(--hardware-ink);
+  box-shadow:inset 0 2px 12px #0005;
+}
+.home-refresh .directive-row .directive-mission p{color:var(--hardware-ink)}
+.home-refresh .directive-row .directive-controls-label{color:var(--hardware-muted)}
+.home-refresh .directive-row .directive-mission-controls .home-links a{
+  border-radius:6px;clip-path:none;
+  border:2px solid var(--hardware-bezel);border-bottom-width:4px;
+  background:linear-gradient(160deg,var(--hardware-button-top),var(--hardware-button-bottom));
+  color:var(--hardware-ink);text-shadow:none;
+  box-shadow:inset 0 1px 0 #ffffff3a,0 3px 5px #0005;
+}
+.home-refresh .directive-row .directive-mission-controls .home-links a:hover{filter:brightness(1.12)}
+.home-refresh .directive-row .directive-mission-controls .home-links a:focus-visible,
+.home-refresh .directive-row .operation-chip:focus-visible{outline:3px solid var(--hardware-light);outline-offset:3px}
+/* Align RX-06's lamps, fascia, and glass with active skin. Keep transport and Twitch code untouched. */
+.home-refresh .receiver{--rx-light:var(--hardware-light)}
+.home-refresh .receiver .receiver-screen{
+  border-color:var(--hardware-bezel);
+  background:radial-gradient(ellipse at top,var(--hardware-screen-top),var(--hardware-screen-bottom));
+  color:var(--hardware-ink);
+}
+.home-refresh .receiver .receiver-transport-button{
+  border-color:var(--hardware-bezel);
+  background:linear-gradient(160deg,var(--hardware-button-top),var(--hardware-button-bottom));
+}
+.home-refresh .receiver .receiver-readout,
+.home-refresh .receiver .receiver-channel span,
+.home-refresh .receiver .receiver-volume-bar-head{color:var(--hardware-muted)}
+.home-refresh .receiver .receiver-screen p{color:var(--hardware-ink)}
+.home-refresh .receiver .receiver-dial,
+.home-refresh .receiver .receiver-volume-knob{
+  border-color:var(--hardware-bezel);
+}
+/* Galnet is a light theme. Make instruments readable rather than using dark-theme ink. */
+html[data-theme="kniraven"] .home-refresh .directive-row .gc-screen>strong,
+html[data-theme="kniraven"] .home-refresh .directive-row .gc-faction,
+html[data-theme="kniraven"] .home-refresh .directive-row .gc-meter-heading,
+html[data-theme="kniraven"] .home-refresh .directive-row .gc-time,
+html[data-theme="kniraven"] .home-refresh .directive-row .gc-condition,
+html[data-theme="kniraven"] .home-refresh .directive-row .gc-occupation,
+html[data-theme="kniraven"] .home-refresh .directive-row .gc-ambition,
+html[data-theme="kniraven"] .home-refresh .directive-row .gc-label{
+  color:var(--hardware-ink);
+}
+html[data-theme="kniraven"] .home-refresh .directive-row .gc-screen>strong,
+html[data-theme="kniraven"] .home-refresh .receiver .receiver-readout strong{color:var(--accent-dark)}
+@media(prefers-reduced-motion:reduce){
+ .home-refresh .directive-row .operation-chip{transition:none}
+}
+
+/* GC-01 target recommendation, integrated into the shared directive display. */
+.home-refresh .directive-row .gc-recommendation{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 14px;margin-top:8px;padding:9px 12px;border:1px solid color-mix(in srgb,var(--hardware-light) 25%,var(--hardware-bezel));border-radius:5px;background:linear-gradient(160deg,var(--hardware-screen-top),var(--hardware-screen-bottom));color:var(--hardware-ink);font:600 .7rem/1.5 ui-monospace,monospace}
+.home-refresh .directive-row .gc-recommendation strong{color:var(--hardware-light);font-size:.81rem;letter-spacing:.035em}
+.home-refresh .directive-row .gc-recommendation [data-gc-recommendation-reason]{font-weight:400;color:var(--hardware-ink)}
+.home-refresh .directive-row [data-gc-freshness]{font-size:.64rem;letter-spacing:.02em}
+@media(max-width:620px){.home-refresh .directive-row .gc-recommendation{display:flex;flex-direction:column;align-items:flex-start}}
+
+
+/* V8: use the directive glass efficiently without a desktop inner scrollbar. */
+@media (min-width:901px) {
+  .home-refresh .directive-row .selected-operation.home-briefing {
+    gap:5px;
+    padding:10px 13px;
+  }
+  .home-refresh .directive-row .selected-operation>.system-label {line-height:1.2}
+  .home-refresh .directive-row .selected-operation>#selectedOperationLabel {line-height:1.2}
+  .home-refresh .directive-row .directive-raid-console {
+    overflow:hidden;
+    padding:0;
+  }
+  .home-refresh .directive-row .directive-raid-console .guri-console,
+  .home-refresh .directive-row .directive-raid-console .gc-housing {height:100%;min-height:0}
+  .home-refresh .directive-row .directive-raid-console .gc-housing {
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr) auto auto;
+    gap:7px;
+  }
+  .home-refresh .directive-row .directive-raid-console .gc-plate {margin:0;min-height:16px}
+  .home-refresh .directive-row .directive-raid-console .gc-instruments {
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.65fr);
+    align-items:stretch;
+    gap:9px;
+    min-height:0;
+  }
+  .home-refresh .directive-row .directive-raid-console .gc-screen {
+    padding:9px 12px;gap:5px;
+  }
+  .home-refresh .directive-row .directive-raid-console .gc-objectives {
+    grid-column:auto;gap:10px;align-items:center;
+  }
+  .home-refresh .directive-row .directive-raid-console .gc-meter-heading strong {font-size:1.15rem}
+  .home-refresh .directive-row .directive-raid-console .gc-segments {height:11px;margin:4px 0 5px}
+  .home-refresh .directive-row .directive-raid-console .gc-recommendation {
+    display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;
+    gap:6px 12px;min-height:35px;box-sizing:border-box;
+    margin:0;padding:7px 10px;
+  }
+  .home-refresh .directive-row .directive-raid-console .gc-footer {
+    margin:0;padding:5px 2px 0;border-top:1px solid color-mix(in srgb,var(--hardware-light) 22%,transparent);
+    gap:6px 12px;min-height:22px;
+  }
+  .home-refresh .directive-row .directive-raid-console .gc-occupation {min-width:0}
+  .home-refresh .directive-row .directive-raid-console .gc-actions {gap:7px}
+  .home-refresh .directive-row .directive-raid-console .gc-actions a {min-height:0;padding:3px 7px}
+  .home-refresh .directive-row .directive-mission {overflow:hidden}
+}
+/* Tablet: retain the full status and recommendation, using the taller shared bay. */
+@media (min-width:621px) and (max-width:900px) {
+  .home-refresh .directive-row .directive-raid-console {overflow:hidden}
+  .home-refresh .directive-row .directive-raid-console .gc-housing {display:grid;gap:7px}
+  .home-refresh .directive-row .directive-raid-console .gc-plate,
+  .home-refresh .directive-row .directive-raid-console .gc-footer,
+  .home-refresh .directive-row .directive-raid-console .gc-recommendation {margin:0}
+  .home-refresh .directive-row .directive-raid-console .gc-instruments {gap:8px}
+  .home-refresh .directive-row .directive-raid-console .gc-screen {padding:8px 10px}
+  .home-refresh .directive-row .directive-raid-console .gc-recommendation {padding:6px 9px}
+}
+/* Small screens can scroll when essential instead of clipping campaign intelligence. */
+@media (max-width:620px) {
+  .home-refresh .directive-row .directive-raid-console {overflow-y:auto}
+  .home-refresh .directive-row .directive-raid-console .gc-recommendation {gap:3px;margin-top:6px;padding:7px 9px}
+}
+
+
+/* V9: priority orders lead the RAID console, within the shared RX-06 hardware system. */
+.home-refresh .directive-row .directive-terminal .terminal-label {font-weight:800;letter-spacing:.1em}
+.home-refresh .directive-row .selected-operation>#selectedOperationLabel{color:var(--hardware-light);letter-spacing:.04em}
+.home-refresh .directive-row .directive-raid-console .gc-recommendation {
+  order:0;position:relative;display:grid;grid-template-columns:minmax(165px,.28fr) minmax(230px,.65fr) minmax(0,1fr);
+  gap:7px 16px;align-items:center;margin:0;padding:11px 15px;
+  border:2px solid color-mix(in srgb,var(--hardware-light) 66%,var(--hardware-bezel));
+  border-left:5px solid var(--hardware-light);border-radius:7px;
+  background:linear-gradient(115deg,color-mix(in srgb,var(--hardware-light) 14%,var(--hardware-screen-top)),var(--hardware-screen-bottom));
+  box-shadow:inset 0 1px 0 #ffffff18,inset 0 0 20px #0005,0 0 16px color-mix(in srgb,var(--hardware-light) 13%,transparent);
+}
+.home-refresh .directive-row .gc-order-label{display:flex;align-items:center;gap:8px;font:800 .7rem/1.35 ui-monospace,monospace;letter-spacing:.07em;color:var(--hardware-light)}
+.home-refresh .directive-row .gc-order-lamp{width:8px;height:8px;flex:none;border-radius:50%;background:var(--hardware-light);box-shadow:0 0 9px var(--hardware-light)}
+.home-refresh .directive-row .gc-recommendation strong[data-gc-recommendation]{font:800 clamp(.86rem,1.5vw,1.14rem)/1.23 ui-monospace,monospace;letter-spacing:.01em;color:var(--hardware-light);overflow-wrap:anywhere}
+.home-refresh .directive-row .gc-recommendation [data-gc-recommendation-reason]{font:.69rem/1.4 ui-monospace,monospace;color:var(--hardware-ink)}
+.home-refresh .directive-row .gc-recommendation[data-order=standby]{border-left-color:var(--hardware-muted)}
+.home-refresh .directive-row .gc-recommendation[data-order=standby] .gc-order-lamp{background:var(--hardware-muted);box-shadow:none}
+.home-refresh .directive-row .gc-recommendation[data-order=deploy] .gc-order-lamp{animation:raid-order-pulse 2s ease-in-out infinite}
+@keyframes raid-order-pulse{50%{opacity:.45;box-shadow:0 0 3px var(--hardware-light)}}
+@media(prefers-reduced-motion:reduce){.home-refresh .directive-row .gc-order-lamp{animation:none!important}}
+@media(min-width:901px){
+  .home-refresh .directive-row .directive-raid-console .gc-housing{grid-template-rows:auto auto minmax(0,1fr) auto;gap:7px}
+  .home-refresh .directive-row .directive-raid-console .gc-recommendation{min-height:64px;padding:8px 12px;gap:6px 12px}
+  .home-refresh .directive-row .directive-raid-console .gc-instruments{min-height:0}
+  .home-refresh .directive-row .directive-raid-console .gc-screen{padding:7px 10px;gap:4px}
+}
+@media(max-width:900px){
+  .home-refresh .directive-row .directive-raid-console .gc-recommendation{grid-template-columns:1fr;gap:4px;padding:9px 12px}
+  .home-refresh .directive-row .directive-raid-console .gc-recommendation strong[data-gc-recommendation]{font-size:1rem}
+}
+html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-gc-recommendation-reason]{color:var(--hardware-ink)}
+
+/* TR-02: shared RX-06 hardware, matching RAID's priority-order treatment. */
+.home-refresh .directive-row .directive-trade-console{flex:1;min-height:0;overflow:hidden;display:flex;padding:2px}
+.home-refresh .directive-row .trade-order{box-sizing:border-box;min-width:0;width:100%;height:100%;display:grid;grid-template-rows:auto auto auto auto auto 1fr auto;gap:6px;padding:12px 14px;border:2px solid color-mix(in srgb,var(--hardware-light) 60%,var(--hardware-bezel));border-left:5px solid var(--hardware-light);border-radius:7px;background:linear-gradient(145deg,color-mix(in srgb,var(--hardware-light) 10%,var(--hardware-screen-top)),var(--hardware-screen-bottom));color:var(--hardware-ink);font-family:ui-monospace,monospace;box-shadow:inset 0 0 18px #0006}
+.home-refresh .directive-row .trade-order-heading,.home-refresh .directive-row .trade-order-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.63rem;letter-spacing:.05em;color:var(--hardware-muted)}
+.home-refresh .directive-row .trade-order-heading>span:first-child{color:var(--hardware-light);font-weight:800;display:flex;align-items:center;gap:7px}
+.home-refresh .directive-row .trade-order>strong{font-size:clamp(.95rem,1.5vw,1.17rem);line-height:1.2;color:var(--hardware-light)}
+.home-refresh .directive-row .trade-order-item{font-weight:750;font-size:.9rem;color:var(--hardware-ink)}
+.home-refresh .directive-row .trade-order-route{font-size:.75rem;line-height:1.45;overflow-wrap:anywhere}
+.home-refresh .directive-row .trade-order-metrics{display:flex;gap:8px 16px;flex-wrap:wrap;font-size:.64rem;color:var(--hardware-light);font-weight:750}
+.home-refresh .directive-row .trade-order p{align-self:center;margin:0;font-size:.66rem;line-height:1.35;color:var(--hardware-muted)}
+.home-refresh .directive-row .trade-order-footer{padding-top:6px;border-top:1px solid color-mix(in srgb,var(--hardware-light) 24%,transparent)}
+.home-refresh .directive-row .trade-order-footer a{color:var(--hardware-light);text-decoration:none;white-space:nowrap}
+.home-refresh .directive-row .trade-order[data-trade-status=actionable] .gc-order-lamp{background:var(--success);box-shadow:0 0 9px var(--success)}
+.home-refresh .directive-row .trade-order[data-trade-status=standby]{border-left-color:var(--hardware-muted)}
+@media(max-width:620px){.home-refresh .directive-row .directive-trade-console{overflow:auto}.home-refresh .directive-row .trade-order{height:auto;min-height:100%;gap:8px;padding:10px}.home-refresh .directive-row .trade-order-metrics{display:grid;gap:4px}}
+
+/* TR-02 three-order tactical screen: share the established receiver/command terminal chassis. */
+.home-refresh .directive-trade-console{min-width:0;min-height:0;height:100%;display:flex;flex-direction:column;gap:8px}
+.trade-orders-heading,.trade-orders-footer{display:flex;justify-content:space-between;gap:10px;align-items:center;font:700 .65rem/1.35 ui-monospace,monospace;letter-spacing:.055em;color:var(--accent-bright)}
+.trade-orders-heading a{color:var(--accent-bright);text-decoration:underline;text-underline-offset:3px}
+.trade-order-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;flex:1;min-height:0}
+.trade-order-card{min-width:0;min-height:0;display:flex;flex-direction:column;gap:6px;padding:11px;border:2px solid var(--line-strong);border-radius:7px;background:linear-gradient(180deg,#ffffff08,#0000001b),var(--panel-solid);box-shadow:inset 0 2px 9px #0009,0 1px 0 #ffffff16;overflow:auto;scrollbar-width:thin}
+.trade-order-card[data-trade-status=actionable]{border-color:var(--accent-bright);box-shadow:inset 0 2px 9px #0009,0 0 12px var(--line-strong)}
+.trade-order-kind{font:700 .62rem/1.3 ui-monospace,monospace;letter-spacing:.06em;color:var(--muted)}
+.trade-order-title,.trade-order-card>strong{font:800 clamp(.81rem,1.15vw,1rem)/1.25 ui-monospace,monospace;color:var(--accent-bright)}
+.trade-order-item{font:700 .83rem/1.35 ui-monospace,monospace;color:var(--text)}
+.trade-order-route{margin:0;font:.72rem/1.45 ui-monospace,monospace;color:var(--text);overflow-wrap:anywhere}
+.trade-order-margin{font:700 .72rem/1.4 ui-monospace,monospace;color:var(--accent-bright)}
+.trade-order-quantity{font:.66rem/1.4 ui-monospace,monospace;color:var(--muted)}
+.trade-order-reason{margin:auto 0 0!important;font:.67rem/1.4 system-ui,sans-serif!important;color:var(--muted)!important}
+.trade-orders-footer{font-size:.58rem;color:var(--muted);flex-wrap:wrap}
+@media(max-width:850px){.trade-order-grid{grid-template-columns:1fr;overflow:auto}.trade-order-card{min-height:140px;overflow:visible}.trade-orders-footer{font-size:.56rem}}
+
+/* TR-03: compact physical readouts, with optional explanation instead of permanent scrollbars. */
+.home-refresh .directive-row .trade-order-grid{min-height:0;overflow:hidden;align-items:stretch}
+.home-refresh .directive-row .trade-order-card{gap:5px;padding:10px 11px;overflow:hidden;scrollbar-width:none;display:flex;flex-direction:column}
+.home-refresh .directive-row .trade-order-card .trade-order-route{font-size:.68rem;line-height:1.32;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.home-refresh .directive-row .trade-order-card .trade-order-item{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.home-refresh .directive-row .trade-order-details{margin-top:auto;min-height:20px;border-top:1px solid var(--line-strong);color:var(--muted);font:.63rem/1.35 ui-monospace,monospace}
+.home-refresh .directive-row .trade-order-details summary{padding:4px 0;min-height:22px;font-size:.62rem;color:var(--accent-bright)}
+.home-refresh .directive-row .trade-order-details[open]{position:absolute;z-index:4;left:9px;right:9px;bottom:9px;padding:8px 10px;border:1px solid var(--accent-bright);border-radius:4px;background:var(--panel-solid);box-shadow:0 5px 24px #000b}
+.home-refresh .directive-row .trade-order-card{position:relative}
+.home-refresh .directive-row .trade-order-details p{font-size:.69rem;line-height:1.35;margin:3px 0;color:var(--text)}
+@media(max-width:850px){.home-refresh .directive-row .trade-order-grid{overflow:auto}.home-refresh .directive-row .trade-order-card{min-height:165px;overflow:visible}}
+
+/* v13: three complete orders without scrollbars or text crossing metric lines. */
+.home-refresh .directive-row .trade-order-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;overflow:visible;min-height:0}
+.home-refresh .directive-row .trade-order-card{display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto auto auto;align-content:stretch;gap:4px;min-height:0;min-width:0;padding:9px 11px;overflow:visible;position:relative}
+.home-refresh .directive-row .trade-order-card .trade-order-kind{font-size:.56rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-refresh .directive-row .trade-order-card .trade-order-title{font-size:clamp(.74rem,1.06vw,.94rem);line-height:1.16;min-width:0}
+.home-refresh .directive-row .trade-order-card .trade-order-item{font-size:.76rem;line-height:1.2;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.home-refresh .directive-row .trade-order-card .trade-order-route{font-size:.62rem;line-height:1.35;min-height:0;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.home-refresh .directive-row .trade-order-card .trade-order-margin{font-size:.65rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-refresh .directive-row .trade-order-card .trade-order-quantity{font-size:.61rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-refresh .directive-row .trade-order-card .trade-order-details{margin-top:0;min-height:0;border-top:1px solid var(--line-strong);position:static}
+.home-refresh .directive-row .trade-order-card .trade-order-details summary{min-height:20px;padding:2px 0;font-size:.57rem;line-height:1.3}
+.home-refresh .directive-row .trade-order-card .trade-order-details[open]{position:absolute;z-index:9;left:6px;right:6px;bottom:6px;max-height:85%;overflow:auto;padding:12px;border:1px solid var(--accent-bright);border-radius:5px;background:var(--panel-solid);box-shadow:0 8px 26px #000d}
+.home-refresh .directive-row .trade-order-card[data-trade-status=conditional]{border-color:var(--secondary-bright)}
+@media(max-width:900px){.home-refresh .directive-row .trade-order-grid{overflow:auto;grid-template-columns:1fr}.home-refresh .directive-row .trade-order-card{min-height:160px;grid-template-rows:auto auto auto minmax(0,1fr) auto auto auto}}

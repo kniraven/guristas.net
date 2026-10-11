@@ -4,18 +4,67 @@
     const $ = selector => document.querySelector(selector);
     const text = (selector, value) => { const node = $(selector); if (node) node.textContent = value; };
     const directives = {
-        raid: ['01', 'RAID // CORRUPT THE WARZONE', 'Find the Guristas campaign, inspect reported system conditions and prepare your next sortie.', '/war/guristas/', 'Open War Room →', '/join/', 'How to enter pirate warfare'],
-        trade: ['02', 'TRADE // MAKE YOUR CUT', 'Compare station orders, value Commando Guri LP and investigate opportunities to supply The Fulcrum.', '/industry/?view=trade', 'Compare station markets →', '/industry/?view=lp', 'Calculate LP value'],
-        build: ['03', 'BUILD // ARM THE NETWORK', 'Choose a Guristas blueprint, calculate materials and price the complete job before committing your ISK.', '/industry/', 'Open production console →', '/industry/?view=fulcrum', 'Check Fulcrum stock'],
-        lore: ['04', 'INVESTIGATE // OPEN THE DOSSIERS', 'Follow Fatal and the Rabbit from the Caldari Navy to Venal. Trace the deals that brought the pirates to Zarzakh.', '/lore/', 'Enter the archives →', '/lore/?dossier=fatal', 'Start with Fatal'],
-        signals: ['05', 'INTERCEPT // TUNE THE NETWORK', 'Lock onto Guristas music, connect to Kniraven’s broadcast desk or tune into the Gallente opposition.', '#signals', 'Tune Black Rabbit Radio →', '/community/#broadcast', 'Explore recordings'],
-        join: ['06', 'JOIN // FIND YOUR PEOPLE', 'Explore Guristas enlistment, meet Cozen Corp or find a posted operation. Choose how you want to get involved.', '/join/', 'Explore ways to join →', '/join/#cozen', 'Meet Kniraven’s Cozen Corp']
+        raid: ['01', 'RAID // CORRUPT THE WARZONE', 'Wait for verified insurgency orders before committing your ship.', '/war/guristas/', 'Open War Room →', '/join/', 'Pirate warfare briefing'],
+        trade: ['02', 'TRADE // PROFIT FROM CHAOS', 'The Fulcrum needs supplies, capsuleer. Compare station orders, value your Commando Guri LP, then move cargo only when the margin justifies the risk.', '/industry/?view=trade', 'Inspect trade routes →', '/industry/?view=lp', 'Review LP opportunities'],
+        build: ['03', 'BUILD // ARM THE PIRATES', 'The fleet runs on hulls and ammunition. Select a Guristas blueprint, source the components, and calculate costs before you start the production job.', '/industry/', 'Open fabrication console →', '/industry/?view=fulcrum', 'Inspect Fulcrum supplies'],
+        lore: ['04', 'INVESTIGATE // STEAL THEIR SECRETS', 'Every empire has a version of history. Read the recovered dossiers on Fatal, the Rabbit, Venal, Crielere and the Deathless. Know who you fly for.', '/lore/', 'Open classified dossiers →', '/lore/?dossier=fatal', 'Begin with Fatal'],
+        signals: ['05', 'INTERCEPT // HIJACK THE AIRWAVES', 'Our receivers are tuned for pirate transmissions. Scan Black Rabbit Radio, monitor live capsuleer broadcasts and intercept the opposition.', '#signals', 'Access radio receiver →', '/community/#broadcast', 'Inspect captured media'],
+        join: ['06', 'JOIN // REPORT TO THE CREW', 'There is work to be done. Learn how to enlist with Guristas, find allies, or put in for a berth with Cozen Corp at The Fulcrum.', '/join/', 'Get enlistment orders →', '/join/#cozen', 'Contact Cozen Corp']
     };
     function brief(key) {
         const d = directives[key] || directives.raid;
         text('[data-directive-code]', d[0]);text('#selectedOperationLabel', d[1]);text('[data-directive-copy]', d[2]);
         const action=$('[data-directive-action]'), help=$('[data-directive-help]');
         action.href=d[3];action.textContent=d[4];help.href=d[5];help.textContent=d[6];
+        const raid=key==='raid', trade=key==='trade';
+        const console=$('[data-directive-raid]'), mission=$('[data-directive-mission]');
+        if(console)console.hidden=!raid;
+        const tradePane=$('[data-directive-trade]');if(tradePane)tradePane.hidden=!trade;
+        if(trade)loadTrade();
+        if(mission)mission.hidden=raid||trade;
+        const categories={trade:['MARKET INTELLIGENCE','◇'],build:['INDUSTRIAL OPERATIONS','⬡'],lore:['ARCHIVE ACCESS','✧'],signals:['SIGNAL INTERCEPTION','◈'],join:['PERSONNEL RECRUITMENT','✦']};
+        const info=categories[key] || ['WARFARE COMMAND','◆'];
+        text('[data-directive-category]',info[0]);text('[data-directive-symbol]',info[1]);
+        const pane=$('#directive-briefing');if(pane)pane.dataset.mode=raid?'raid':trade?'trade':'mission';
+    }
+    // The public trade endpoint shares a server-side market snapshot between visitors.
+    let tradeLoading=false, tradeLastCheck=0, tradeLastSuccess=0;
+    async function loadTrade() {
+        if(tradeLoading || Date.now()-tradeLastSuccess<300000)return;
+        tradeLoading=true;
+        const host=$('[data-trade-orders]');
+        const control=new AbortController(), timer=setTimeout(()=>control.abort(),12000);
+        try {
+            const payload=await json('/api/industry/trade-orders.php',control.signal);
+            const report=payload.data;
+            if(!Array.isArray(report?.orders)||report.orders.length!==3)throw new Error('Invalid market intelligence');
+            host.replaceChildren();
+            report.orders.forEach((order,i)=>{
+                const card=document.createElement('article');card.className='trade-order-card';card.dataset.tradeStatus=order.status||'standby';
+                const add=(tag,className,value)=>{const el=document.createElement(tag);el.className=className;el.textContent=value||'';card.appendChild(el);};
+                add('span','trade-order-kind',String(i+1).padStart(2,'0')+' // '+(order.category||'ORDER'));
+                add('strong','trade-order-title',order.title);add('span','trade-order-item',order.item);
+                add('p','trade-order-route',order.route);
+                add('span','trade-order-margin',order.margin);
+                add('span','trade-order-quantity',order.quantity);
+                const details=document.createElement('details');details.className='trade-order-details';const summary=document.createElement('summary');summary.textContent='ORDER BASIS / ASSUMPTIONS';const reason=document.createElement('p');reason.textContent=order.reason||'';details.append(summary,reason);card.appendChild(details);
+                host.appendChild(card);
+            });
+            const stamp=Date.parse(report.as_of||'');
+            const at=Number.isFinite(stamp)?new Date(stamp).toISOString().slice(5,16).replace('T',' ')+' EVE':'UNVERIFIED';
+            text('[data-trade-freshness]',`CCP ESI // OLDEST ORDER SNAPSHOT ${at}${report.stale?' · STALE':''} · ${report.coverage?.candidate_items||0} PIRATE DEMAND ITEMS · ${report.coverage?.fresh_regions||0}/${report.coverage?.region_count||0} REGIONS FRESH`);
+            if(!report.stale)tradeLastSuccess=Date.now();
+        }catch(error){
+            host.replaceChildren();
+            ['FULCRUM DEMAND','VENAL DEMAND','GURISTAS LP ADVANTAGE'].forEach((category,i)=>{
+                const card=document.createElement('article');card.className='trade-order-card';card.dataset.tradeStatus='standby';
+                const heading=document.createElement('span');heading.className='trade-order-kind';heading.textContent=`0${i+1} // ${category}`;
+                const title=document.createElement('strong');title.textContent='HOLD CARGO';
+                const note=document.createElement('p');note.textContent='Market intelligence unavailable. Verify live orders in EVE.';
+                card.append(heading,title,note);host.appendChild(card);
+            });
+            text('[data-trade-freshness]','CCP ESI // INTELLIGENCE UNAVAILABLE');
+        }finally{clearTimeout(timer);tradeLoading=false;}
     }
     document.addEventListener('guristas:directive-selected', event => brief(event.detail.key));
     brief(document.documentElement.dataset.operation);
@@ -31,6 +80,137 @@
     const stage = n => Number.isInteger(n)&&n>=0&&n<=5?String(n):'Unknown';
     const percent = n => Number.isFinite(n)&&n>=0&&n<=100?` · ${n.toFixed(1)}%`:'';
     let campaign=null, campaignMeta=null, campaignFailed=false;
+    // The occupier describes current control; owner is the original empire faction.
+    const factionName = id => ({500001:'Caldari',500004:'Gallente',500010:'Guristas'})[Number(id)] || (Number.isInteger(id) && id >= 0 ? 'Neutral' : null);
+    function fobFaction(selected, systems) {
+        if (!selected || !Number.isInteger(selected.origin_id) || selected.origin_id <= 0) return 'FACTION // UNCONFIRMED';
+        const origin = systems.find(s => s.id === selected.origin_id);
+        if (!origin) return 'FACTION // UNCONFIRMED';
+        const controlling = factionName(origin.occupier_faction_id);
+        const owner = factionName(origin.owner_faction_id);
+        if (controlling) return `FACTION // ${controlling.toUpperCase()}${owner && owner !== controlling ? ` · ${owner.toUpperCase()} ZONE` : ''}`;
+        return owner ? `ZONE // ${owner.toUpperCase()} · CONTROL UNKNOWN` : 'FACTION // UNCONFIRMED';
+    }
+    const countdown = milliseconds => {
+        const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
+        const h = Math.floor(seconds / 3600);
+        return `${String(h).padStart(2,'0')}:${String(Math.floor(seconds % 3600 / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}`;
+    };
+    function forecastLaunch(data) {
+        const forecasts = (Array.isArray(data?.campaigns) ? data.campaigns : [])
+            .filter(c => ['FORECAST','FORECASTING'].includes(c.state) && !c.ended_at)
+            .sort((a,b) => b.id-a.id);
+        const selected = forecasts[0];
+        if (!selected) return null;
+        const explicit = timestamp(selected.launch_at || selected.launchDateTime || selected.combatStartDateTime);
+        if (explicit !== null) return explicit;
+        const started = timestamp(selected.started_at);
+        // An estimate, not a guaranteed transition. Never derive from a future forecast start.
+        return started !== null && started <= Date.now() ? started + 48 * 3600000 : null;
+    }
+    function raidRecommendation(data, meta, failed) {
+        if (!failed && fresh(meta,'last_success_at') && data?.server_recommendation?.title && data?.server_recommendation?.detail) return data.server_recommendation;
+        if (failed || !fresh(meta, 'last_success_at')) return {title:'NO VERIFIED ORDERS',detail:'Campaign report is stale or unavailable. Check EVE before deploying.'};
+        const campaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
+        const running = campaigns.filter(c=>c.state==='ACTIVE' && !c.ended_at);
+        if (running.length!==1 || campaigns.length!==1) return {title:'HOLD POSITION',detail:'No confirmed active insurgency. Stage your ship and await the next target assignment.'};
+        const systems = Array.isArray(data?.systems) ? data.systems : [];
+        // Only recommend verified active campaign systems. Do not suggest Stage 5 targets.
+        const candidates=systems.filter(s=>Number.isInteger(s?.id) && Number.isInteger(s.corruption_stage) && s.corruption_stage>=0 && s.corruption_stage<5);
+        if(!candidates.length) return {title:'HOLD POSITION',detail:'All reported targets are at Stage 5, or no eligible target was verified.'};
+        // Calculate minimum in-campaign jumps to a system with a verified high-sec gate.
+        const distances=new Map(), queue=[];
+        for(const s of systems){if(s.highsec_adjacent===true){distances.set(s.id,0);queue.push(s.id);}}
+        const adj=new Map(systems.map(s=>[s.id,[]]));
+        for(const edge of (Array.isArray(data.edges)?data.edges:[])){
+            if(adj.has(edge.a)&&adj.has(edge.b)){adj.get(edge.a).push(edge.b);adj.get(edge.b).push(edge.a);}
+        }
+        for(let i=0;i<queue.length;i++)for(const next of adj.get(queue[i])||[])if(!distances.has(next)){
+            distances.set(next,distances.get(queue[i])+1);queue.push(next);
+        }
+        candidates.sort((a,b)=> b.corruption_stage-a.corruption_stage
+            || (Number.isFinite(b.corruption_percent)?b.corruption_percent:-1)-(Number.isFinite(a.corruption_percent)?a.corruption_percent:-1)
+            || (distances.get(a.id)??Infinity)-(distances.get(b.id)??Infinity)
+            || String(a.name||'').localeCompare(String(b.name||'')));
+        const winner=candidates[0];
+        const distance=distances.get(winner.id);
+        const highsec=distance===0?'Direct high-sec gate':Number.isInteger(distance)?`${distance} insurgency jump${distance===1?'':'s'} to a high-sec gate`:'High-sec proximity unverified';
+        const pct=Number.isFinite(winner.corruption_percent)?` · ${winner.corruption_percent.toFixed(1)}%` : '';
+        return {title:`DEPLOY TO ${winner.name||'SYSTEM '+winner.id} // RAISE CORRUPTION`,detail:`Current corruption: Stage ${winner.corruption_stage}/5${pct}. ${highsec}. Target chosen for the highest unfinished corruption progress.`};
+    }
+    function renderRaidRecommendation(){
+        const r=raidRecommendation(campaign,campaignMeta,campaignFailed);
+        text('[data-gc-recommendation]',r.title);
+        text('[data-gc-recommendation-reason]',r.detail);
+        const order=$('.gc-recommendation');if(order)order.dataset.order= r.title.startsWith('DEPLOY TO')?'deploy':'standby';
+    }
+    const intelligenceSource = meta => meta?.source_mode==='everef_fallback'?'EVE Ref (mirror)':meta?.source_mode==='eve_online_frontlines'?'CCP Frontlines':'Source unconfirmed';
+    const intelligenceStamp = (meta, current) => {
+        const t=timestamp(meta?.last_success_at);
+        if(t===null) return 'SOURCE // UNAVAILABLE';
+        const d=new Date(t);
+        const time=`${String(d.getUTCDate()).padStart(2,'0')} ${d.toLocaleString('en-US',{month:'short',timeZone:'UTC'}).toUpperCase()} ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')} EVE`;
+        return `${current?'DATA REFRESHED':'LAST DATA REFRESH'} // ${time} · SOURCE: ${intelligenceSource(meta)}`;
+    };
+    // GC-01: derive campaign instruments from the existing shared request.
+    function consoleReport(data, meta, failed, now = Date.now()) {
+        const fetched = Date.parse(meta?.last_success_at || '');
+        const current = !failed && !meta?.stale && Number.isFinite(fetched) && now-fetched <= 900000 && fetched <= now+60000;
+        const campaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
+        const open = campaigns.filter(c => ['ACTIVE','FORECAST','FORECASTING'].includes(c.state) && !c.ended_at);
+        const selected = [...open].sort((a,b) => b.id-a.id)[0];
+        // Existing API merges systems across campaigns. Never count an ambiguous merged list.
+        const unambiguous = campaigns.length === 1 && open.length === 1;
+        const systems = Array.isArray(data?.systems) ? [...new Map(data.systems.filter(s=>s && Number.isInteger(s.id)).map(s=>[s.id,s])).values()] : [];
+        const active = selected?.state === 'ACTIVE';
+        const forecast = selected && !active;
+        const metrics = {};
+        for (const key of ['corruption','suppression']) {
+            const target = Number.isInteger(selected?.[`${key}_target`]) && selected[`${key}_target`] > 0 ? selected[`${key}_target`] : null;
+            const complete = unambiguous && active && systems.length > 0 && systems.every(s=>Number.isInteger(s[`${key}_stage`]) && s[`${key}_stage`] >= 0 && s[`${key}_stage`] <= 5);
+            metrics[key] = {target, count:complete ? systems.filter(s=>s[`${key}_stage`] === 5).length : null, ambition:target >= 5 && target <= 10 ? target-5 : null};
+        }
+        const s = metrics.suppression;
+        let defense = 'Defense status unknown';
+        if(current && unambiguous && forecast) defense = 'PROTECTED · forecast phase';
+        if(current && unambiguous && active && s.count !== null && s.target !== null) defense = s.count >= s.target ? 'ATTACKS UNLOCKED · timer unknown' : 'PROTECTED · suppression below target';
+        const occupied = systems.filter(s=>s.occupier_faction_id === 500010).map(s=>s.name || `System ${s.id}`);
+        let occupation = 'Territorial control unconfirmed';
+        if(occupied.length) occupation = `${current?'GURISTAS OCCUPANCY':'LAST REPORTED OCCUPANCY'}: ${occupied.join(', ')}`;
+        else if(current && systems.length && systems.every(s=>Number.isInteger(s.occupier_faction_id))) occupation = 'No Guristas occupancy reported in these systems';
+        const start = Date.parse(selected?.started_at || '');
+        const utc = Number.isFinite(start) ? new Date(start).toISOString().slice(0,16).replace('T',' ')+' EVE' : null;
+        let timing = 'Next deployment not announced in this report';
+        // A forecast's startDateTime is not documented as the launch timestamp.
+        // Only countdown when the feed explicitly supplies a separate launch field.
+        const explicitLaunch = timestamp(selected?.launch_at || selected?.launchDateTime || selected?.combatStartDateTime);
+        // A forecast that began in the past can be estimated using CCP's 48h forecast window.
+        const estimatedLaunch = forecast && Number.isFinite(start) && start <= now ? start + 48*3600000 : null;
+        const launch = explicitLaunch !== null ? explicitLaunch : estimatedLaunch;
+        if (selected) timing = forecast && current && launch !== null && launch > now
+            ? `${explicitLaunch === null ? 'EST. ' : ''}Next Insurgency Starts in ${countdown(launch - now)}`
+            : forecast && current && launch !== null && launch <= now ? 'Launch window reached · verifying campaign status'
+            : forecast ? 'Next insurgency: launch time unconfirmed'
+            : utc ? `Reported start: ${utc}` : 'Start time unreported';
+        return {state:!data?(failed?'unavailable':'loading'):!current?(failed?'unavailable':'stale'):active?'active':forecast?'forecast':'idle',phase:!data?(failed?'INTEL UNAVAILABLE':'ACQUIRING INTEL'):!current?'CURRENT STATUS UNKNOWN':active?'INSURGENCY ACTIVE':forecast?'DEPLOYMENT PENDING':'NO ACTIVE CAMPAIGN REPORTED',base:selected?.origin_name || (current?'No FOB reported':'Location unconfirmed'),faction:fobFaction(selected,systems),timing,defense,occupation,metrics,current,forecastStamp:forecast&&utc?`Feed forecast timestamp: ${utc}. Exact launch time is not confirmed.`:''};
+    }
+    function renderConsole() {
+        const root = $('[data-guri-console]'); if(!root) return;
+        const r = consoleReport(campaign,campaignMeta,campaignFailed);
+        root.dataset.state = r.state;
+        text('[data-gc-phase]',r.phase);text('[data-gc-base]',r.base);text('[data-gc-faction]',r.faction);text('[data-gc-time]',r.timing);
+        $('[data-gc-time]').title = r.forecastStamp;
+        text('[data-gc-defense]',r.defense);text('[data-gc-occupation]',r.occupation);
+        root.querySelector('.gc-base').dataset.threat=String(r.current && r.defense.startsWith('ATTACKS'));
+        for(const key of ['corruption','suppression']) {
+            const m=r.metrics[key]; text(`[data-gc-${key}]`,`${m.count ?? '?'}/${m.target ?? '?'}`);
+            const cells=$(`[data-gc-cells="${key}"]`);cells.replaceChildren();
+            for(let i=0;i<Math.min(m.target || 5,20);i++){const cell=document.createElement('i');cell.dataset.lit=String(m.count!==null && i<m.count);cells.append(cell);}
+            text(`[data-gc-ambition="${key}"]`,`${key==='corruption'?'Our':'Empire'} ambition: ${m.ambition===null?'unknown':m.ambition?'+'+m.ambition:'0'}`);
+        }
+        text('[data-gc-freshness]',campaignMeta?intelligenceStamp(campaignMeta,r.current):'SOURCE // PENDING');
+        renderRaidRecommendation();
+    }
     const systemSelect=$('#home-system');
     function systemBrief() {
         const s=campaign?.systems?.find(item=>String(item.id)===systemSelect.value);
@@ -41,16 +221,32 @@
         text('[data-home-system-brief]',lines.join(' '));
     }
     function expireCampaign() {
+        renderConsole();
         if(campaignMeta&&!fresh(campaignMeta,'last_success_at')) {
             text('[data-home-campaign-title]','Previous report · current status unknown');systemBrief();
         }
     }
+    let campaignLoading = false;
+    let lastCampaignCheck = 0;
+    let nextCampaignCheck = 0;
+    let transitionKey = null;
+    let transitionUntil = 0;
+    const NORMAL_POLL = 300000, TRANSITION_POLL = 30000;
+    function pollDelay(now) {
+        const launch = forecastLaunch(campaign);
+        if (launch === null) return NORMAL_POLL;
+        if (launch > now && launch - now <= 120000) return TRANSITION_POLL;
+        if (launch <= now && now < transitionUntil) return TRANSITION_POLL;
+        return NORMAL_POLL;
+    }
     async function loadCampaign() {
-        const button=$('[data-home-campaign-refresh]');if(button.disabled)return;button.disabled=true;
+        if (campaignLoading) return;
+        campaignLoading = true;
+        lastCampaignCheck = Date.now();
         text('[data-home-campaign-summary]','Contacting the warzone relay…');
         const control=new AbortController(), timer=setTimeout(()=>control.abort(),15000);
         try {
-            const p=await json('/api/war/guristas-overlay.php',control.signal);
+            const p=await json('/api/war/raid-orders.php',control.signal);
             if(!Array.isArray(p.data?.campaigns)||!Array.isArray(p.data?.systems))throw new Error('Invalid campaign');
             campaign=p.data;campaignMeta=p.meta;campaignFailed=false;
             const active=campaign.campaigns.filter(c=>['ACTIVE','FORECAST'].includes(c.state)&&!c.ended_at).sort((a,b)=>b.id-a.id)[0];
@@ -68,9 +264,40 @@
             campaignFailed=true;text('[data-home-campaign-title]','Campaign relay unavailable');
             text('[data-home-campaign-summary]','Retry the relay or open the War Room. Current campaign status is unknown.');
             if(campaign)systemBrief();else{systemSelect.disabled=true;systemSelect.options[0].textContent='Report unavailable';text('[data-home-system-brief]','Check the Insurgencies window in EVE for current conditions.');text('[data-home-campaign-source]','No verified report received.');}
-        } finally {clearTimeout(timer);button.disabled=false;}
+        } finally {
+            clearTimeout(timer);
+            campaignLoading = false;
+            nextCampaignCheck = Date.now() + pollDelay(Date.now());
+            renderConsole();
+        }
     }
-    systemSelect.addEventListener('change',systemBrief);$('[data-home-campaign-refresh]').addEventListener('click',loadCampaign);loadCampaign();
+    // One browser-side clock drives countdown and polling. No request is made per second.
+    // The server's upstream cache remains authoritative, even during a phase transition.
+    setInterval(() => {
+        if (document.hidden) return;
+        const now = Date.now();
+        const launch = forecastLaunch(campaign);
+        if (launch !== null && now >= launch) {
+            const key = String(launch);
+            if (transitionKey !== key) {
+                transitionKey = key;
+                transitionUntil = now + 600000; // Check every 30s for up to 10 minutes.
+                nextCampaignCheck = now; // Verify immediately at zero.
+            }
+        }
+        if (launch !== null && launch > now && launch-now <= 120000 && nextCampaignCheck > now + TRANSITION_POLL) {
+            nextCampaignCheck = now + TRANSITION_POLL;
+        }
+        if (campaign) renderConsole();
+        if (!campaignLoading && now >= nextCampaignCheck) loadCampaign();
+    }, 1000);
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) return;
+        renderConsole();
+        if (!campaignLoading && Date.now() - lastCampaignCheck >= NORMAL_POLL) loadCampaign();
+    });
+    systemSelect.addEventListener('change',systemBrief);
+    loadCampaign();
 
     let marketControl=null, marketMeta=null;
     const marketType=$('#home-market-type'), marketButton=$('[data-home-market-refresh]');

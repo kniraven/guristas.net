@@ -390,7 +390,7 @@ final class GuristasFrontlinesService
 
         // A single cache file is reused as the insurgency moves, so we don't
         // accumulate one derived topology file for every historical warzone.
-        $cacheKey = 'guristas-insurgency-topology-v2';
+        $cacheKey = 'guristas-insurgency-topology-v3';
         $cached = $this->derivedCache->read($cacheKey);
         $now = time();
         if (
@@ -509,6 +509,49 @@ final class GuristasFrontlinesService
             ];
         }
 
+        // Find direct high-security gates from each campaign system.
+        // True security >= 0.45 displays as 0.5+ in the EVE client.
+        // Only label proximity when all needed ESI lookups were successful.
+        $neighborIds = [];
+        $externalBySystem = [];
+        foreach ($gateResults as $result) {
+            $gate = (array) ($result['data'] ?? []);
+            $from = (int) ($gate['system_id'] ?? 0);
+            $to = (int) ($gate['destination']['system_id'] ?? 0);
+            if ($from > 0 && isset($systemSet[$from]) && $to > 0 && !isset($systemSet[$to])) {
+                $externalBySystem[$from][$to] = true;
+                $neighborIds[$to] = true;
+            }
+        }
+        $externalSecurity = [];
+        if ($neighborIds !== []) {
+            $neighborRequests = [];
+            foreach (array_keys($neighborIds) as $id) {
+                $neighborRequests[] = [
+                    'key' => (string) $id,
+                    'path' => '/universe/systems/' . (int) $id . '/',
+                    'query' => ['language' => 'en'],
+                    'fallback_ttl_seconds' => 86400,
+                ];
+            }
+            try {
+                $neighborResults = $this->esi->getJsonBatch($neighborRequests);
+                foreach ($neighborResults as $neighborResult) {
+                    $neighbor = (array) ($neighborResult['data'] ?? []);
+                    $neighborId = (int) ($neighbor['system_id'] ?? 0);
+                    if ($neighborId > 0 && isset($neighbor['security_status']) && is_numeric($neighbor['security_status'])) {
+                        $externalSecurity[$neighborId] = (float) $neighbor['security_status'];
+                    }
+                }
+            } catch (Throwable $e) {
+                // Do not turn an unavailable lookup into a false 'no high-sec' claim.
+                $externalSecurity = [];
+            }
+        }
+        $proximityKnown = count($externalSecurity) === count($neighborIds);
+
+        $campaignNeighborSecurity = $this->campaignSecurity($rawSystems);
+        $campaignHighsecNeighbors = $this->campaignHighsecNeighbors($gateResults, $systemSet, $rawSystems);
         $systems = [];
         foreach ($ids as $id) {
             if (!isset($rawSystems[$id])) {
@@ -532,6 +575,7 @@ final class GuristasFrontlinesService
                 'constellation_name' => isset($constellation['name']) ? (string) $constellation['name'] : null,
                 'region_id' => $regionId > 0 ? $regionId : null,
                 'region_name' => isset($region['name']) ? (string) $region['name'] : null,
+                'highsec_adjacent' => $proximityKnown ? ($this->hasHighsecNeighbor($id, $externalBySystem, $externalSecurity) || $this->hasHighsecNeighbor($id, $campaignHighsecNeighbors, $campaignNeighborSecurity)) : null,
             ];
         }
 
@@ -547,6 +591,35 @@ final class GuristasFrontlinesService
         $this->derivedCache->write($cacheKey, $entry);
 
         return $this->topologyFromCache($entry, 'MISS');
+    }
+
+    private function campaignSecurity(array $rawSystems): array
+    {
+        $result = [];
+        foreach ($rawSystems as $id => $row) {
+            if (isset($row['security_status']) && is_numeric($row['security_status'])) $result[$id] = (float) $row['security_status'];
+        }
+        return $result;
+    }
+
+    private function campaignHighsecNeighbors(array $gateResults, array $systemSet, array $rawSystems): array
+    {
+        $neighbors = [];
+        foreach ($gateResults as $result) {
+            $gate = (array) ($result['data'] ?? []);
+            $from = (int) ($gate['system_id'] ?? 0);
+            $to = (int) ($gate['destination']['system_id'] ?? 0);
+            if (isset($systemSet[$from], $systemSet[$to], $rawSystems[$to])) $neighbors[$from][$to] = true;
+        }
+        return $neighbors;
+    }
+
+    private function hasHighsecNeighbor(int $systemId, array $externalBySystem, array $externalSecurity): bool
+    {
+        foreach (array_keys($externalBySystem[$systemId] ?? []) as $neighborId) {
+            if (($externalSecurity[$neighborId] ?? -1.0) >= 0.45) return true;
+        }
+        return false;
     }
 
     private function topologyFromCache(array $entry, string $cacheState): array

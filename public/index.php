@@ -216,25 +216,6 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                     <p>New character? Finish EVE’s tutorial and try the Career Agents to learn the controls before risking a ship in pirate warfare.</p>
                     <div class="home-links"><a href="/lore/">Meet the Guristas</a><a href="/join/">Understand enlistment</a><a href="/ships/">Explore the ships</a></div>
                 </details>
-                <div class="directive-terminal" id="operations">
-                    <div class="terminal-label"><span>CHOOSE YOUR NEXT MOVE</span><span>PUBLIC ACCESS</span></div>
-                    <div class="home-directives" role="group" aria-label="Choose a directive">
-                    <?php
-                    $directiveSubtitles = ['raid'=>'Pirate warfare', 'trade'=>'Markets & LP', 'build'=>'Ship production', 'lore'=>'Guristas history', 'signals'=>'Music & broadcasts', 'join'=>'Fly together'];
-                    foreach (['raid','trade','build','lore','signals','join'] as $key): ?>
-                        <button type="button" class="operation-chip" data-operation="<?= escape($key) ?>" aria-controls="directive-briefing" aria-pressed="<?= $key === 'raid' ? 'true' : 'false' ?>">
-                            <b><?= escape($operations[$key]['title']) ?></b><small><?= escape($directiveSubtitles[$key]) ?></small>
-                        </button>
-                    <?php endforeach; ?>
-                    </div>
-                    <div class="selected-operation home-briefing" id="directive-briefing" aria-live="polite" aria-atomic="true">
-                        <span class="system-label">DIRECTIVE LOADED // <span data-directive-code>01</span></span>
-                        <strong id="selectedOperationLabel">RAID // CORRUPT THE WARZONE</strong>
-                        <p data-directive-copy>Find the Guristas campaign, inspect reported system conditions and prepare your next sortie.</p>
-                        <div class="home-links"><a class="primary-button" data-directive-action href="/war/guristas/">Open War Room →</a><a data-directive-help href="/join/">How pirate warfare works</a></div>
-                    </div>
-                    <noscript><p>Open a public destination: <a href="/war/guristas/">War</a> · <a href="/industry/?view=trade">Trade</a> · <a href="/industry/">Build</a> · <a href="/lore/">Lore</a> · <a href="/signals/">Signals</a> · <a href="/join/">Join</a>.</p></noscript>
-                </div>
             </div>
 
             <div class="hero-visual reveal">
@@ -283,13 +264,73 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                         </span>
                     </div>
                 </div>
-                <a class="ship-archive-link" href="/ships/">Inspect the Guristas fleet →</a>
             </div>
         </section>
 
+        <section class="directive-row shell" aria-label="Choose your next move">
+            <div class="directive-terminal" id="operations">
+                    <div class="terminal-label"><span>GURISTAS OPERATIONS // SELECT YOUR ORDERS</span><span>UNCLASSIFIED PIRATE CHANNEL</span></div>
+                    <div class="home-directives" role="group" aria-label="Choose a directive">
+                    <?php
+                    $directiveSubtitles = ['raid'=>'Sabotage the warzone', 'trade'=>'Move contraband', 'build'=>'Arm the fleet', 'lore'=>'Steal intelligence', 'signals'=>'Intercept signals', 'join'=>'Join the crew'];
+                    foreach (['raid','trade','build','lore','signals','join'] as $key): ?>
+                        <button type="button" class="operation-chip" data-operation="<?= escape($key) ?>" aria-controls="directive-briefing" aria-pressed="<?= $key === 'raid' ? 'true' : 'false' ?>">
+                            <b><?= escape($operations[$key]['title']) ?></b><small><?= escape($directiveSubtitles[$key]) ?></small>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+                    <div class="selected-operation home-briefing" id="directive-briefing">
+                        <span class="system-label" aria-live="polite">ORDERS RECEIVED // FILE <span data-directive-code>01</span></span>
+                        <strong id="selectedOperationLabel">RAID // CORRUPT THE WARZONE</strong>
+                        <div class="directive-mission" data-directive-mission hidden>
+                            <div class="directive-mission-display">
+                                <div class="directive-mission-meta"><span data-directive-category>NETWORK OPERATION</span><span class="directive-live-indicator">ORDERS AVAILABLE</span></div>
+                                <div class="directive-mission-symbol" data-directive-symbol aria-hidden="true">◆</div>
+                                <p data-directive-copy>Find the Guristas campaign, inspect reported system conditions and prepare your next sortie.</p>
+                            </div>
+                            <div class="directive-mission-controls">
+                                <span class="directive-controls-label">EXECUTE ORDERS // ACCESS OPERATION</span>
+                                <div class="home-links" data-directive-links><a class="primary-button" data-directive-action href="/war/guristas/">Open War Room →</a><a data-directive-help href="/join/">How pirate warfare works</a></div>
+                                <div class="directive-mission-signal" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                            </div>
+                        </div>
+                        <div class="directive-trade-console" data-directive-trade hidden aria-label="Guristas economic orders">
+                            <div class="trade-orders-heading"><span>ECONOMIC COMMAND // 3 PRIORITY ORDERS</span><a href="/industry/?view=trade">Market Intel ↗</a></div>
+                            <div class="trade-order-grid" data-trade-orders role="status" aria-live="polite">
+                                <article class="trade-order-card" data-trade-status="loading"><span class="trade-order-kind">01 // FULCRUM DEMAND</span><strong>ACQUIRING MARKET INTEL</strong></article>
+                                <article class="trade-order-card" data-trade-status="loading"><span class="trade-order-kind">02 // VENAL DEMAND</span><strong>ACQUIRING MARKET INTEL</strong></article>
+                                <article class="trade-order-card" data-trade-status="loading"><span class="trade-order-kind">03 // GURISTAS LP</span><strong>ACQUIRING MARKET INTEL</strong></article>
+                            </div>
+                            <div class="trade-orders-footer"><span data-trade-freshness>SOURCE // CCP ESI · CHECKING</span><span>Estimated fees, risk and LP valuation; verify in EVE.</span></div>
+                        </div>
+                        <div class="directive-raid-console" data-directive-raid>
+            <section class="guri-console" aria-labelledby="guri-console-heading" data-guri-console data-state="loading">
+                <div class="gc-housing">
+                    <div class="gc-plate"><h2 id="guri-console-heading">COMMANDO GURI <span>// CAMPAIGN CONTROL</span></h2><span class="gc-model" aria-hidden="true">GC-01</span></div>
+                    <div class="gc-recommendation" role="status" aria-live="polite"><span class="gc-order-label"><span class="gc-order-lamp" aria-hidden="true"></span> PRIORITY ORDER // RAID TARGET</span><strong data-gc-recommendation>ACQUIRING INTEL</strong><span data-gc-recommendation-reason>Awaiting verified campaign intelligence.</span></div>
+                    <div class="gc-instruments">
+                        <div class="gc-screen gc-operation"><span class="gc-label">OPERATION STATUS</span><strong class="gc-phase" data-gc-phase role="status">ACQUIRING INTEL</strong><span class="gc-time" data-gc-time>Awaiting campaign report</span></div>
+                        <div class="gc-screen gc-base"><span class="gc-label">FORWARD OPERATING BASE</span><strong data-gc-base>Location unconfirmed</strong><span class="gc-faction" data-gc-faction>FACTION // UNCONFIRMED</span><span class="gc-condition" data-gc-defense>Defense status unknown</span></div>
+                        <div class="gc-screen gc-objectives">
+                            <div class="gc-objective"><div class="gc-meter-heading"><span>CORRUPTION</span><strong data-gc-corruption>?/?</strong></div><div class="gc-segments" data-gc-cells="corruption" aria-hidden="true"></div><span class="gc-ambition" data-gc-ambition="corruption">Our ambition: unknown</span></div>
+                            <div class="gc-objective gc-enemy"><div class="gc-meter-heading"><span>SUPPRESSION</span><strong data-gc-suppression>?/?</strong></div><div class="gc-segments" data-gc-cells="suppression" aria-hidden="true"></div><span class="gc-ambition" data-gc-ambition="suppression">Empire ambition: unknown</span></div>
+                        </div>
+                    </div>
+                    <div class="gc-footer"><span class="gc-occupation" data-gc-occupation>Territorial control unconfirmed</span><div class="gc-actions"><span data-gc-freshness>INTEL PENDING</span><a href="/war/guristas/">War Room ↗</a></div></div>
+                    <noscript><p class="gc-noscript">Enable JavaScript to receive campaign intel, or open the War Room.</p></noscript>
+                </div>
+            </section>
+                        </div>
+                    </div>
+                    <noscript><p>Open a public destination: <a href="/war/guristas/">War</a> · <a href="/industry/?view=trade">Trade</a> · <a href="/industry/">Build</a> · <a href="/lore/">Lore</a> · <a href="/signals/">Signals</a> · <a href="/join/">Join</a>.</p></noscript>
+                </div>
+        </section>
+
+
+
         <section class="home-intelligence shell" aria-label="Field intelligence">
             <article class="home-panel campaign-terminal" id="war-room">
-                <div class="terminal-label"><span>01 // WARZONE RELAY</span><button type="button" class="text-control" data-home-campaign-refresh>Refresh report</button></div>
+                <div class="terminal-label"><span>01 // WARZONE RELAY</span><span>AUTO-UPDATING</span></div>
                 <h2 data-home-campaign-title>Contacting the campaign relay</h2>
                 <p data-home-campaign-summary role="status">Fetching the latest available Guristas report.</p>
                 <label for="home-system">Inspect a reported system</label>
