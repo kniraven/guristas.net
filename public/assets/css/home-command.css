@@ -1170,3 +1170,39 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
  .home-refresh .directive-row .trade-order-card{min-width:260px}
 }
 .home-refresh .directive-row .trade-order-card[data-trade-slot="3"][data-trade-status="conditional"]{border-style:dashed}
+
+/* TR-16: stop cutting off stations and potential returns in the 300px display.
+   Only the middle route area scrolls; price, profit and ROI stay exposed. */
+@media (min-width:901px){
+  .home-refresh .directive-row .trade-order-card{
+    display:grid;
+    grid-template-rows:min-content min-content minmax(0,1fr) min-content min-content;
+    min-width:0;min-height:0;overflow:hidden;
+  }
+  .home-refresh .directive-row .trade-order-steps{
+    justify-content:flex-start;min-height:0;overflow-y:auto;overflow-x:hidden;
+    scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;
+    overscroll-behavior:contain;padding-right:5px;
+  }
+  .home-refresh .directive-row .trade-order-step{
+    grid-template-columns:6.5rem minmax(0,1fr);align-items:start;
+  }
+  .home-refresh .directive-row .trade-order-location{min-width:0}
+  .home-refresh .directive-row .trade-order-place,
+  .home-refresh .directive-row .trade-order-system{
+    white-space:normal;overflow:visible;text-overflow:clip;
+    overflow-wrap:anywhere;
+  }
+  .home-refresh .directive-row .trade-order-prices,
+  .home-refresh .directive-row .trade-order-metric-row{min-width:0;flex-shrink:0}
+  .home-refresh .directive-row .trade-order-prices strong{
+    font-size:clamp(.68rem,.81vw,.82rem);
+    white-space:normal;overflow-wrap:anywhere;
+  }
+  .home-refresh .directive-row .trade-order-metric-row .trade-profit-line,
+  .home-refresh .directive-row .trade-order-metric-row .trade-stats-line{
+    display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;
+    line-height:1.14;
+  }
+  .home-refresh .directive-row .trade-order-metric-row .trade-stats-line{text-align:left}
+}

@@ -127,7 +127,13 @@
                 }
                 const metrics=document.createElement('div');metrics.className='trade-order-metric-row';
                 const profitLine=document.createElement('span');profitLine.className='trade-profit-line';
-                profitLine.textContent=String(order.margin||'').replace(' // ',' / ');
+                // The full risk warning is in INTEL. Keep the visible profit amount readable.
+                const fullMargin=String(order.margin||'');
+                profitLine.title=fullMargin;
+                const profitMatch=fullMargin.match(/([+-]\s*[\d,.]+\s*[KMB]?\s*ISK)\s*$/i);
+                const profitValue=profitMatch?profitMatch[1].replace(/\s+/g,' ').trim():'NOT VERIFIED';
+                const profitKind=buyOrder?'POTENTIAL':order.listing?'UNREALIZED':'PRE-HAUL';
+                profitLine.textContent=profitKind+' / '+profitValue;
                 const statsLine=document.createElement('span');statsLine.className='trade-stats-line';
                 const roi=Number(order.roi_ratio)*100;
                 statsLine.textContent='QTY '+units.toLocaleString('en-US')+' · ROI '+(Number.isFinite(roi)?roi.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'%':'N/A');
