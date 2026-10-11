@@ -65,7 +65,15 @@
                 if(Number.isFinite(Number(order.sales_tax_isk)))line('SALES TAX',isk(order.sales_tax_isk)+' (base Accounting 0 estimate)');
                 if(Number(order.broker_fee_isk)>0)line('LISTING FEE',isk(order.broker_fee_isk)+' estimated');
                 if(Number(order.lp_required)>0)line('LP SPENT',Number(order.lp_required).toLocaleString('en-US')+' LP, valued at 1,000 ISK per LP');
-                line('THE CATCH','The profit shown is before hauling costs, ambushes, cargo losses, and price changes. Verify the orders in EVE before flying.');
+                if(listing && order.market_evidence){
+                    const e=order.market_evidence;
+                    line('REGIONAL SALES',Number(e.regional_14d_units||0).toLocaleString('en-US')+' units in 14 days across '+Number(e.regional_14d_active_days||0)+' trading days.');
+                    line('LOCAL MARKET',Number(e.local_bid_units||0).toLocaleString('en-US')+' units in posted bids; '+Number(e.competing_ask_units||0).toLocaleString('en-US')+' units listed near our price.');
+                    line('OUR LIMIT','CCP confirms trades in this region, not at this station. Neither a bid nor a vanished listing proves a future sale.');
+                }
+                if(order.status==='conditional'&&!listing)line('VERIFY BEFORE MOVING','The return or required work has extra uncertainty. Read the quote and check quantities in EVE.');
+                if(Number(order.roi_ratio)>10)line('EXTREME RETURN','ROI is unusually high. One thin or temporary order can create misleading profits. Treat this as unconfirmed.');
+                line('THE CATCH','Pre-haul profit excludes travel costs, ambushes, cargo losses and market changes. The selection bonus for Fulcrum/Venal NEVER increases the displayed ISK profit.');
                 dossierHead.append(dossierName,dismiss);dossier.append(dossierHead,dossierText);
                 const setExpanded=open=>{dossier.hidden=!open;assumptions.setAttribute('aria-expanded',String(open));assumptions.textContent=open?'INTEL ▴':'INTEL ▸';};
                 assumptions.setAttribute('aria-expanded','false');
