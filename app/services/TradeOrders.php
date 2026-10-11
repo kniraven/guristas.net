@@ -6,7 +6,10 @@ require_once __DIR__.'/MarketIntelligence.php';
 final class GuristasTradeOrders {
     private GuristasMarketIntelligence $intel;
     private array $ref;
-    private const FEE=0.05;
+    // CCP base sales tax for a character with Accounting 0. Personalization
+    // requires an explicitly authorized character skill read, not public ESI.
+    private const BASE_SALES_TAX=0.075;
+    private const ASSUMED_ACCOUNTING_LEVEL=0;
     private const LP_SHADOW=1000.0;
     private const MAX_QTY=10000;
     public function __construct(?GuristasMarketIntelligence $intel=null, ?array $reference=null){
@@ -65,13 +68,16 @@ final class GuristasTradeOrders {
         return $missing?null:['cost'=>$total];
     }
     private function candidate(int $type,int $qty,float $cost,float $lp,float $revenue,int $srcStation,int $destStation,string $kind,string $goal,string $note,bool $conditional=false):?array{
-        $risk=max(1000000.0,$cost*.08);
-        $net=$revenue*(1-self::FEE)-$cost-$lp*self::LP_SHADOW-$risk;
+        // Every suggested market sale immediately fills an existing buy order;
+        // no new broker fee applies. Hauling and expected loss are NOT estimated.
+        $salesTaxRate=self::BASE_SALES_TAX*(1-0.11*self::ASSUMED_ACCOUNTING_LEVEL);
+        $salesTax=$revenue*$salesTaxRate;
+        $net=$revenue-$salesTax-$cost-$lp*self::LP_SHADOW;
         $capital=$cost+$lp*self::LP_SHADOW;
         if($net<1000000||$net/max(1,$capital)<.05)return null;
         $score=$net*(($goal==='FULCRUM')?1.20:($goal==='VENAL'?1.12:1.0));
         if($conditional)$score*=.65;
-        return compact('type','qty','cost','lp','revenue','srcStation','destStation','kind','goal','note','conditional','net','score')+['roi'=>$net/max(1,$capital)];
+        return compact('type','qty','cost','lp','revenue','srcStation','destStation','kind','goal','note','conditional','net','score','salesTax')+['roi'=>$net/max(1,$capital)];
     }
     private function hold(string $label,string $explanation):array{
         return ['status'=>'standby','category'=>$label,'title'=>'NO VERIFIED ORDER','item'=>'AWAIT FRESH INTELLIGENCE','route'=>$explanation,'margin'=>'NET // NOT VERIFIED','quantity'=>'QTY // NONE','reason'=>'No profit claim is made. Check EVE market orders before traveling.'];
@@ -199,15 +205,16 @@ final class GuristasTradeOrders {
                 'title'=>$conditional?'BUILD // VERIFY // SELL':($lp?'REDEEM // DELIVER // SELL':'BUY // DELIVER // SELL'),
                 'item'=>$this->label($p['type']),
                 'route'=>($lp?'USE LP + INPUTS':'BUY AT NPC STATION #'.$p['srcStation']).' → SELL '.$p['qty'].' TO NPC STATION #'.$p['destStation'],
-                'margin'=>($conditional?'POTENTIAL NET':'EST. NET').' // +'.$this->money($p['net']),
+                'margin'=>($conditional?'POTENTIAL PRE-HAUL':'PRE-HAUL').' // +'.$this->money($p['net']),
                 'quantity'=>'QTY // '.$p['qty'].' · ROI '.number_format($p['roi']*100,1).'%',
                 'source_id'=>$p['srcStation'],'destination_id'=>$p['destStation'],'type_id'=>$p['type'],
                 'roi_ratio'=>$p['roi'],'cost_isk'=>$p['cost'],'revenue_isk'=>$p['revenue'],'lp_required'=>$p['lp'],
-                'reason'=>$p['note'].' Total source ISK: '.$this->money($p['cost']).'; LP: '.number_format($p['lp']).'; gross sale: '.$this->money($p['revenue']).'. Costs include 5% assumed selling fees, 8% risk allowance (minimum 1M ISK) and any LP shadow cost. Market order availability may change.'];
+                'sales_tax_isk'=>$p['salesTax'],'sales_tax_rate'=>self::BASE_SALES_TAX,'assumed_accounting_level'=>self::ASSUMED_ACCOUNTING_LEVEL,'broker_fee_isk'=>0,'hauling_risk_estimated'=>false,
+                'reason'=>$p['note'].' Total source ISK: '.$this->money($p['cost']).'; LP: '.number_format($p['lp']).'; gross sale: '.$this->money($p['revenue']).'. Includes '.number_format(self::BASE_SALES_TAX*100,1).'% base sales tax (assumed Accounting 0) and zero broker fee for instantly filling a buy order. LP is valued at an assumed 1,000 ISK each. Hauling costs, ship/cargo loss, route safety and market movement are NOT included. This is pre-haul profit, NOT risk-adjusted profit; market orders may change.'];
         }
         while(count($orders)<3)$orders[]=$this->hold('ECONOMIC INTELLIGENCE','No independent qualifying order from sufficiently fresh covered public markets.');
         return ['orders'=>$orders,'as_of'=>$coverage?gmdate('c',$oldest):null,'stale'=>false,
             'coverage'=>['complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'lp_offers'=>$validOffers?count($offers['offers']):0],
-            'disclaimer'=>'Scheduled public NPC-market snapshots only. Regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; verify issued runs and production facilities. No player-structure prices or guaranteed fill.' ];
+            'disclaimer'=>'Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
     }
 }
