@@ -44,10 +44,27 @@
                 const add=(tag,className,value)=>{const el=document.createElement(tag);el.className=className;el.textContent=value||'';card.appendChild(el);};
                 const heading=document.createElement('div');heading.className='trade-order-heading';
                 const kind=document.createElement('span');kind.className='trade-order-kind';kind.textContent=String(i+1).padStart(2,'0')+' // '+(order.category||'ORDER');
-                const details=document.createElement('details');details.className='trade-order-details';
-                const summary=document.createElement('summary');summary.textContent='ORDER BASIS / ASSUMPTIONS';
-                const reason=document.createElement('p');reason.textContent=order.reason||'';
-                details.append(summary,reason);heading.append(kind,details);card.appendChild(heading);
+                const assumptions=document.createElement('button');assumptions.type='button';assumptions.className='trade-order-assumptions';
+                assumptions.textContent='ORDER BASIS / ASSUMPTIONS ↗';
+                assumptions.setAttribute('aria-label','View order basis and assumptions for '+(order.item||'trade order'));
+                assumptions.addEventListener('click',()=>{
+                    let modal=document.getElementById('trade-order-assumptions-modal');
+                    if(!modal){
+                        modal=document.createElement('dialog');modal.id='trade-order-assumptions-modal';modal.className='trade-assumptions-modal';
+                        const headingRow=document.createElement('div');headingRow.className='trade-assumptions-modal-heading';
+                        const title=document.createElement('strong');title.className='trade-assumptions-modal-title';
+                        const close=document.createElement('button');close.type='button';close.className='trade-assumptions-modal-close';close.textContent='CLOSE ×';
+                        close.addEventListener('click',()=>modal.close());
+                        const content=document.createElement('p');content.className='trade-assumptions-modal-body';
+                        headingRow.append(title,close);modal.append(headingRow,content);
+                        modal.addEventListener('click',event=>{if(event.target===modal)modal.close();});
+                        document.body.appendChild(modal);
+                    }
+                    modal.querySelector('.trade-assumptions-modal-title').textContent=(order.item||'TRADE ORDER')+' // ORDER BASIS';
+                    modal.querySelector('.trade-assumptions-modal-body').textContent=order.reason||'No supporting assumptions were published for this order.';
+                    if(!modal.open)modal.showModal();
+                });
+                heading.append(kind,assumptions);card.appendChild(heading);
                 add('strong','trade-order-item',order.item||'ITEM NAME UNAVAILABLE');
                 const route=document.createElement('div');route.className='trade-order-steps';
                 const step=(verb,station,system,region,note='')=>{
