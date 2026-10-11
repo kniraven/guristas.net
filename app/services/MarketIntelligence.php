@@ -28,39 +28,95 @@ final class GuristasMarketIntelligence {
         if(!$tmp)throw new RuntimeException('Unable to create temporary snapshot');
         try{
             $content=json_encode($value,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES);
-            if(file_put_contents($tmp,$content,LOCK_EX)===false||!rename($tmp,$this->dir.'/'.$name.'.json'))throw new RuntimeException('Unable to publish snapshot');
+            if(file_put_contents($tmp,$content,LOCK_EX)===false)throw new RuntimeException('Unable to write snapshot');
+            if(!chmod($tmp,0640)||!rename($tmp,$this->dir.'/'.$name.'.json'))throw new RuntimeException('Unable to publish readable snapshot');
         }finally{if(is_file($tmp))unlink($tmp);}
+    }
+    /** External regions only need orders for Fulcrum/Venal demand and Guristas LP supply. */
+    private function relevantTypes(): array {
+        $types=[];
+        foreach([10001000,10000015] as $region){
+            $s=$this->read('region-'.$region);
+            if(!$s||empty($s['complete']))throw new RuntimeException('Collect Zarzakh and Venal before scanning external markets');
+            foreach($s['orders']??[] as $o){
+                if(!empty($o['b']) && (int)($o['t']??0)>0)$types[(int)$o['t']]=true;
+            }
+        }
+        $offers=$this->read('lp-offers');
+        if(!$offers||!is_array($offers['offers']??null))throw new RuntimeException('Collect LP offers before scanning external markets');
+        $reference=guri_industry_reference();
+        foreach($offers['offers'] as $offer){
+            $type=(int)($offer['type_id']??0);
+            if($type>0)$types[$type]=true;
+            foreach($offer['required_items']??[] as $input){
+                $id=(int)($input['type_id']??$input['typeID']??0);
+                if($id>0)$types[$id]=true;
+            }
+            $bp=$reference['blueprints'][(string)$type]??null;
+            if($bp){
+                $product=(int)($bp['product']['typeID']??0);
+                if($product>0)$types[$product]=true;
+                foreach($bp['materials']??[] as $material){
+                    $id=(int)($material['type_id']??$material['typeID']??0);
+                    if($id>0)$types[$id]=true;
+                }
+            }
+        }
+        return $types;
     }
     public function collectRegion(int $region): array {
         if($region<10000001||$region>11000000)throw new InvalidArgumentException('Invalid market region');
+        $priority=in_array($region,[10001000,10000015],true);
+        $relevant=$priority?null:$this->relevantTypes();
         $path='/markets/'.$region.'/orders';
         $first=$this->esi->getJson($path,['order_type'=>'all','page'=>1],300);
         $pages=(int)($first['meta']['pages']??0);
         if(!is_array($first['data']??null)||!empty($first['meta']['stale'])||$pages<1||$pages>750)throw new RuntimeException('Missing, stale or too-large regional order book: '.$region);
-        $reports=[1=>$first];$oldest=strtotime((string)($first['meta']['fetched_at']??''));
+        $oldest=strtotime((string)($first['meta']['fetched_at']??''));
         if($oldest===false||$oldest<time()-900)throw new RuntimeException('Market first page is stale');
-        for($start=2;$start<=$pages;$start+=8){
-            $req=[];
-            for($p=$start;$p<=min($pages,$start+7);$p++)$req[]=['key'=>(string)$p,'path'=>$path,'query'=>['order_type'=>'all','page'=>$p],'fallback_ttl_seconds'=>300];
-            foreach($this->esi->getJsonBatch($req,8) as $p=>$report)$reports[(int)$p]=$report;
-        }
-        $orders=[];
-        for($p=1;$p<=$pages;$p++){
-            $r=$reports[$p]??null;
-            if(!$r||!is_array($r['data']??null)||!empty($r['meta']['stale'])||(int)($r['meta']['pages']??0)!==$pages)throw new RuntimeException('Partial/changed market pages; old snapshot retained');
+        $orders=[];$seen=0;
+        // Limit the number of outside-region quotes kept per item/station/side.
+        // Highest bids and lowest asks are most relevant for executable trades.
+        $grouped=[];
+        $consume=function(array $r,int $p) use($pages,$priority,$relevant,&$orders,&$seen,&$oldest,&$grouped):void {
+            if(!is_array($r['data']??null)||!empty($r['meta']['stale'])||(int)($r['meta']['pages']??0)!==$pages)
+                throw new RuntimeException('Partial/changed market pages; old snapshot retained');
             $t=strtotime((string)($r['meta']['fetched_at']??''));
             if($t===false||$t<time()-900)throw new RuntimeException('Stale market page; old snapshot retained');
             $oldest=min($oldest,$t);
             foreach($r['data'] as $o){
                 if(!is_array($o)||!isset($o['type_id'],$o['location_id'],$o['price'],$o['volume_remain'],$o['is_buy_order']))continue;
+                $seen++;
+                $type=(int)$o['type_id'];
+                if($relevant!==null&&!isset($relevant[$type]))continue;
                 $price=(float)$o['price'];$volume=(int)$o['volume_remain'];
-                if(!is_finite($price)||$price<=0||$volume<1)continue;
-                $orders[]=['t'=>(int)$o['type_id'],'l'=>(int)$o['location_id'],'p'=>$price,'v'=>$volume,'m'=>max(1,(int)($o['min_volume']??1)),'b'=>(bool)$o['is_buy_order'],'r'=>$o['range']??'station'];
+                $station=(int)$o['location_id'];
+                if(!is_finite($price)||$price<=0||$volume<1||$station<60000000||$station>=61000000)continue;
+                $row=['t'=>$type,'l'=>$station,'p'=>$price,'v'=>$volume,'m'=>max(1,(int)($o['min_volume']??1)),'b'=>(bool)$o['is_buy_order'],'r'=>$o['range']??'station'];
+                if($priority){$orders[]=$row;continue;}
+                $key=$type.':'.$station.':'.(int)$row['b'];
+                $grouped[$key][]=$row;
+                if(count($grouped[$key])>6){
+                    usort($grouped[$key],static fn($a,$b)=>$a['b']?($b['p']<=>$a['p']):($a['p']<=>$b['p']));
+                    array_pop($grouped[$key]);
+                }
             }
+        };
+        $consume($first,1);
+        unset($first);
+        // Process and release each page before fetching the next.  This avoids the
+        // old implementation's double-copy of the entire Jita order book.
+        for($p=2;$p<=$pages;$p++){
+            $r=$this->esi->getJson($path,['order_type'=>'all','page'=>$p],300);
+            $consume($r,$p);
+            unset($r);
         }
-        $snapshot=['region'=>$region,'fetched_at'=>gmdate('c',$oldest),'collected_at'=>gmdate('c'),'pages'=>$pages,'orders'=>$orders,'complete'=>true,'source'=>'CCP ESI'];
+        if(!$priority){foreach($grouped as $rows)foreach($rows as $row)$orders[]=$row;unset($grouped);}
+        $snapshot=['region'=>$region,'fetched_at'=>gmdate('c',$oldest),'collected_at'=>gmdate('c'),'pages'=>$pages,'orders'=>$orders,'complete'=>true,'source'=>'CCP ESI',
+            'total_seen'=>$seen,'retention'=>$priority?'all_npc_orders':'up_to_6_best_quotes_per_item_station_side',
+            'relevant_types'=>$relevant===null?null:count($relevant)];
         $this->publish('region-'.$region,$snapshot);
-        return ['region'=>$region,'pages'=>$pages,'orders'=>count($orders)];
+        return ['region'=>$region,'pages'=>$pages,'orders'=>count($orders),'seen'=>$seen];
     }
     public function regionIds(): array {
         $saved=$this->read('regions');
