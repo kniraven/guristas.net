@@ -6,6 +6,8 @@ require_once __DIR__.'/MarketIntelligence.php';
 final class GuristasTradeOrders {
     private GuristasMarketIntelligence $intel;
     private array $ref;
+    private array $marketStationRegions=[];
+    private int $excludedOutsidePirateEconomy=0;
     // CCP base sales tax for a character with Accounting 0. Personalization
     // requires an explicitly authorized character skill read, not public ESI.
     private const BASE_SALES_TAX=0.075;
@@ -140,7 +142,17 @@ final class GuristasTradeOrders {
         $step=pow(10,max(-2,(int)floor(log10($price))-3));
         return max(0.01,floor($price/$step+1e-9)*$step);
     }
+    /** Only physically verified Venal stations or The Fulcrum qualify as a trade endpoint. */
+    private function isPirateMarketEndpoint(int $station):bool{
+        if($station<=0)return false; // Unknown LP redemption location is not evidence of an origin.
+        if($station===(int)$this->ref['hubs']['fulcrum']['station_id'])return true;
+        return ($this->marketStationRegions[$station]??0)===10000015;
+    }
     private function candidate(int $type,int $qty,float $cost,float $lp,float $revenue,int $srcStation,int $destStation,string $kind,string $goal,string $note,bool $conditional=false,bool $listing=false,int $depth=0):?array{
+        if(!$this->isPirateMarketEndpoint($srcStation)&&!$this->isPirateMarketEndpoint($destStation)){
+            $this->excludedOutsidePirateEconomy++;
+            return null;
+        }
         $salesTaxRate=self::BASE_SALES_TAX*(1-0.11*self::ASSUMED_ACCOUNTING_LEVEL);
         $salesTax=$revenue*$salesTaxRate;
         $brokerFee=$listing?$revenue*self::ASSUMED_LISTING_BROKER_FEE:0.0;
@@ -161,6 +173,8 @@ final class GuristasTradeOrders {
         return ['status'=>'standby','category'=>$label,'title'=>'NO VERIFIED ORDER','item'=>'AWAIT FRESH INTELLIGENCE','route'=>$explanation,'margin'=>'NET // NOT VERIFIED','quantity'=>'QTY // NONE','reason'=>'No profit claim is made. Check EVE market orders before traveling.'];
     }
     public function collect():array{
+        $this->marketStationRegions=[];
+        $this->excludedOutsidePirateEconomy=0;
         $allBuy=[];$allSell=[];$destBuy=['FULCRUM'=>[],'VENAL'=>[]];$coverage=[];$oldest=time();$stationRegions=[];
         $regions=$this->intel->regionIds();
         foreach(array_unique(array_merge([10001000,10000015],$regions)) as $region){
@@ -182,6 +196,7 @@ final class GuristasTradeOrders {
                 if($region===10000015)$destBuy['VENAL'][$t][$station]=$list;
             }
         }
+        $this->marketStationRegions=$stationRegions;
         $offers=$this->intel->read('lp-offers');
         $validOffers=$offers&&($this->age($offers)<86400)&&is_array($offers['offers']??null);
         $byReward=[];
@@ -419,7 +434,7 @@ final class GuristasTradeOrders {
             $orders[]=$this->hold('SPECULATIVE // EVIDENCE REQUIRED',$note);
         }
         return ['orders'=>$orders,'as_of'=>$coverage?gmdate('c',$oldest):null,'stale'=>false,
-            'coverage'=>['complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'history_supported_listings'=>count($validatedListings),'listing_candidates'=>count($listingPool),'listing_rejections'=>$rejects,'lp_offers'=>$validOffers?count($offers['offers']):0],
-            'disclaimer'=>'Sell listings require corroborating regional completed-trade history and station order book evidence, including selected outside trade hubs; station sales velocity and actual fill time remain unverified. Maximum one conditional listing is allowed. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional listings assume 3% NPC broker fee and are NOT guaranteed sales. Ranking blends pre-haul ISK profit, ROI, and available order quantities; explores several acquisition stations and firm bid prices, but cannot guarantee global highest profit across unscanned/stale regions. Route security remains unmeasured. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
+            'coverage'=>['complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'history_supported_listings'=>count($validatedListings),'listing_candidates'=>count($listingPool),'listing_rejections'=>$rejects,'excluded_outside_pirate_economy'=>$this->excludedOutsidePirateEconomy,'lp_offers'=>$validOffers?count($offers['offers']):0],
+            'disclaimer'=>'All displayed trade recommendations require a verified market station in Venal or The Fulcrum at the buying or selling endpoint. Unknown LP redemption locations are not assumed to qualify. Sell listings require corroborating regional completed-trade history and station order book evidence, including selected outside trade hubs; station sales velocity and actual fill time remain unverified. Maximum one conditional listing is allowed. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional listings assume 3% NPC broker fee and are NOT guaranteed sales. Ranking blends pre-haul ISK profit, ROI, and available order quantities; explores several acquisition stations and firm bid prices, but cannot guarantee global highest profit across unscanned/stale regions. Route security remains unmeasured. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
     }
 }
