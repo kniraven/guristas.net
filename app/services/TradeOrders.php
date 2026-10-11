@@ -180,35 +180,13 @@ final class GuristasTradeOrders {
                 }
             }
         }
-        // Conditional sell-order recommendations: observed competing asks are NOT sales.
-        // Require buyers at the same station as a basic indication of local demand.
-        foreach(['FULCRUM','VENAL'] as $goal){
-            foreach(($destBuy[$goal]??[]) as $type=>$buyers){
-                if(empty($allSell[$type]))continue;
-                // The sell market must have current competing asks at the destination.
-                $destAsks=[];
-                foreach($buyers as $station=>$orders){
-                    if(isset($allSell[$type][$station]))$destAsks[$station]=$allSell[$type][$station];
-                }
-                if(!$destAsks)continue;
-                foreach([1,2,5,10,20,100,1000,10000] as $qty){
-                    $acq=$this->acquire($allSell[$type],$qty);
-                    if(!$acq)continue;
-                    foreach($this->listingQuotes($destAsks,$buyers,$qty) as $quote){
-                        if($quote['station']===$acq['station'])continue;
-                        // The target ask must materially exceed the actual highest buy bid.
-                        if($quote['unit']<=$quote['topBid']*1.05)continue;
-                        $c=$this->candidate((int)$type,$qty,$acq['cost'],0,$quote['revenue'],
-                            $acq['station'],$quote['station'],'LIST FOR SALE',$goal,
-                            'Conditional sell listing: target price matches the observed lowest competing ask, NOT an available buyer. '
-                            .'Local buy-order volume is only a demand signal, not proof this listing will fill. '
-                            .'Listing fee assumed at 3%; price can change and the order may never sell.',
-                            true,true,$quote['demand']);
-                        if($c)$pool[]=$c;
-                    }
-                }
-            }
-        }
+        // Do not publish speculative sell listings from asking prices and current bids.
+        // These are NOT completed trades; neither order-book depth nor a narrow
+        // bid/ask spread demonstrates sell-through at the proposed listing price.
+        // Listing candidates must remain disabled until we collect and validate
+        // historical executions (volume, time horizon and station relevance),
+        // competition, order age and feasible purchase quantity. Never infer
+        // realized profit from a competing ask alone.
         // Guristas officer/deadspace specialty goods: compare actual market buy depth
         // with publicly offered sell inventory. These are loot/arbitrage, not LP redemption.
         $special=[];
@@ -247,12 +225,19 @@ final class GuristasTradeOrders {
         }
         usort($pool,static fn($a,$b)=>$b['score']<=>$a['score']);
         $picked=[];$used=[];
+        // Prefer executable existing bids; conditional manufacturing is a
+        // fallback, not a substitute for observed demand at a firm bid.
         foreach(['FULCRUM','VENAL','ANY'] as $goal){
-            foreach($pool as $p){
-                if($goal!=='ANY' && $p['goal']!==$goal)continue;
-                $key=(string)$p['type']; // Strong anti-duplicate policy: one reward/item across all cards.
-                if(isset($used[$key]))continue;
-                $used[$key]=true;$picked[]=$p;break;
+            foreach([false,true] as $allowConditional){
+                foreach($pool as $p){
+                    if($goal!=='ANY' && $p['goal']!==$goal)continue;
+                    if(!empty($p['listing']))continue;
+                    if(!$allowConditional && !empty($p['conditional']))continue;
+                    $key=(string)$p['type'];
+                    if(isset($used[$key]))continue;
+                    $used[$key]=true;$picked[]=$p;
+                    continue 3;
+                }
             }
         }
         $orders=[];
@@ -272,6 +257,6 @@ final class GuristasTradeOrders {
         while(count($orders)<3)$orders[]=$this->hold('ECONOMIC INTELLIGENCE','No independent qualifying order from sufficiently fresh covered public markets.');
         return ['orders'=>$orders,'as_of'=>$coverage?gmdate('c',$oldest):null,'stale'=>false,
             'coverage'=>['complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'lp_offers'=>$validOffers?count($offers['offers']):0],
-            'disclaimer'=>'Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional sell listings include an assumed 3% NPC broker fee, use competing ASK prices only and are NOT guaranteed sales. Scoring balances ISK profit, ROI and available buy volume, not actual route security. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
+            'disclaimer'=>'Sell-order listing suggestions are withheld until verified completed-trade volume and defensible sell-through evidence are available; competing asks are not transactions. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional sell listings include an assumed 3% NPC broker fee, use competing ASK prices only and are NOT guaranteed sales. Scoring balances ISK profit, ROI and available buy volume, not actual route security. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
     }
 }
