@@ -1148,3 +1148,25 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
   .home-refresh .directive-row .trade-order-metric-row .trade-profit-line{font-size:.67rem;white-space:nowrap;color:var(--accent-bright)}
   .home-refresh .directive-row .trade-order-metric-row .trade-stats-line{font-size:.63rem;white-space:nowrap;text-align:right;color:var(--text)}
 }
+
+/* TR-15: Three readable cards. Slot 3 is a new buy/sell order proposal.
+   Do not increase the fixed instrument height. */
+@media(min-width:1101px){
+ .home-refresh .directive-row .trade-order-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;overflow:hidden}
+ .home-refresh .directive-row .trade-order-card{padding:9px 10px;gap:4px;min-width:0;grid-template-rows:auto auto minmax(0,1fr) auto auto}
+ .home-refresh .directive-row .trade-order-card .trade-order-item{font-size:.87rem;line-height:1.15}
+ .home-refresh .directive-row .trade-order-step{grid-template-columns:6.5rem minmax(0,1fr);font-size:.72rem;line-height:1.16;gap:6px}
+ .home-refresh .directive-row .trade-order-verb{font-size:.64rem}
+ .home-refresh .directive-row .trade-order-place{font-size:.7rem;line-height:1.17}
+ .home-refresh .directive-row .trade-order-system{font-size:.64rem;line-height:1.13}
+ .home-refresh .directive-row .trade-order-heading .trade-order-kind{font-size:.62rem}
+ .home-refresh .directive-row .trade-order-heading .trade-order-assumptions{font-size:.61rem}
+ .home-refresh .directive-row .trade-order-prices strong{font-size:.77rem}
+ .home-refresh .directive-row .trade-order-metric-row .trade-profit-line{font-size:.76rem}
+ .home-refresh .directive-row .trade-order-metric-row .trade-stats-line{font-size:.7rem}
+}
+@media(min-width:901px) and (max-width:1100px){
+ .home-refresh .directive-row .trade-order-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;overflow-x:auto}
+ .home-refresh .directive-row .trade-order-card{min-width:260px}
+}
+.home-refresh .directive-row .trade-order-card[data-trade-slot="3"][data-trade-status="conditional"]{border-style:dashed}

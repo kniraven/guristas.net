@@ -37,13 +37,13 @@
         try {
             const payload=await json('/api/industry/trade-orders.php',control.signal);
             const report=payload.data;
-            if(!Array.isArray(report?.orders)||report.orders.length!==4)throw new Error('Invalid market intelligence');
+            if(!Array.isArray(report?.orders)||report.orders.length!==3)throw new Error('Invalid market intelligence');
             host.replaceChildren();
             report.orders.forEach((order,i)=>{
                 const card=document.createElement('article');card.className='trade-order-card';card.dataset.tradeStatus=order.status||'standby';card.dataset.tradeSlot=String(i+1);
                 const add=(tag,className,value)=>{const el=document.createElement(tag);el.className=className;el.textContent=value||'';card.appendChild(el);};
                 const heading=document.createElement('div');heading.className='trade-order-heading';
-                const kind=document.createElement('span');kind.className='trade-order-kind';kind.textContent=String(i+1).padStart(2,'0')+' // '+(i===3?'SPECULATIVE LISTING':(order.category||'ORDER'));
+                const kind=document.createElement('span');kind.className='trade-order-kind';kind.textContent=String(i+1).padStart(2,'0')+' // '+(i===2?'NEW MARKET ORDER':(order.category||'ORDER'));
                 const assumptions=document.createElement('button');assumptions.type='button';assumptions.className='trade-order-assumptions';
                 assumptions.textContent='INTEL ▸';
                 assumptions.setAttribute('aria-label','View order basis and assumptions for '+(order.item||'trade order'));
@@ -55,16 +55,17 @@
                 const dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent='RETURN ↩';
                 const dossierText=document.createElement('div');dossierText.className='trade-order-dossier-text';
                 const line=(label,value)=>{const p=document.createElement('p');const lead=document.createElement('strong');lead.textContent=label+' // ';p.append(lead,document.createTextNode(value));dossierText.appendChild(p);};
-                const listing=Boolean(order.listing);
-                if(listing){card.title='CONDITIONAL: Regional sales history and local bids support this price. Station sales and fill time cannot be verified.';}else if(order.status!=='standby'){card.title='FIRM BID SNAPSHOT: Buyer order observed; verify it remains available before hauling.';}
-                line('CONFIDENCE',listing?'CONDITIONAL. Regional sales and local buy orders support this possible listing. A sale at this station is not confirmed.':(order.status==='standby'?'No qualifying order has been verified.':'An actual destination buy order was observed. It could change before you arrive.'));
-                line('THE PLAY',listing?'We can post an asking price, but no buyer has promised to pay it. This is a gamble, not money in the hold.':'A buyer has posted an order for these goods. Buy at the source, haul them to the destination, then fill that order before someone else does.');
+                const listing=Boolean(order.listing);const buyOrder=Boolean(order.buy_order);
+                if(buyOrder){card.title='CONDITIONAL: A proposed buy order has NOT filled. Visible seller stock and an existing exit bid do not guarantee a purchase.';}else if(listing){card.title='CONDITIONAL: Regional sales history and local bids support this price. Station sales and fill time cannot be verified.';}else if(order.status!=='standby'){card.title='FIRM BID SNAPSHOT: Buyer order observed; verify it remains available before hauling.';}
+                line('CONFIDENCE',buyOrder?'CONDITIONAL. Source has posted bids and asks. Your proposed buy order has not filled, and the destination bid may change.':(listing?'CONDITIONAL. Regional sales and local buy orders support this possible listing. A sale at this station is not confirmed.':(order.status==='standby'?'No qualifying order has been verified.':'An actual destination buy order was observed. It could change before you arrive.')));
+                line('THE PLAY',order.status==='standby'?'No qualifying new order has been found in the currently verified market data.':(buyOrder?'Place a competitive buy order at the source. Wait for a seller to fill it. Only then haul the goods to the destination buy order, if still available.':(listing?'We can post an asking price, but no buyer has promised to pay it. This is a gamble, not money in the hold.':'A buyer has posted an order for these goods. Buy at the source, haul them to the destination, then fill that order before someone else does.')));
                 const isk=n=>Number(n).toLocaleString('en-US',{maximumFractionDigits:0})+' ISK';
                 if(Number.isFinite(Number(order.cost_isk)))line('SUPPLY COST',isk(order.cost_isk));
                 if(Number.isFinite(Number(order.revenue_isk)))line('TARGET SALE',isk(order.revenue_isk));
                 if(Number.isFinite(Number(order.sales_tax_isk)))line('SALES TAX',isk(order.sales_tax_isk)+' (base Accounting 0 estimate)');
-                if(Number(order.broker_fee_isk)>0)line('LISTING FEE',isk(order.broker_fee_isk)+' estimated');
+                if(Number(order.broker_fee_isk)>0)line('BROKER FEE',isk(order.broker_fee_isk)+' estimated');
                 if(Number(order.lp_required)>0)line('LP SPENT',Number(order.lp_required).toLocaleString('en-US')+' LP, valued at 1,000 ISK per LP');
+                if(buyOrder){line('SOURCE ASK',isk(order.source_lowest_ask)+' per unit, '+Number(order.source_ask_units||0).toLocaleString('en-US')+' units at that price. This is NOT an agreed sale.');line('OUR LIMIT','A competitive bid may never fill, even if sellers have inventory. No station-specific fill time is verified.');}
                 if(listing && order.market_evidence){
                     const e=order.market_evidence;
                     line('REGIONAL SALES',Number(e.regional_14d_units||0).toLocaleString('en-US')+' units in 14 days across '+Number(e.regional_14d_active_days||0)+' trading days.');
@@ -81,7 +82,7 @@
                 dismiss.addEventListener('click',()=>{setExpanded(false);assumptions.focus();});
                 card.addEventListener('keydown',event=>{if(event.key==='Escape'&&!dossier.hidden){event.stopPropagation();setExpanded(false);assumptions.focus();}});
                 heading.append(kind,assumptions);card.appendChild(heading);
-                if(order.status==='standby'){add('strong','trade-order-item','NO VERIFIED SELL LISTING');add('p','trade-order-standby-note',order.route||'Evidence is not strong enough yet.');card.appendChild(dossier);host.appendChild(card);return;}
+                if(order.status==='standby'){add('strong','trade-order-item',i===2?'NO VERIFIED NEW ORDER':'NO VERIFIED TRADE');add('p','trade-order-standby-note',order.route||'Evidence is not strong enough yet.');card.appendChild(dossier);host.appendChild(card);return;}
                 add('strong','trade-order-item',order.item||'ITEM NAME UNAVAILABLE');
                 const route=document.createElement('div');route.className='trade-order-steps';
                 const step=(verb,station,system,region,note='')=>{
@@ -96,7 +97,7 @@
                 const method=String(order.method||'').toUpperCase();
                 if(method.includes('MANUFACTURE'))step('BUILD','Guristas LP blueprint + manufacturing',null,null,'Production facility / region not specified');
                 else if(method.includes('REDEEM'))step('REDEEM','Commando Guri LP store',null,null,'Redemption station / region not specified');
-                else step('BUY',order.source_station,order.source_system,order.source_region);
+                else step(buyOrder?'CREATE BUY ORDER':'BUY',order.source_station,order.source_system,order.source_region);
                 step(order.listing?'CREATE SELL ORDER':'FILL BUY ORDER',order.destination_station,order.destination_system,order.destination_region);
                 card.appendChild(route);
                 // Unit prices derive from the same gross purchase and target-sale totals
@@ -112,7 +113,7 @@
                         return v.toLocaleString('en-US',{maximumFractionDigits:2});
                     };
                     const priceRow=document.createElement('div');priceRow.className='trade-order-prices';
-                    const methodLabel=method.includes('REDEEM')||method.includes('MANUFACTURE')?'INPUTS + LP':'BUY';
+                    const methodLabel=method.includes('REDEEM')||method.includes('MANUFACTURE')?'INPUTS + LP':(buyOrder?'BID':'BUY');
                     const addPrice=(label,amount)=>{
                         const part=document.createElement('span');
                         const key=document.createElement('small');key.textContent=label;
@@ -120,7 +121,7 @@
                         value.title=Number(amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' ISK per unit';
                         part.append(key,value);priceRow.appendChild(part);
                     };
-                    addPrice(methodLabel,Number(order.cost_isk)/units);
+                    addPrice(methodLabel,buyOrder?Number(order.buy_order_unit_price):Number(order.cost_isk)/units);
                     addPrice(order.listing?'ASK':'SELL',Number(order.revenue_isk)/units);
                     card.appendChild(priceRow);
                 }
@@ -141,7 +142,7 @@
             if(!report.stale)tradeLastSuccess=Date.now();
         }catch(error){
             host.replaceChildren();
-            ['FULCRUM DEMAND','VENAL DEMAND','GURISTAS LP ADVANTAGE','SPECULATIVE // EVIDENCE REQUIRED'].forEach((category,i)=>{
+            ['FULCRUM DEMAND','VENAL DEMAND','NEW MARKET ORDER'].forEach((category,i)=>{
                 const card=document.createElement('article');card.className='trade-order-card';card.dataset.tradeStatus='standby';
                 const heading=document.createElement('span');heading.className='trade-order-kind';heading.textContent=`0${i+1} // ${category}`;
                 const title=document.createElement('strong');title.textContent='HOLD CARGO';
