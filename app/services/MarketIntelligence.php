@@ -189,6 +189,7 @@ final class GuristasMarketIntelligence {
             if($id>0&&is_string($station['system'])&&$station['system']!=='')$systems[$id]=$station['system'];
         }
         $typeNames=[];
+        $constellations=[];$regions=[];$systemRegions=[];
         $resolve=function(int $id,string $route)use(&$names):?array{
             try{
                 $r=$this->esi->getJson($route.'/'.$id,[],86400);
@@ -219,18 +220,38 @@ final class GuristasMarketIntelligence {
                     $systems[$sid]=$names[$sid]??($resolve($sid,'/universe/systems')['name']??null);
                 }
                 $system=$sid>0?($systems[$sid]??null):null;
-                $place[$role]=['station'=>$s['name']??null,'system'=>$system,
-                    'verified'=>is_string($s['name']??null)&&($s['name']??'')!==''&&is_string($system)&&$system!==''];
+                // System -> constellation -> region. Never infer a region from station text.
+                if($sid>0&&!array_key_exists($sid,$systemRegions)){
+                    $systemInfo=$resolve($sid,'/universe/systems');
+                    $constellationId=(int)($systemInfo['constellation_id']??0);
+                    $regionId=0;
+                    if($constellationId>0){
+                        if(!array_key_exists($constellationId,$constellations)){
+                            $constellationInfo=$resolve($constellationId,'/universe/constellations');
+                            $constellations[$constellationId]=(int)($constellationInfo['region_id']??0);
+                        }
+                        $regionId=$constellations[$constellationId];
+                    }
+                    if($regionId>0&&!array_key_exists($regionId,$regions)){
+                        $regionInfo=$resolve($regionId,'/universe/regions');
+                        $regionName=$regionInfo['name']??($names[$regionId]??null);
+                        $regions[$regionId]=is_string($regionName)&&trim($regionName)!==''?trim($regionName):null;
+                    }
+                    $systemRegions[$sid]=$regionId>0?($regions[$regionId]??null):null;
+                }
+                $region=$sid>0?($systemRegions[$sid]??null):null;
+                $place[$role]=['station'=>$s['name']??null,'system'=>$system,'region'=>$region,
+                    'verified'=>is_string($s['name']??null)&&($s['name']??'')!==''&&is_string($system)&&$system!==''&&is_string($region)&&$region!==''];
             }
             $kind=strtoupper((string)($order['category']??''));
             $lp=str_contains($kind,'LP REDEEM');$build=str_contains($kind,'LP BUILD');
             $order['method']=$build?'MANUFACTURE FROM LP BLUEPRINT':($lp?'REDEEM GURISTAS LP':'PURCHASE FROM SELL ORDERS');
             $src=$place['source']??null;$dst=$place['destination']??null;
-            $order['source_station']=$src['station']??null;$order['source_system']=$src['system']??null;
-            $order['destination_station']=$dst['station']??null;$order['destination_system']=$dst['system']??null;
+            $order['source_station']=$src['station']??null;$order['source_system']=$src['system']??null;$order['source_region']=$src['region']??null;
+            $order['destination_station']=$dst['station']??null;$order['destination_system']=$dst['system']??null;$order['destination_region']=$dst['region']??null;
             $complete=($lp||$build||($src['verified']??false))&&($dst['verified']??false)&&$typeNames[$type]!==null;
             $order['location_verified']=$complete;
-            $order['route']=($src?($src['station']??'UNKNOWN STATION').' ('.($src['system']??'UNKNOWN SYSTEM').')':$order['method']).' → '.($dst['station']??'UNKNOWN STATION').' ('.($dst['system']??'UNKNOWN SYSTEM').')';
+            $order['route']=($src?($src['station']??'UNKNOWN STATION').' ('.($src['system']??'UNKNOWN SYSTEM').' / '.($src['region']??'UNKNOWN REGION').')':$order['method']).' → '.($dst['station']??'UNKNOWN STATION').' ('.($dst['system']??'UNKNOWN SYSTEM').' / '.($dst['region']??'UNKNOWN REGION').')';
             if(!$complete){
                 $order['status']='conditional';
                 $order['reason'].=' ITEM / LOCATION INCOMPLETE: Do not execute until the item and both required locations are confirmed in EVE.';

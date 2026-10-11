@@ -45,18 +45,20 @@
                 add('span','trade-order-kind',String(i+1).padStart(2,'0')+' // '+(order.category||'ORDER'));
                 add('strong','trade-order-item',order.item||'ITEM NAME UNAVAILABLE');
                 const route=document.createElement('div');route.className='trade-order-steps';
-                const step=(verb,station,system)=>{
+                const step=(verb,station,system,region,note='')=>{
                     const line=document.createElement('div');line.className='trade-order-step';
                     const key=document.createElement('span');key.className='trade-order-verb';key.textContent=verb;
-                    const place=document.createElement('span');place.className='trade-order-place';place.textContent=station||'Confirm source in EVE';
-                    const sys=document.createElement('span');sys.className='trade-order-system';sys.textContent=system||'';
-                    line.append(key,place,sys);route.appendChild(line);
+                    const location=document.createElement('div');location.className='trade-order-location';
+                    const place=document.createElement('span');place.className='trade-order-place';place.textContent=station||'Station not verified';
+                    const geography=document.createElement('span');geography.className='trade-order-system';
+                    geography.textContent=note||(system&&region?`${system} · ${region}`:'System / region not verified');
+                    location.append(place,geography);line.append(key,location);route.appendChild(line);
                 };
                 const method=String(order.method||'').toUpperCase();
-                if(method.includes('MANUFACTURE'))step('BUILD','Guristas LP blueprint + manufacturing', 'Verify inputs and runs');
-                else if(method.includes('REDEEM'))step('REDEEM','Commando Guri LP store','Include LP + ISK + inputs');
-                else step('BUY',order.source_station||'SOURCE UNVERIFIED',order.source_system||'');
-                step('SELL',order.destination_station||'DESTINATION UNVERIFIED',order.destination_system||'');
+                if(method.includes('MANUFACTURE'))step('BUILD','Guristas LP blueprint + manufacturing',null,null,'Production facility / region not specified');
+                else if(method.includes('REDEEM'))step('REDEEM','Commando Guri LP store',null,null,'Redemption station / region not specified');
+                else step('BUY',order.source_station,order.source_system,order.source_region);
+                step('SELL',order.destination_station,order.destination_system,order.destination_region);
                 card.appendChild(route);
                 const metrics=document.createElement('div');metrics.className='trade-order-metric-row';
                 for(const value of [order.margin,order.quantity]){const el=document.createElement('span');el.textContent=value||'';metrics.appendChild(el);}

@@ -897,3 +897,39 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
 .home-refresh .directive-row .trade-order-metric-row{display:flex;gap:3px 10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap;border-top:1px solid var(--line-strong);padding-top:5px;font:700 .66rem/1.2 ui-monospace,monospace;color:var(--accent-bright)}
 .home-refresh .directive-row .trade-order-metric-row span+span{color:var(--text);font-size:.62rem}
 @media(max-width:900px){.home-refresh .directive-row .trade-order-card{grid-template-rows:auto auto minmax(58px,1fr) auto auto;min-height:178px}}
+
+/* TR-06: show verified stations, systems and regions without clipping routes. */
+@media(min-width:901px){
+  .home-refresh .directive-row .selected-operation.home-briefing[data-mode="trade"]{
+    height:405px;min-height:405px;max-height:405px;
+  }
+}
+.home-refresh .directive-row .trade-order-card{
+  grid-template-rows:auto auto minmax(0,1fr) auto auto;
+  gap:8px;
+}
+.home-refresh .directive-row .trade-order-steps{
+  justify-content:center;gap:10px;min-height:0;overflow:visible;
+}
+.home-refresh .directive-row .trade-order-step{
+  display:grid;grid-template-columns:3.7rem minmax(0,1fr);
+  grid-template-rows:auto;align-items:start;column-gap:9px;
+  font-size:.68rem;line-height:1.33;
+}
+.home-refresh .directive-row .trade-order-verb{grid-row:auto;padding-top:2px}
+.home-refresh .directive-row .trade-order-location{display:flex;flex-direction:column;gap:3px;min-width:0}
+.home-refresh .directive-row .trade-order-place{
+  display:block;white-space:normal;overflow:visible;text-overflow:clip;
+  overflow-wrap:anywhere;font-size:.68rem;line-height:1.33;
+}
+.home-refresh .directive-row .trade-order-system{
+  display:block;white-space:normal;overflow:visible;text-overflow:clip;
+  overflow-wrap:anywhere;font-size:.63rem;line-height:1.25;
+}
+@media(max-width:900px){
+  .home-refresh .directive-row .selected-operation.home-briefing[data-mode="trade"]{
+    height:620px;min-height:620px;max-height:620px;
+  }
+  .home-refresh .directive-row .trade-order-grid{overflow:auto;scrollbar-width:thin}
+  .home-refresh .directive-row .trade-order-card{min-height:220px}
+}
