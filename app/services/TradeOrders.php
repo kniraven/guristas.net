@@ -444,34 +444,83 @@ final class GuristasTradeOrders {
                 }
             }
         }
-        usort($pool,static fn($a,$b)=>$b['score']<=>$a['score']);
-        $picked=[];$used=[];
-        // Two reliable actions, including LP redemption, then one new order.
-        foreach(['FULCRUM','VENAL','ANY'] as $goal){
-            foreach($pool as $p){
-                if($goal!=='ANY'&&$p['goal']!==$goal)continue;
-                if(!empty($p['listing'])||!empty($p['buy_order'])||!empty($p['conditional']))continue;
-                if(isset($used[(string)$p['type']]))continue;
-                $used[(string)$p['type']]=true;$picked[]=$p;break;
-            }
-            if(count($picked)>=2)break;
-        }
-        if(count($picked)<2)foreach($pool as $p){
-            if(!empty($p['listing'])||!empty($p['buy_order'])||isset($used[(string)$p['type']]))continue;
-            $used[(string)$p['type']]=true;$picked[]=$p;
-            if(count($picked)>=2)break;
-        }
-        // Best credible proposed order, distinct item when possible.
-        // Historic sell-order evidence is preferred when available, but a
-        // competitive CREATE BUY ORDER can qualify without station sale history.
+        // Pick three distinct items as a GROUP, not as three independent slots.
+        // Required coverage: Fulcrum endpoint, Venal endpoint, Guristas LP and
+        // at least one proposed new buy/sell order. Coverage changes the choice,
+        // NEVER the monetary profit/ROI reported for an individual candidate.
         $proposedOrders=array_merge($validatedListings,$buyOrderPool);
-        usort($proposedOrders,static fn($a,$b)=>$b['score']<=>$a['score']);
-        $proposal=null;
-        foreach($proposedOrders as $c){
-            if(!isset($used[(string)$c['type']])){$proposal=$c;break;}
+        $allCandidates=array_merge($pool,$proposedOrders);
+        $hub=(int)$this->ref['hubs']['fulcrum']['station_id'];
+        $maskFor=function(array $c)use($hub):int{
+            $source=(int)$c['srcStation'];$destination=(int)$c['destStation'];
+            $mask=0;
+            if($source===$hub||$destination===$hub)$mask|=1;
+            if(($this->marketStationRegions[$source]??0)===10000015||($this->marketStationRegions[$destination]??0)===10000015)$mask|=2;
+            if(str_starts_with($c['kind'],'LP '))$mask|=4;
+            if(!empty($c['buy_order'])||!empty($c['listing']))$mask|=8;
+            return $mask;
+        };
+        $groups=[];
+        foreach($allCandidates as $c){
+            $mask=$maskFor($c);
+            if(!$mask)continue;
+            $c['coverage_mask']=$mask;
+            $groups[$mask][]=$c;
         }
-        if(!$proposal)$proposal=$proposedOrders[0]??null;
-        if($proposal)$picked[]=$proposal;
+        // Keep the top few DISTINCT items per coverage pattern. This bounds
+        // the search despite thousands of combinations of prices and quantities.
+        $shortlist=[];
+        foreach($groups as $group){
+            usort($group,static fn($a,$b)=>$b['score']<=>$a['score']);
+            $seen=[];
+            foreach($group as $c){
+                if(isset($seen[$c['type']]))continue;
+                $seen[$c['type']]=true;
+                $shortlist[]=$c;
+                if(count($seen)>=12)break;
+            }
+        }
+        usort($shortlist,static fn($a,$b)=>$b['score']<=>$a['score']);
+        $best=null;$bestScore=-INF;$bestMask=0;
+        // Max 15 coverage masks x 12 unique item candidates each.
+        $n=count($shortlist);
+        for($i=0;$i<$n;$i++)for($j=$i+1;$j<$n;$j++){
+            $a=$shortlist[$i];$b=$shortlist[$j];
+            if($a['type']===$b['type'])continue;
+            $mask2=$a['coverage_mask']|$b['coverage_mask'];
+            for($k=$j+1;$k<$n;$k++){
+                $c=$shortlist[$k];
+                if($c['type']===$a['type']||$c['type']===$b['type'])continue;
+                $mask=$mask2|$c['coverage_mask'];
+                $covered=substr_count(decbin($mask),'1');
+                // All four obligations win over incomplete coverage; within
+                // equal coverage prefer stronger economic and evidence scores.
+                $score=($covered*1e16)+$a['score']+$b['score']+$c['score'];
+                if($score>$bestScore){$bestScore=$score;$best=[$a,$b,$c];$bestMask=$mask;}
+            }
+        }
+        $picked=$best??[];
+        // If the market cannot support three distinct items, publish only
+        // verified candidates and explicit gaps; do not claim full coverage.
+        if(!$picked){
+            $used=[];$mask=0;
+            foreach($shortlist as $c){
+                if(isset($used[$c['type']]))continue;
+                $used[$c['type']]=true;$picked[]=$c;$mask|=$c['coverage_mask'];
+                if(count($picked)>=3)break;
+            }
+            $bestMask=$mask;
+        }
+        usort($picked,static function($a,$b){
+            $rank=static function($c){
+                $mask=$c['coverage_mask'];
+                if(($mask&1)&&!($mask&4))return 0;
+                if(($mask&2)&&!($mask&4))return 1;
+                if($mask&4)return 2;
+                return 3;
+            };
+            return $rank($a)<=>$rank($b);
+        });
         $orders=[];
         foreach($picked as $p){
             $lp=str_starts_with($p['kind'],'LP ');$conditional=$p['conditional'];
@@ -486,13 +535,13 @@ final class GuristasTradeOrders {
                 'sales_tax_isk'=>$p['salesTax'],'sales_tax_rate'=>self::BASE_SALES_TAX,'assumed_accounting_level'=>self::ASSUMED_ACCOUNTING_LEVEL,'broker_fee_isk'=>$p['brokerFee']+($p['buy_order_broker_fee']??0),'hauling_risk_estimated'=>false,
                 'reason'=>$p['note'].' Total source ISK: '.$this->money($p['cost']).'; LP: '.number_format($p['lp']).'; target gross sale: '.$this->money($p['revenue']).'. Includes '.number_format(self::BASE_SALES_TAX*100,1).'% base sales tax (assumed Accounting 0) and '.(!empty($p['buy_order'])?'3% assumed NPC broker fee on the proposed purchase order; that order is NOT filled':($p['listing']?'3% assumed NPC broker fee for listing; sale is NOT confirmed':'no new broker fee for fulfilling an existing buy order')).'. LP valued at an assumed 1,000 ISK each. Hauling costs, route safety, cargo loss and future market movement are not modeled. '.(!empty($p['buy_order'])?'Potential profit only: the proposed buy order has NOT filled. Existing source asks do not establish that a seller will accept this bid.':($p['listing']?'Unrealized profit only: competing sell prices and current local bids do not guarantee a buyer.':'Pre-haul profit, not risk-adjusted profit.')).' Verify current orders and route before committing ISK.'];
         }
-        while(count($orders)<2)$orders[]=$this->hold('ECONOMIC INTELLIGENCE','No independent qualifying immediate trade was verified.');
-        if(!$proposal){
-            $orders[]=$this->hold('CREATE MARKET ORDER // EVIDENCE REQUIRED',
-                'No credible new buy or sell order found. Market bids, competing asks and sale history are being checked. No promised fill or invented profit.');
+        while(count($orders)<3){
+            $missing=array_values(array_keys(array_filter(['FULCRUM'=>(bool)(~$bestMask&1),'VENAL'=>(bool)(~$bestMask&2),'GURISTAS LP'=>(bool)(~$bestMask&4),'NEW MARKET ORDER'=>(bool)(~$bestMask&8)])));
+            $orders[]=$this->hold('REQUIREMENT NOT VERIFIED',
+                'Insufficient market evidence for: '.implode(', ',$missing).'. We will not invent an order or promise a fill.');
         }
         return ['orders'=>$orders,'as_of'=>$coverage?gmdate('c',$oldest):null,'stale'=>false,
-            'coverage'=>['complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'history_supported_listings'=>count($validatedListings),'qualified_buy_order_proposals'=>count($buyOrderPool),'listing_candidates'=>count($listingPool),'listing_rejections'=>$rejects,'excluded_outside_pirate_economy'=>$this->excludedOutsidePirateEconomy,'lp_offers'=>$validOffers?count($offers['offers']):0],
-            'disclaimer'=>'Market trades must start or end at a verified station in Venal or The Fulcrum. Commando Guri LP redemptions and their associated blueprint production are exempt because they directly use pirate LP, even where the redemption station is unspecified. Sell listings require corroborating regional completed-trade history and station order book evidence, including selected outside trade hubs; station sales velocity and actual fill time remain unverified. The third slot is reserved for an evidence-based CREATE BUY ORDER or CREATE SELL ORDER, neither guaranteed to fill. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional listings assume 3% NPC broker fee and are NOT guaranteed sales. Ranking blends pre-haul ISK profit, ROI, and available order quantities; explores several acquisition stations and firm bid prices, but cannot guarantee global highest profit across unscanned/stale regions. Route security remains unmeasured. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
+            'coverage'=>['selection_mask'=>$bestMask,'selection_requirements_met'=>$bestMask===15,'missing_requirements'=>array_values(array_keys(array_filter(['FULCRUM'=>(bool)(~$bestMask&1),'VENAL'=>(bool)(~$bestMask&2),'GURISTAS_LP'=>(bool)(~$bestMask&4),'NEW_ORDER'=>(bool)(~$bestMask&8)]))),'complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'history_supported_listings'=>count($validatedListings),'qualified_buy_order_proposals'=>count($buyOrderPool),'listing_candidates'=>count($listingPool),'listing_rejections'=>$rejects,'excluded_outside_pirate_economy'=>$this->excludedOutsidePirateEconomy,'lp_offers'=>$validOffers?count($offers['offers']):0],
+            'disclaimer'=>'Three cards are jointly selected to cover Fulcrum, Venal, Guristas LP and at least one newly created buy/sell order wherever supporting evidence exists. Gaps are explicitly reported. Market trades must start or end at a verified station in Venal or The Fulcrum. Commando Guri LP redemptions and their associated blueprint production are exempt because they directly use pirate LP, even where the redemption station is unspecified. Sell listings require corroborating regional completed-trade history and station order book evidence, including selected outside trade hubs; station sales velocity and actual fill time remain unverified. At least one of the three selected trades should create a buy or sell order when credible evidence exists; neither kind is guaranteed to fill. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional listings assume 3% NPC broker fee and are NOT guaranteed sales. Ranking blends pre-haul ISK profit, ROI, and available order quantities; explores several acquisition stations and firm bid prices, but cannot guarantee global highest profit across unscanned/stale regions. Route security remains unmeasured. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
     }
 }

@@ -82,49 +82,44 @@
                 dismiss.addEventListener('click',()=>{setExpanded(false);assumptions.focus();});
                 card.addEventListener('keydown',event=>{if(event.key==='Escape'&&!dossier.hidden){event.stopPropagation();setExpanded(false);assumptions.focus();}});
                 heading.append(kind,assumptions);card.appendChild(heading);
-                if(order.status==='standby'){add('strong','trade-order-item',i===2?'NO VERIFIED NEW ORDER':'NO VERIFIED TRADE');add('p','trade-order-standby-note',order.route||'Evidence is not strong enough yet.');card.appendChild(dossier);host.appendChild(card);return;}
+                if(order.status==='standby'){add('strong','trade-order-item','NO VERIFIED TRADE');add('p','trade-order-standby-note',order.route||'Evidence is not strong enough yet.');card.appendChild(dossier);host.appendChild(card);return;}
                 add('strong','trade-order-item',order.item||'ITEM NAME UNAVAILABLE');
                 const route=document.createElement('div');route.className='trade-order-steps';
-                const step=(verb,station,system,region,note='')=>{
+                const method=String(order.method||'').toUpperCase();
+                const units=Number(order.unit_count||String(order.quantity||'').match(/QTY\s*\/\/\s*([\d,]+)/i)?.[1]?.replace(/,/g,''));
+                const formatISK=n=>{
+                    const v=Number(n);
+                    if(!Number.isFinite(v))return 'N/A';
+                    if(Math.abs(v)>=1e9)return (v/1e9).toFixed(2)+'B';
+                    if(Math.abs(v)>=1e6)return (v/1e6).toFixed(2)+'M';
+                    if(Math.abs(v)>=1e4)return (v/1e3).toFixed(1)+'K';
+                    return v.toLocaleString('en-US',{maximumFractionDigits:2});
+                };
+                const roi=Number(order.roi_ratio)*100;
+                const roiLabel=Number.isFinite(roi)?roi.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'% ROI':'ROI N/A';
+                const step=(verb,station,system,region,note,amount,label)=>{
                     const line=document.createElement('div');line.className='trade-order-step';
+                    const head=document.createElement('div');head.className='trade-order-action';
                     const key=document.createElement('span');key.className='trade-order-verb';key.textContent=verb;
+                    const unit=document.createElement('span');unit.className='trade-order-action-meta';
+                    unit.textContent=label;
+                    head.append(key,unit);
+                    const price=document.createElement('strong');price.className='trade-order-action-price';
+                    price.textContent=formatISK(amount)+' ISK / unit';
+                    price.title=Number(amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' ISK per unit';
                     const location=document.createElement('div');location.className='trade-order-location';
                     const place=document.createElement('span');place.className='trade-order-place';place.textContent=station||'Station not verified';
                     const geography=document.createElement('span');geography.className='trade-order-system';
                     geography.textContent=note||(system&&region?`${system} · ${region}`:'System / region not verified');
-                    location.append(place,geography);line.append(key,location);route.appendChild(line);
+                    location.append(place,geography);line.append(head,price,location);route.appendChild(line);
                 };
-                const method=String(order.method||'').toUpperCase();
-                if(method.includes('MANUFACTURE'))step('BUILD','Guristas LP blueprint + manufacturing',null,null,'Production facility / region not specified');
-                else if(method.includes('REDEEM'))step('REDEEM','Commando Guri LP store',null,null,'Redemption station / region not specified');
-                else step(buyOrder?'CREATE BUY ORDER':'BUY',order.source_station,order.source_system,order.source_region);
-                step(order.listing?'CREATE SELL ORDER':'FILL BUY ORDER',order.destination_station,order.destination_system,order.destination_region);
+                const quantityLabel=Number.isFinite(units)?units.toLocaleString('en-US')+' UNITS':'QUANTITY N/A';
+                const entryPrice=buyOrder?Number(order.buy_order_unit_price):Number(order.cost_isk)/units;
+                if(method.includes('MANUFACTURE'))step('BUILD','Guristas LP blueprint + manufacturing',null,null,'Production facility / region not specified',entryPrice,quantityLabel);
+                else if(method.includes('REDEEM'))step('REDEEM','Commando Guri LP store',null,null,'Redemption station / region not specified',entryPrice,quantityLabel);
+                else step(buyOrder?'CREATE BUY ORDER':'BUY',order.source_station,order.source_system,order.source_region,'',entryPrice,quantityLabel);
+                step(order.listing?'CREATE SELL ORDER':'FILL BUY ORDER',order.destination_station,order.destination_system,order.destination_region,'',Number(order.revenue_isk)/units,roiLabel);
                 card.appendChild(route);
-                // Unit prices derive from the same gross purchase and target-sale totals
-                // used by the server; never modify the calculated profit here.
-                const units=Number(order.unit_count||String(order.quantity||'').match(/QTY\s*\/\/\s*([\d,]+)/i)?.[1]?.replace(/,/g,''));
-                if(Number.isFinite(units)&&units>0){
-                    const formatISK=n=>{
-                        const v=Number(n);
-                        if(!Number.isFinite(v))return 'N/A';
-                        if(Math.abs(v)>=1e9)return (v/1e9).toFixed(2)+'B';
-                        if(Math.abs(v)>=1e6)return (v/1e6).toFixed(2)+'M';
-                        if(Math.abs(v)>=1e4)return (v/1e3).toFixed(1)+'K';
-                        return v.toLocaleString('en-US',{maximumFractionDigits:2});
-                    };
-                    const priceRow=document.createElement('div');priceRow.className='trade-order-prices';
-                    const methodLabel=method.includes('REDEEM')||method.includes('MANUFACTURE')?'INPUTS + LP':(buyOrder?'BID':'BUY');
-                    const addPrice=(label,amount)=>{
-                        const part=document.createElement('span');
-                        const key=document.createElement('small');key.textContent=label;
-                        const value=document.createElement('strong');value.textContent=formatISK(amount)+' ISK';
-                        value.title=Number(amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' ISK per unit';
-                        part.append(key,value);priceRow.appendChild(part);
-                    };
-                    addPrice(methodLabel,buyOrder?Number(order.buy_order_unit_price):Number(order.cost_isk)/units);
-                    addPrice(order.listing?'ASK':'SELL',Number(order.revenue_isk)/units);
-                    card.appendChild(priceRow);
-                }
                 const metrics=document.createElement('div');metrics.className='trade-order-metric-row';
                 const profitLine=document.createElement('span');profitLine.className='trade-profit-line';
                 // The full risk warning is in INTEL. Keep the visible profit amount readable.
@@ -135,8 +130,7 @@
                 const profitKind=buyOrder?'POTENTIAL':order.listing?'UNREALIZED':'PRE-HAUL';
                 profitLine.textContent=profitKind+' / '+profitValue;
                 const statsLine=document.createElement('span');statsLine.className='trade-stats-line';
-                const roi=Number(order.roi_ratio)*100;
-                statsLine.textContent='QTY '+units.toLocaleString('en-US')+' · ROI '+(Number.isFinite(roi)?roi.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'%':'N/A');
+                statsLine.textContent=buyOrder||order.listing?'NEW ORDER · FILL NOT GUARANTEED':'AFTER TAX · BEFORE HAUL';
                 metrics.append(profitLine,statsLine);
                 card.appendChild(metrics);
                 card.appendChild(dossier);
@@ -144,7 +138,8 @@
             });
             const stamp=Date.parse(report.as_of||'');
             const at=Number.isFinite(stamp)?new Date(stamp).toISOString().slice(5,16).replace('T',' ')+' EVE':'UNVERIFIED';
-            text('[data-trade-freshness]',`CCP ESI // OLDEST ORDER SNAPSHOT ${at}${report.stale?' · STALE':''} · ${report.coverage?.candidate_items||0} PIRATE DEMAND ITEMS · ${report.coverage?.fresh_regions||0}/${report.coverage?.region_count||0} REGIONS FRESH`);
+            const missing=Array.isArray(report.coverage?.missing_requirements)?report.coverage.missing_requirements:[];
+            text('[data-trade-freshness]',`CCP ESI // OLDEST ORDER SNAPSHOT ${at}${report.stale?' · STALE':''} · ${report.coverage?.candidate_items||0} PIRATE DEMAND ITEMS · ${report.coverage?.fresh_regions||0}/${report.coverage?.region_count||0} REGIONS FRESH${missing.length?' · MISSING: '+missing.join(', '):''}`);
             if(!report.stale)tradeLastSuccess=Date.now();
         }catch(error){
             host.replaceChildren();

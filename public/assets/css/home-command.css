@@ -1307,3 +1307,25 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
     text-align:right;
   }
 }
+
+/* v16.0: put unit price, quantity and ROI next to their respective actions.
+   No scrolling and no separately stacked price bar. */
+@media(min-width:901px){
+  .home-refresh .directive-row .trade-order-card{
+    grid-template-rows:min-content min-content minmax(0,1fr) min-content;
+    gap:4px;
+  }
+  .home-refresh .directive-row .trade-order-steps{padding-top:2px;overflow:visible;}
+  .home-refresh .directive-row .trade-order-step{gap:3px;}
+  .home-refresh .directive-row .trade-order-action{display:flex;flex-wrap:wrap;gap:2px 5px;align-items:baseline;justify-content:space-between;}
+  .home-refresh .directive-row .trade-order-action-meta{font:700 .58rem/1.15 ui-monospace,monospace;color:var(--text);}
+  .home-refresh .directive-row .trade-order-action-price{display:block;font:800 .77rem/1.2 ui-monospace,monospace;color:var(--accent-bright);overflow-wrap:anywhere;}
+  .home-refresh .directive-row .trade-order-prices{display:none!important;}
+  .home-refresh .directive-row .trade-order-metric-row{border-top:1px solid var(--line-strong);padding-top:4px;}
+  .home-refresh .directive-row .trade-order-metric-row .trade-stats-line{font-size:.57rem;opacity:.84;}
+}
+@media(max-width:900px){
+  .home-refresh .directive-row .trade-order-action{display:flex;justify-content:space-between;gap:4px;}
+  .home-refresh .directive-row .trade-order-action-price{font-weight:800;color:var(--accent-bright);}
+  .home-refresh .directive-row .trade-order-prices{display:none!important;}
+}
