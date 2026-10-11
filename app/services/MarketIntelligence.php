@@ -143,73 +143,104 @@ final class GuristasMarketIntelligence {
         $this->publish('lp-offers',['fetched_at'=>$r['meta']['fetched_at']??gmdate('c'),'offers'=>$r['data'],'source'=>'CCP ESI / Commando Guri LP store']);
         return ['offers'=>count($r['data'])];
     }
-    /** Resolve only the published orders, on the CLI. Never resolve names from the public API. */
+    /** Resolve published orders on the collector, never in visitor requests. */
     public function decorateTrade(array &$report): void {
-        $knownStations=[]; $knownSystems=[]; $knownTypes=[];
-        $ref=guri_industry_reference();
-        foreach(($ref['hubs']??[]) as $hub) {
-            if(isset($hub['station_id'],$hub['name']))$knownStations[(int)$hub['station_id']]=['name'=>(string)$hub['name'],'system_id'=>0];
+        $reference=guri_industry_reference();
+        $stations=[];
+        foreach(($reference['hubs']??[]) as $hub){
+            $id=(int)($hub['station_id']??0);
+            if($id>0&&is_string($hub['name']??null)){
+                $stations[$id]=['name'=>$hub['name'],'system_id'=>(int)($hub['system_id']??0),'system'=>$hub['system_name']??null];
+            }
         }
-        foreach($report['orders']??[] as &$order) {
-            if(($order['status']??'')==='standby')continue;
-            $type=(int)($order['type_id']??0);
-            if($type>0) {
-                if(!array_key_exists($type,$knownTypes)) {
-                    $name=$ref['types'][(string)$type]['name']??null;
-                    if(!is_string($name)||$name==='') {
-                        try {
-                            $r=$this->esi->getJson('/universe/types/'.$type,[],86400);
-                            $name=$r['data']['name']??null;
-                        }catch(Throwable $e){$name=null;}
-                    }
-                    $knownTypes[$type]=is_string($name)&&$name!==''?$name:null;
-                }
-                $order['item']=$knownTypes[$type]??'ITEM NAME UNAVAILABLE';
-            }
-            $places=[];
-            foreach(['source_id'=>'source','destination_id'=>'destination'] as $field=>$slot) {
+        $names=[];
+        $needed=[];
+        foreach(($report['orders']??[]) as $order){
+            if(($order['status']??'standby')==='standby')continue;
+            foreach(['type_id','source_id','destination_id'] as $field){
                 $id=(int)($order[$field]??0);
-                if($id<1)continue;
-                // Even a reference hub needs its system ID from the station endpoint.
-                if(!isset($knownStations[$id])||empty($knownStations[$id]['system_id'])) {
-                    try {
-                        $r=$this->esi->getJson('/universe/stations/'.$id,[],86400);
-                        $data=$r['data']??[];
-                        if(is_array($data)&&is_string($data['name']??null)&&$data['name']!=='') {
-                            $knownStations[$id]=['name'=>$data['name'],'system_id'=>(int)($data['system_id']??0)];
-                        }
-                    }catch(Throwable $e){}
-                }
-                $station=$knownStations[$id]??null;
-                $systemId=(int)($station['system_id']??0);
-                $system=null;
-                if($systemId>0) {
-                    if(!array_key_exists($systemId,$knownSystems)) {
-                        try {
-                            $r=$this->esi->getJson('/universe/systems/'.$systemId,[],86400);
-                            $value=$r['data']['name']??null;
-                            $knownSystems[$systemId]=is_string($value)&&$value!==''?$value:null;
-                        }catch(Throwable $e){$knownSystems[$systemId]=null;}
-                    }
-                    $system=$knownSystems[$systemId];
-                }
-                $places[$slot]=['station'=>$station['name']??'STATION NAME UNAVAILABLE','system'=>$system??'SYSTEM UNVERIFIED','verified'=>is_array($station)&&is_string($system)];
+                if($id>0)$needed[$id]=true;
             }
-            $kind=(string)($order['category']??'');
-            $lp=str_contains($kind,'LP REDEEM');
-            $build=str_contains($kind,'LP BUILD');
-            $source=$places['source']??null;
-            $destination=$places['destination']??null;
+        }
+        // Public ESI supports bulk type/station/system ID-to-name resolution.
+        // A single-item endpoint may be unavailable despite a valid market type.
+        if($needed){
+            $config=require dirname(__DIR__,2).'/config/esi.php';
+            if(($config['base_url']??'')==='https://esi.evetech.net'&&extension_loaded('curl')){
+                foreach(array_chunk(array_keys($needed),500) as $ids){
+                    $ch=curl_init('https://esi.evetech.net/universe/names/?datasource=tranquility');
+                    curl_setopt_array($ch,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>json_encode($ids,JSON_THROW_ON_ERROR),
+                        CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>15,
+                        CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json','User-Agent: '.($config['user_agent']??'Guristas.net')]]);
+                    $body=curl_exec($ch);$status=(int)curl_getinfo($ch,CURLINFO_RESPONSE_CODE);curl_close($ch);
+                    if($status!==200||!is_string($body))continue;
+                    $rows=json_decode($body,true);
+                    if(!is_array($rows))continue;
+                    foreach($rows as $row){
+                        $id=(int)($row['id']??0);$name=$row['name']??null;
+                        if($id>0&&is_string($name)&&trim($name)!=='')$names[$id]=trim($name);
+                    }
+                }
+            }
+        }
+        $systems=[];
+        foreach($stations as $station){
+            $id=(int)$station['system_id'];
+            if($id>0&&is_string($station['system'])&&$station['system']!=='')$systems[$id]=$station['system'];
+        }
+        $typeNames=[];
+        $resolve=function(int $id,string $route)use(&$names):?array{
+            try{
+                $r=$this->esi->getJson($route.'/'.$id,[],86400);
+                return is_array($r['data']??null)?$r['data']:null;
+            }catch(Throwable $e){return null;}
+        };
+        foreach($report['orders']??[] as &$order){
+            if(($order['status']??'standby')==='standby')continue;
+            $type=(int)($order['type_id']??0);
+            if(!array_key_exists($type,$typeNames)){
+                $name=$reference['types'][(string)$type]['name']??($names[$type]??null);
+                if(!is_string($name)||trim($name)==='')$name=$resolve($type,'/universe/types')['name']??null;
+                $typeNames[$type]=is_string($name)&&trim($name)!==''?trim($name):null;
+            }
+            $order['item']=$typeNames[$type]??'ITEM NAME UNVERIFIED';
+            $place=[];
+            foreach(['source_id'=>'source','destination_id'=>'destination'] as $key=>$role){
+                $id=(int)($order[$key]??0);
+                if($id<=0)continue;
+                if(!isset($stations[$id])||empty($stations[$id]['system_id'])){
+                    $info=$resolve($id,'/universe/stations');
+                    $name=$info['name']??($names[$id]??($stations[$id]['name']??null));
+                    $sid=(int)($info['system_id']??($stations[$id]['system_id']??0));
+                    $stations[$id]=['name'=>$name,'system_id'=>$sid,'system'=>$stations[$id]['system']??null];
+                }
+                $s=$stations[$id];$sid=(int)$s['system_id'];
+                if($sid>0&&!isset($systems[$sid])){
+                    $systems[$sid]=$names[$sid]??($resolve($sid,'/universe/systems')['name']??null);
+                }
+                $system=$sid>0?($systems[$sid]??null):null;
+                $place[$role]=['station'=>$s['name']??null,'system'=>$system,
+                    'verified'=>is_string($s['name']??null)&&($s['name']??'')!==''&&is_string($system)&&$system!==''];
+            }
+            $kind=strtoupper((string)($order['category']??''));
+            $lp=str_contains($kind,'LP REDEEM');$build=str_contains($kind,'LP BUILD');
             $order['method']=$build?'MANUFACTURE FROM LP BLUEPRINT':($lp?'REDEEM GURISTAS LP':'PURCHASE FROM SELL ORDERS');
-            $order['source_station']=$source['station']??null;
-            $order['source_system']=$source['system']??null;
-            $order['destination_station']=$destination['station']??'STATION NAME UNAVAILABLE';
-            $order['destination_system']=$destination['system']??'SYSTEM UNVERIFIED';
-            $order['location_verified']=($lp||$build||($source['verified']??false))&&($destination['verified']??false);
-            $order['route']=($source?($source['station'].' ('.$source['system'].')'):$order['method']).' → '.$order['destination_station'].' ('.$order['destination_system'].')';
-            if(!$order['location_verified']) {
+            $src=$place['source']??null;$dst=$place['destination']??null;
+            $order['source_station']=$src['station']??null;$order['source_system']=$src['system']??null;
+            $order['destination_station']=$dst['station']??null;$order['destination_system']=$dst['system']??null;
+            $complete=($lp||$build||($src['verified']??false))&&($dst['verified']??false)&&$typeNames[$type]!==null;
+            $order['location_verified']=$complete;
+            $order['route']=($src?($src['station']??'UNKNOWN STATION').' ('.($src['system']??'UNKNOWN SYSTEM').')':$order['method']).' → '.($dst['station']??'UNKNOWN STATION').' ('.($dst['system']??'UNKNOWN SYSTEM').')';
+            if(!$complete){
                 $order['status']='conditional';
-                $order['reason'].=' Location names/systems could not all be verified via ESI; confirm the station and system before acting.';
+                $order['reason'].=' ITEM / LOCATION INCOMPLETE: Do not execute until the item and both required locations are confirmed in EVE.';
+            }
+            // Extreme quoted returns often indicate thin, manipulated or non-repeatable orders.
+            // Never present these as ordinary, fully executable recommendations.
+            $roi=(float)($order['roi_ratio']??0);
+            if($roi>10.0){
+                $order['status']='conditional';
+                $order['reason'].=' EXTREME ROI WARNING: Verify actual source ask, destination bid, minimum fill, available depth and transport before risking ISK.';
             }
         }
         unset($order);

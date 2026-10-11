@@ -202,6 +202,7 @@ final class GuristasTradeOrders {
                 'margin'=>($conditional?'POTENTIAL NET':'EST. NET').' // +'.$this->money($p['net']),
                 'quantity'=>'QTY // '.$p['qty'].' · ROI '.number_format($p['roi']*100,1).'%',
                 'source_id'=>$p['srcStation'],'destination_id'=>$p['destStation'],'type_id'=>$p['type'],
+                'roi_ratio'=>$p['roi'],'cost_isk'=>$p['cost'],'revenue_isk'=>$p['revenue'],'lp_required'=>$p['lp'],
                 'reason'=>$p['note'].' Total source ISK: '.$this->money($p['cost']).'; LP: '.number_format($p['lp']).'; gross sale: '.$this->money($p['revenue']).'. Costs include 5% assumed selling fees, 8% risk allowance (minimum 1M ISK) and any LP shadow cost. Market order availability may change.'];
         }
         while(count($orders)<3)$orders[]=$this->hold('ECONOMIC INTELLIGENCE','No independent qualifying order from sufficiently fresh covered public markets.');
