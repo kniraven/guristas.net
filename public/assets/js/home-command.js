@@ -42,7 +42,12 @@
             report.orders.forEach((order,i)=>{
                 const card=document.createElement('article');card.className='trade-order-card';card.dataset.tradeStatus=order.status||'standby';
                 const add=(tag,className,value)=>{const el=document.createElement(tag);el.className=className;el.textContent=value||'';card.appendChild(el);};
-                add('span','trade-order-kind',String(i+1).padStart(2,'0')+' // '+(order.category||'ORDER'));
+                const heading=document.createElement('div');heading.className='trade-order-heading';
+                const kind=document.createElement('span');kind.className='trade-order-kind';kind.textContent=String(i+1).padStart(2,'0')+' // '+(order.category||'ORDER');
+                const details=document.createElement('details');details.className='trade-order-details';
+                const summary=document.createElement('summary');summary.textContent='ORDER BASIS / ASSUMPTIONS';
+                const reason=document.createElement('p');reason.textContent=order.reason||'';
+                details.append(summary,reason);heading.append(kind,details);card.appendChild(heading);
                 add('strong','trade-order-item',order.item||'ITEM NAME UNAVAILABLE');
                 const route=document.createElement('div');route.className='trade-order-steps';
                 const step=(verb,station,system,region,note='')=>{
@@ -58,12 +63,14 @@
                 if(method.includes('MANUFACTURE'))step('BUILD','Guristas LP blueprint + manufacturing',null,null,'Production facility / region not specified');
                 else if(method.includes('REDEEM'))step('REDEEM','Commando Guri LP store',null,null,'Redemption station / region not specified');
                 else step('BUY',order.source_station,order.source_system,order.source_region);
-                step(order.listing?'LIST':'SELL',order.destination_station,order.destination_system,order.destination_region);
+                step(order.listing?'CREATE SELL ORDER':'FILL BUY ORDER',order.destination_station,order.destination_system,order.destination_region);
                 card.appendChild(route);
                 const metrics=document.createElement('div');metrics.className='trade-order-metric-row';
-                for(const value of [order.margin,order.quantity]){const el=document.createElement('span');el.textContent=value||'';metrics.appendChild(el);}
+                const quantity=Number.isFinite(Number(order.roi_ratio))
+                    ? String(order.quantity||'').replace(/ROI\s+[\d,.]+%/i,'ROI '+(Number(order.roi_ratio)*100).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'%')
+                    : String(order.quantity||'').replace(/(ROI\s+[\d,]+\.\d)\d+%/i,'$1%');
+                for(const value of [order.margin,quantity]){const el=document.createElement('span');el.textContent=value||'';metrics.appendChild(el);}
                 card.appendChild(metrics);
-                const details=document.createElement('details');details.className='trade-order-details';const summary=document.createElement('summary');summary.textContent='ORDER BASIS / ASSUMPTIONS';const reason=document.createElement('p');reason.textContent=order.reason||'';details.append(summary,reason);card.appendChild(details);
                 host.appendChild(card);
             });
             const stamp=Date.parse(report.as_of||'');
