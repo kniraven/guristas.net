@@ -43,10 +43,24 @@
                 const card=document.createElement('article');card.className='trade-order-card';card.dataset.tradeStatus=order.status||'standby';
                 const add=(tag,className,value)=>{const el=document.createElement(tag);el.className=className;el.textContent=value||'';card.appendChild(el);};
                 add('span','trade-order-kind',String(i+1).padStart(2,'0')+' // '+(order.category||'ORDER'));
-                add('strong','trade-order-title',order.title);add('span','trade-order-item',order.item);
-                add('p','trade-order-route',order.route);
-                add('span','trade-order-margin',order.margin);
-                add('span','trade-order-quantity',order.quantity);
+                add('strong','trade-order-item',order.item||'ITEM NAME UNAVAILABLE');
+                const route=document.createElement('div');route.className='trade-order-steps';
+                const step=(verb,station,system)=>{
+                    const line=document.createElement('div');line.className='trade-order-step';
+                    const key=document.createElement('span');key.className='trade-order-verb';key.textContent=verb;
+                    const place=document.createElement('span');place.className='trade-order-place';place.textContent=station||'Confirm source in EVE';
+                    const sys=document.createElement('span');sys.className='trade-order-system';sys.textContent=system||'';
+                    line.append(key,place,sys);route.appendChild(line);
+                };
+                const method=String(order.method||'').toUpperCase();
+                if(method.includes('MANUFACTURE'))step('BUILD','Guristas LP blueprint + manufacturing', 'Verify inputs and runs');
+                else if(method.includes('REDEEM'))step('REDEEM','Commando Guri LP store','Include LP + ISK + inputs');
+                else step('BUY',order.source_station||'SOURCE UNVERIFIED',order.source_system||'');
+                step('SELL',order.destination_station||'DESTINATION UNVERIFIED',order.destination_system||'');
+                card.appendChild(route);
+                const metrics=document.createElement('div');metrics.className='trade-order-metric-row';
+                for(const value of [order.margin,order.quantity]){const el=document.createElement('span');el.textContent=value||'';metrics.appendChild(el);}
+                card.appendChild(metrics);
                 const details=document.createElement('details');details.className='trade-order-details';const summary=document.createElement('summary');summary.textContent='ORDER BASIS / ASSUMPTIONS';const reason=document.createElement('p');reason.textContent=order.reason||'';details.append(summary,reason);card.appendChild(details);
                 host.appendChild(card);
             });

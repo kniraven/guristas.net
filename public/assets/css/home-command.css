@@ -885,3 +885,15 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
 .home-refresh .directive-row .trade-order-card .trade-order-details[open]{position:absolute;z-index:9;left:6px;right:6px;bottom:6px;max-height:85%;overflow:auto;padding:12px;border:1px solid var(--accent-bright);border-radius:5px;background:var(--panel-solid);box-shadow:0 8px 26px #000d}
 .home-refresh .directive-row .trade-order-card[data-trade-status=conditional]{border-color:var(--secondary-bright)}
 @media(max-width:900px){.home-refresh .directive-row .trade-order-grid{overflow:auto;grid-template-columns:1fr}.home-refresh .directive-row .trade-order-card{min-height:160px;grid-template-rows:auto auto auto minmax(0,1fr) auto auto auto}}
+
+/* v13.3: compact destination-first route with explicit station and system labels. */
+.home-refresh .directive-row .trade-order-card{grid-template-rows:auto auto minmax(0,1fr) auto auto;gap:6px}
+.home-refresh .directive-row .trade-order-card .trade-order-item{font-size:clamp(.79rem,1.08vw,.96rem);white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.2}
+.home-refresh .directive-row .trade-order-steps{display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:0;overflow:hidden}
+.home-refresh .directive-row .trade-order-step{display:grid;grid-template-columns:3.7rem minmax(0,1fr);grid-template-rows:auto auto;column-gap:6px;font:650 .68rem/1.25 ui-monospace,monospace;min-width:0}
+.home-refresh .directive-row .trade-order-verb{grid-row:1 / span 2;color:var(--accent-bright);font-weight:900;letter-spacing:.04em}
+.home-refresh .directive-row .trade-order-place{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-refresh .directive-row .trade-order-system{font-size:.6rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-refresh .directive-row .trade-order-metric-row{display:flex;gap:3px 10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap;border-top:1px solid var(--line-strong);padding-top:5px;font:700 .66rem/1.2 ui-monospace,monospace;color:var(--accent-bright)}
+.home-refresh .directive-row .trade-order-metric-row span+span{color:var(--text);font-size:.62rem}
+@media(max-width:900px){.home-refresh .directive-row .trade-order-card{grid-template-rows:auto auto minmax(58px,1fr) auto auto;min-height:178px}}

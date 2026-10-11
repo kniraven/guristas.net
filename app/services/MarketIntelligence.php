@@ -143,31 +143,74 @@ final class GuristasMarketIntelligence {
         $this->publish('lp-offers',['fetched_at'=>$r['meta']['fetched_at']??gmdate('c'),'offers'=>$r['data'],'source'=>'CCP ESI / Commando Guri LP store']);
         return ['offers'=>count($r['data'])];
     }
-    /** Resolve only displayed stations/items after analysis, never thousands of market IDs. */
+    /** Resolve only the published orders, on the CLI. Never resolve names from the public API. */
     public function decorateTrade(array &$report): void {
-        $hubs=guri_industry_reference()['hubs'];$known=[];
-        foreach($hubs as $hub)$known[(int)$hub['station_id']]=(string)$hub['name'];
-        foreach($report['orders']??[] as &$order){
+        $knownStations=[]; $knownSystems=[]; $knownTypes=[];
+        $ref=guri_industry_reference();
+        foreach(($ref['hubs']??[]) as $hub) {
+            if(isset($hub['station_id'],$hub['name']))$knownStations[(int)$hub['station_id']]=['name'=>(string)$hub['name'],'system_id'=>0];
+        }
+        foreach($report['orders']??[] as &$order) {
             if(($order['status']??'')==='standby')continue;
-            $stations=[];
-            foreach(['source_id','destination_id'] as $field){
-                $id=(int)($order[$field]??0);if($id<1)continue;
-                if(!isset($known[$id])){
-                    try{$r=$this->esi->getJson('/universe/stations/'.$id,[],86400);
-                        $known[$id]=is_string($r['data']['name']??null)?$r['data']['name']:'NPC station #'.$id;
-                    }catch(Throwable $e){$known[$id]='NPC station #'.$id;}
+            $type=(int)($order['type_id']??0);
+            if($type>0) {
+                if(!array_key_exists($type,$knownTypes)) {
+                    $name=$ref['types'][(string)$type]['name']??null;
+                    if(!is_string($name)||$name==='') {
+                        try {
+                            $r=$this->esi->getJson('/universe/types/'.$type,[],86400);
+                            $name=$r['data']['name']??null;
+                        }catch(Throwable $e){$name=null;}
+                    }
+                    $knownTypes[$type]=is_string($name)&&$name!==''?$name:null;
                 }
-                $stations[$field]=$known[$id];
+                $order['item']=$knownTypes[$type]??'ITEM NAME UNAVAILABLE';
             }
-            $id=(int)($order['type_id']??0);
-            if($id>0&&str_starts_with((string)($order['item']??''),'Item #')){
-                try{$r=$this->esi->getJson('/universe/types/'.$id,[],86400);
-                    if(is_string($r['data']['name']??null))$order['item']=$r['data']['name'];
-                }catch(Throwable $e){}
+            $places=[];
+            foreach(['source_id'=>'source','destination_id'=>'destination'] as $field=>$slot) {
+                $id=(int)($order[$field]??0);
+                if($id<1)continue;
+                // Even a reference hub needs its system ID from the station endpoint.
+                if(!isset($knownStations[$id])||empty($knownStations[$id]['system_id'])) {
+                    try {
+                        $r=$this->esi->getJson('/universe/stations/'.$id,[],86400);
+                        $data=$r['data']??[];
+                        if(is_array($data)&&is_string($data['name']??null)&&$data['name']!=='') {
+                            $knownStations[$id]=['name'=>$data['name'],'system_id'=>(int)($data['system_id']??0)];
+                        }
+                    }catch(Throwable $e){}
+                }
+                $station=$knownStations[$id]??null;
+                $systemId=(int)($station['system_id']??0);
+                $system=null;
+                if($systemId>0) {
+                    if(!array_key_exists($systemId,$knownSystems)) {
+                        try {
+                            $r=$this->esi->getJson('/universe/systems/'.$systemId,[],86400);
+                            $value=$r['data']['name']??null;
+                            $knownSystems[$systemId]=is_string($value)&&$value!==''?$value:null;
+                        }catch(Throwable $e){$knownSystems[$systemId]=null;}
+                    }
+                    $system=$knownSystems[$systemId];
+                }
+                $places[$slot]=['station'=>$station['name']??'STATION NAME UNAVAILABLE','system'=>$system??'SYSTEM UNVERIFIED','verified'=>is_array($station)&&is_string($system)];
             }
-            $prefix=str_contains((string)$order['title'],'REDEEM')?'REDEEM LP + INPUTS':
-                (str_contains((string)$order['title'],'BUILD')?'MANUFACTURE FROM LP BPC':'ACQUIRE');
-            $order['route']=$prefix.' → '.($stations['source_id']??'Guristas LP store').' → SELL AT '.($stations['destination_id']??'unverified station');
+            $kind=(string)($order['category']??'');
+            $lp=str_contains($kind,'LP REDEEM');
+            $build=str_contains($kind,'LP BUILD');
+            $source=$places['source']??null;
+            $destination=$places['destination']??null;
+            $order['method']=$build?'MANUFACTURE FROM LP BLUEPRINT':($lp?'REDEEM GURISTAS LP':'PURCHASE FROM SELL ORDERS');
+            $order['source_station']=$source['station']??null;
+            $order['source_system']=$source['system']??null;
+            $order['destination_station']=$destination['station']??'STATION NAME UNAVAILABLE';
+            $order['destination_system']=$destination['system']??'SYSTEM UNVERIFIED';
+            $order['location_verified']=($lp||$build||($source['verified']??false))&&($destination['verified']??false);
+            $order['route']=($source?($source['station'].' ('.$source['system'].')'):$order['method']).' → '.$order['destination_station'].' ('.$order['destination_system'].')';
+            if(!$order['location_verified']) {
+                $order['status']='conditional';
+                $order['reason'].=' Location names/systems could not all be verified via ESI; confirm the station and system before acting.';
+            }
         }
         unset($order);
     }
