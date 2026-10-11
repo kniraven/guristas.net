@@ -934,12 +934,14 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
   .home-refresh .directive-row .trade-order-card{min-height:220px}
 }
 
+/* TR-08: the desktop shared brief is 300px (not 365px).
+   Preserve RAID / BUILD dimensions; compact only the TRADE contents. */
 /* TR-07: TRADE shares RAID's fixed-height hardware enclosure.
    Compact the information inside the cards; never hide station/system/region
    behind an ellipsis. Long explanations remain available in their own overlay. */
 @media (min-width:901px){
   .home-refresh .directive-row .selected-operation.home-briefing[data-mode="trade"]{
-    height:365px;min-height:365px;max-height:365px;
+    height:300px;min-height:300px;max-height:300px;
   }
   .home-refresh .directive-row .trade-order-card{
     grid-template-rows:min-content min-content minmax(0,1fr) min-content min-content;
@@ -990,4 +992,12 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
   }
   .home-refresh .directive-row .trade-order-grid{overflow-y:auto;overflow-x:hidden}
   .home-refresh .directive-row .trade-order-card{min-height:190px}
+}
+
+/* TR-08: use available height from the top of each card, while anchoring
+   the economics and details rows at the bottom of the 300px brief. */
+@media (min-width:901px){
+  .home-refresh .directive-row .trade-order-steps{justify-content:flex-start;}
+  .home-refresh .directive-row .trade-order-card{min-height:0;max-height:100%;}
+  .home-refresh .directive-row .trade-order-grid{min-height:0;overflow:hidden;}
 }
