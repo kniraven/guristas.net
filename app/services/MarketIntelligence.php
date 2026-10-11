@@ -195,7 +195,7 @@ final class GuristasMarketIntelligence {
                 return is_array($r['data']??null)?$r['data']:null;
             }catch(Throwable $e){return null;}
         };
-        foreach($report['orders']??[] as &$order){
+        foreach($report['orders'] as &$order){
             if(($order['status']??'standby')==='standby')continue;
             $type=(int)($order['type_id']??0);
             if(!array_key_exists($type,$typeNames)){
