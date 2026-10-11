@@ -33,18 +33,24 @@ final class GuristasTradeOrders {
         }
         return [$buyers,$sellers];
     }
-    /** Best executable acquisition; preserve depth and actual station rather than mixing stations. */
-    private function acquire(array $stationOrders,int $qty):?array{
-        $best=null;
+    /** Evaluate competing source stations rather than only the cheapest globally. */
+    private function acquireOptions(array $stationOrders,int $qty,int $limit=4):array{
+        $options=[];
         foreach($stationOrders as $station=>$orders){
             if(!$this->npc((int)$station))continue;
             usort($orders,static fn($a,$b)=>(float)$a['p']<=>(float)$b['p']);
-            $need=$qty;$value=0.0;
-            foreach($orders as $row){$take=min($need,(int)$row['v']);$value+=$take*(float)$row['p'];$need-=$take;if(!$need)break;}
-            if($need)continue;
-            if(!$best||$value<$best['cost'])$best=['cost'=>$value,'station'=>(int)$station];
+            $need=$qty;$cost=0.0;
+            foreach($orders as $row){
+                $take=min($need,(int)$row['v']);$cost+=$take*(float)$row['p'];$need-=$take;
+                if($need===0)break;
+            }
+            if($need===0)$options[]=['cost'=>$cost,'station'=>(int)$station];
         }
-        return $best;
+        usort($options,static fn($a,$b)=>$a['cost']<=>$b['cost']);
+        return array_slice($options,0,$limit);
+    }
+    private function acquire(array $stationOrders,int $qty):?array{
+        return $this->acquireOptions($stationOrders,$qty,1)[0]??null;
     }
     /** Sell to one bid only, honoring minimum buy quantity. No cross-station fill mixing. */
     private function bids(array $destinations,int $qty):array{
@@ -56,7 +62,7 @@ final class GuristasTradeOrders {
             }
         }
         usort($out,static fn($a,$b)=>$b['revenue']<=>$a['revenue']);
-        return array_slice($out,0,3);
+        return array_slice($out,0,12);
     }
     private function costInputs(array $inputs,int $mult,array $allSellers):?array{
         $total=0.0;$missing=[];
@@ -89,6 +95,35 @@ final class GuristasTradeOrders {
         }
         usort($quotes,static fn($a,$b)=>$b['revenue']<=>$a['revenue']);
         return array_slice($quotes,0,3);
+    }
+    /** Regional executed market history is evidence of activity, never of sales at one NPC station. */
+    private function highestBid(array $bids):float{
+        $max=0.0;foreach($bids as $bid)$max=max($max,(float)($bid['p']??0));return $max;
+    }
+    private function historyEvidence(int $region,int $type,int $qty,float $ask,float $bid,int $stationBidVolume):?array{
+        $snapshot=$this->intel->marketHistory($region,$type);
+        if(!$snapshot||empty($snapshot['verified'])||!is_array($snapshot['days']??null))return null;
+        $days=[];$now=strtotime(gmdate('Y-m-d').' 00:00:00 UTC');
+        foreach($snapshot['days'] as $row){
+            $stamp=strtotime((string)($row['date']??''));
+            if($stamp===false||$stamp>$now||$stamp<$now-29*86400)continue;
+            $volume=(int)($row['volume']??0);$average=(float)($row['average']??0);
+            if($volume>0&&$average>0)$days[]=['volume'=>$volume,'average'=>$average,'date'=>$stamp];
+        }
+        $total=array_sum(array_column($days,'volume'));
+        $recent=array_values(array_filter($days,static fn($row)=>$row['date']>=$now-13*86400));
+        $recentVolume=array_sum(array_column($recent,'volume'));
+        if(count($recent)<10||count($days)<20||$recentVolume<$qty*30||$total<$qty*60)return null;
+        $weighted=0.0;foreach($recent as $day)$weighted+=$day['average']*$day['volume'];
+        $average=$weighted/max(1,$recentVolume);
+        // Historical regional executions must corroborate the proposed ask.
+        if($ask>$average*1.05||$ask<$average*.65)return null;
+        // Station bid is tangible immediate demand, but does not prove a listing will fill.
+        if($bid<=0||$ask>$bid*1.05||$stationBidVolume<$qty*10)return null;
+        return ['regional_14d_units'=>$recentVolume,'regional_14d_active_days'=>count($recent),
+            'regional_14d_vwap_isk'=>round($average,2),'local_bid_units'=>$stationBidVolume,
+            'local_best_bid_isk'=>$bid,'station_sales_verified'=>false,
+            'history_collected_at'=>$snapshot['collected_at']??null];
     }
     private function candidate(int $type,int $qty,float $cost,float $lp,float $revenue,int $srcStation,int $destStation,string $kind,string $goal,string $note,bool $conditional=false,bool $listing=false,int $depth=0):?array{
         $salesTaxRate=self::BASE_SALES_TAX*(1-0.11*self::ASSUMED_ACCOUNTING_LEVEL);
@@ -137,7 +172,7 @@ final class GuristasTradeOrders {
             if(!is_array($offer)||(int)($offer['ak_cost']??0)>0||(int)($offer['lp_cost']??0)<1||(int)($offer['quantity']??0)<1)continue;
             $byReward[(int)$offer['type_id']][]=$offer;
         }
-        $pool=[];$demandCount=count(array_unique(array_merge(array_keys($destBuy['FULCRUM']),array_keys($destBuy['VENAL']))));
+        $pool=[];$listingPool=[];$demandCount=count(array_unique(array_merge(array_keys($destBuy['FULCRUM']),array_keys($destBuy['VENAL']))));
         $destinations=['FULCRUM'=>$destBuy['FULCRUM'],'VENAL'=>$destBuy['VENAL'],'EXPORT'=>$allBuy];
         foreach($destinations as $goal=>$types){
             foreach($types as $type=>$stations){
@@ -146,11 +181,12 @@ final class GuristasTradeOrders {
                 foreach([1,2,5,10,20,100,1000,10000] as $qty){
                     $bids=$this->bids($stations,$qty);
                     if(!$bids)continue;
-                    $acq=$this->acquire($allSell[$type]??[],$qty);
-                    if($acq && $goal!=='EXPORT')foreach($bids as $b){
-                        if($acq['station']===$b['station'])continue;
-                        $c=$this->candidate($type,$qty,$acq['cost'],0,$b['revenue'],$acq['station'],$b['station'],'MARKET',$goal,'Buy at source sell order; immediately fulfill the destination station buy order.',false,false,$qty);
-                        if($c)$pool[]=$c;
+                    if($goal!=='EXPORT')foreach($bids as $b){
+                        foreach($this->acquireOptions($allSell[$type]??[],$qty) as $acq){
+                            if($acq['station']===$b['station'])continue;
+                            $c=$this->candidate($type,$qty,$acq['cost'],0,$b['revenue'],$acq['station'],$b['station'],'MARKET',$goal,'Buy at source sell orders; immediately fulfill the destination station buy order. Both ends are based on observed order depth.',false,false,$qty);
+                            if($c)$pool[]=$c;
+                        }
                     }
                     foreach($byReward[$type]??[] as $offer){
                         $yield=(int)$offer['quantity'];
@@ -180,13 +216,61 @@ final class GuristasTradeOrders {
                 }
             }
         }
-        // Do not publish speculative sell listings from asking prices and current bids.
-        // These are NOT completed trades; neither order-book depth nor a narrow
-        // bid/ask spread demonstrates sell-through at the proposed listing price.
-        // Listing candidates must remain disabled until we collect and validate
-        // historical executions (volume, time horizon and station relevance),
-        // competition, order age and feasible purchase quantity. Never infer
-        // realized profit from a competing ask alone.
+        // Conservative listing research: two independent observations required.
+        // 1. CCP completed-trade history establishes REGION-wide executions.
+        // 2. Local station bids/asks establish current price and nearby liquidity.
+        // Neither establishes completed sales at this exact station.
+        // Budget history fetches to keep cron predictable on a small EC2 host.
+        foreach(['FULCRUM'=>10001000,'VENAL'=>10000015] as $goal=>$region){
+            foreach($destBuy[$goal] as $type=>$stations){
+                if(empty($allSell[$type]))continue;
+                $type=(int)$type;
+                foreach([1,2,5,10,20,100] as $qty){
+                    $acq=$this->acquire($allSell[$type],$qty);
+                    if(!$acq)continue;
+                    foreach($stations as $station=>$stationBids){
+                        if($station===$acq['station']||empty($allSell[$type][$station]))continue;
+                        $lowest=INF;$bidMax=0.0;$bidVolume=0;
+                        foreach($allSell[$type][$station] as $ask)$lowest=min($lowest,(float)$ask['p']);
+                        foreach($stationBids as $bid){$bidMax=max($bidMax,(float)$bid['p']);$bidVolume+=(int)$bid['v'];}
+                        if(!is_finite($lowest)||$bidMax<=0||$lowest>$bidMax*1.05||$bidVolume<$qty*10)continue;
+                        $revenue=$qty*$lowest;
+                        $c=$this->candidate($type,$qty,$acq['cost'],0,$revenue,$acq['station'],(int)$station,
+                            'LIST FOR SALE',$goal,'Conditional listing: completed trades are verified region-wide, not at this station. Local bids support pricing but do not guarantee an eventual buyer.',
+                            true,true,$bidVolume);
+                        if($c)$listingPool[]=$c;
+                    }
+                }
+            }
+        }
+        usort($listingPool,static fn($a,$b)=>$b['score']<=>$a['score']);
+        $validatedListings=[];
+        // Limit ESI history lookups per publish. Cached history is reused for a day.
+        $lookups=0;$seenHistory=[];
+        foreach($listingPool as $c){
+            $region=$c['goal']==='FULCRUM'?10001000:10000015;
+            $key=$region.'-'.$c['type'];
+            if(!array_key_exists($key,$seenHistory)){
+                $cached=$this->intel->read('history-'.$key);
+                $cacheFresh=$cached&&(time()-(strtotime((string)($cached['collected_at']??''))?:0)<86400);
+                if(!$cacheFresh&&$lookups>=6)continue;
+                if(!$cacheFresh)$lookups++;
+                $seenHistory[$key]=true;
+            }
+            $bidDepth=$c['depth'];
+            $evidence=$this->historyEvidence($region,$c['type'],$c['qty'],$c['revenue']/$c['qty'],
+                // Local best bid is conservatively approximated from order book below.
+                $this->highestBid($destBuy[$c['goal']][$c['type']][$c['destStation']]??[]),$bidDepth);
+            if(!$evidence)continue;
+            $c['evidence']=$evidence;
+            $c['note'].=' CCP regional 14-day completed volume '.number_format($evidence['regional_14d_units']).
+                ' units across '.$evidence['regional_14d_active_days'].' active days; 14-day volume-weighted average '.
+                $this->money($evidence['regional_14d_vwap_isk']).'/unit. Destination local bid depth '.
+                number_format($bidDepth).' units. Station-specific executions and time-to-sale are not publicly verified.';
+            $validatedListings[]=$c;
+        }
+        // A conditional listing cannot displace two executable opportunities.
+        foreach($validatedListings as $candidate)$pool[]=$candidate;
         // Guristas officer/deadspace specialty goods: compare actual market buy depth
         // with publicly offered sell inventory. These are loot/arbitrage, not LP redemption.
         $special=[];
@@ -197,12 +281,12 @@ final class GuristasTradeOrders {
         foreach(array_keys($special) as $type){
             if(empty($allBuy[$type])||empty($allSell[$type]))continue;
             foreach([1,2,5,10] as $qty){
-                $acq=$this->acquire($allSell[$type],$qty);
-                if(!$acq)continue;
                 foreach($this->bids($allBuy[$type],$qty) as $bid){
-                    if($acq['station']===$bid['station'])continue;
-                    $c=$this->candidate($type,$qty,$acq['cost'],0,$bid['revenue'],$acq['station'],$bid['station'],'SPECIALTY MARKET','EXPORT','Rare Guristas loot: ordinary buy-low/sell-high calculation, not an LP-store reward.',false,false,$qty);
-                    if($c)$pool[]=$c;
+                    foreach($this->acquireOptions($allSell[$type],$qty) as $acq){
+                        if($acq['station']===$bid['station'])continue;
+                        $c=$this->candidate($type,$qty,$acq['cost'],0,$bid['revenue'],$acq['station'],$bid['station'],'SPECIALTY MARKET','EXPORT','Rare Guristas loot: ordinary buy-low/sell-high calculation, not an LP-store reward.',false,false,$qty);
+                        if($c)$pool[]=$c;
+                    }
                 }
             }
         }
@@ -225,30 +309,41 @@ final class GuristasTradeOrders {
         }
         usort($pool,static fn($a,$b)=>$b['score']<=>$a['score']);
         $picked=[];$used=[];
-        // Prefer executable existing bids; conditional manufacturing is a
-        // fallback, not a substitute for observed demand at a firm bid.
+        // Prefer actual available bids across Fulcrum and Venal; no speculative
+        // opportunity takes one of the first two slots if an executable one exists.
         foreach(['FULCRUM','VENAL','ANY'] as $goal){
-            foreach([false,true] as $allowConditional){
-                foreach($pool as $p){
-                    if($goal!=='ANY' && $p['goal']!==$goal)continue;
-                    if(!empty($p['listing']))continue;
-                    if(!$allowConditional && !empty($p['conditional']))continue;
-                    $key=(string)$p['type'];
-                    if(isset($used[$key]))continue;
-                    $used[$key]=true;$picked[]=$p;
-                    continue 3;
-                }
+            foreach($pool as $p){
+                if($goal!=='ANY'&&$p['goal']!==$goal)continue;
+                if(!empty($p['listing'])||!empty($p['conditional']))continue;
+                if(isset($used[(string)$p['type']]))continue;
+                $used[(string)$p['type']]=true;$picked[]=$p;break;
+            }
+            if(count($picked)>=3)break;
+        }
+        // Only one history-supported, explicitly conditional listing at most.
+        // It can fill an empty third slot, never replace verified bid execution.
+        if(count($picked)<3){
+            foreach($pool as $p){
+                if(empty($p['listing'])||empty($p['evidence'])||isset($used[(string)$p['type']]))continue;
+                $used[(string)$p['type']]=true;$picked[]=$p;break;
+            }
+        }
+        if(count($picked)<3){
+            foreach($pool as $p){
+                if(!empty($p['listing'])||isset($used[(string)$p['type']]))continue;
+                $used[(string)$p['type']]=true;$picked[]=$p;
+                if(count($picked)>=3)break;
             }
         }
         $orders=[];
         foreach($picked as $p){
             $lp=$p['kind']!=='MARKET';$conditional=$p['conditional'];
             $orders[]=['status'=>$conditional?'conditional':'actionable','category'=>$p['goal'].' // '.$p['kind'],
-                'title'=>$p['listing']?'BUY // LIST // WAIT':($conditional?'BUILD // VERIFY // SELL':($lp?'REDEEM // DELIVER // SELL':'BUY // DELIVER // SELL')),
+                'title'=>$p['listing']?'BUY // LIST // UNCONFIRMED':($conditional?'BUILD // VERIFY // SELL':($lp?'REDEEM // DELIVER // SELL':'BUY // DELIVER // SELL')),
                 'item'=>$this->label($p['type']),
                 'route'=>($lp?'USE LP + INPUTS':'BUY AT NPC STATION #'.$p['srcStation']).' → SELL '.$p['qty'].' TO NPC STATION #'.$p['destStation'],
-                'margin'=>($p['listing']?'UNREALIZED IF SOLD':($conditional?'POTENTIAL PRE-HAUL':'PRE-HAUL')).' // +'.$this->money($p['net']),
-                'quantity'=>'QTY // '.$p['qty'].' · ROI '.number_format($p['roi']*100,1).'%', 'listing'=>$p['listing'], 'market_depth_units'=>$p['depth'],
+                'margin'=>($p['listing']?'UNREALIZED / STATION UNVERIFIED':($conditional?'POTENTIAL PRE-HAUL':'PRE-HAUL')).' // +'.$this->money($p['net']),
+                'quantity'=>'QTY // '.$p['qty'].' · ROI '.number_format($p['roi']*100,1).'%', 'listing'=>$p['listing'], 'market_depth_units'=>$p['depth'], 'market_evidence'=>$p['evidence']??null, 'confidence'=>!empty($p['listing'])?'REGIONAL HISTORY / STATION UNVERIFIED':(!empty($p['conditional'])?'CONDITIONAL':'FIRM BID SNAPSHOT'),
                 'source_id'=>$p['srcStation'],'destination_id'=>$p['destStation'],'type_id'=>$p['type'],
                 'roi_ratio'=>$p['roi'],'cost_isk'=>$p['cost'],'revenue_isk'=>$p['revenue'],'lp_required'=>$p['lp'],
                 'sales_tax_isk'=>$p['salesTax'],'sales_tax_rate'=>self::BASE_SALES_TAX,'assumed_accounting_level'=>self::ASSUMED_ACCOUNTING_LEVEL,'broker_fee_isk'=>$p['brokerFee'],'hauling_risk_estimated'=>false,
@@ -256,7 +351,7 @@ final class GuristasTradeOrders {
         }
         while(count($orders)<3)$orders[]=$this->hold('ECONOMIC INTELLIGENCE','No independent qualifying order from sufficiently fresh covered public markets.');
         return ['orders'=>$orders,'as_of'=>$coverage?gmdate('c',$oldest):null,'stale'=>false,
-            'coverage'=>['complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'lp_offers'=>$validOffers?count($offers['offers']):0],
-            'disclaimer'=>'Sell-order listing suggestions are withheld until verified completed-trade volume and defensible sell-through evidence are available; competing asks are not transactions. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional sell listings include an assumed 3% NPC broker fee, use competing ASK prices only and are NOT guaranteed sales. Scoring balances ISK profit, ROI and available buy volume, not actual route security. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
+            'coverage'=>['complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'history_supported_listings'=>count($validatedListings),'lp_offers'=>$validOffers?count($offers['offers']):0],
+            'disclaimer'=>'Sell listings require corroborating regional completed-trade history and station order book evidence; station sales velocity and actual fill time remain unverified. Maximum one conditional listing is allowed. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional listings assume 3% NPC broker fee and are NOT guaranteed sales. Ranking blends pre-haul ISK profit, ROI, and available order quantities; explores several acquisition stations and firm bid prices, but cannot guarantee global highest profit across unscanned/stale regions. Route security remains unmeasured. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
     }
 }

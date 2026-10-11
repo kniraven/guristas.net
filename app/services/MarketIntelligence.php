@@ -137,6 +137,32 @@ final class GuristasMarketIntelligence {
         $this->publish('regions',['ids'=>$ids,'fetched_at'=>gmdate('c')]);
         return $ids;
     }
+    /** Scheduled-only history lookup; CCP history is regional, not station-level. */
+    public function marketHistory(int $region,int $type):?array{
+        if($region<10000001||$region>=11000000||$type<1)return null;
+        $key='history-'.$region.'-'.$type;
+        $saved=$this->read($key);
+        $age=$saved?time()-(strtotime((string)($saved['collected_at']??''))?:0):PHP_INT_MAX;
+        if($age>=0&&$age<86400)return !empty($saved['verified'])?$saved:null;
+        try{
+            $response=$this->esi->getJson('/markets/'.$region.'/history',['type_id'=>$type],3600);
+            if(!is_array($response['data']??null)||!empty($response['meta']['stale']))throw new RuntimeException('Unavailable historical market data');
+            $days=[];
+            foreach($response['data'] as $row){
+                if(!is_array($row)||!isset($row['date'],$row['volume'],$row['average']))continue;
+                $days[]=['date'=>(string)$row['date'],'volume'=>(int)$row['volume'],'average'=>(float)$row['average']];
+            }
+            $saved=['region_id'=>$region,'type_id'=>$type,'verified'=>true,'days'=>$days,
+                'collected_at'=>gmdate('c'),'source'=>'CCP ESI regional completed market history'];
+            $this->publish($key,$saved);
+            return $saved;
+        }catch(Throwable $e){
+            // Negative caching avoids retrying unsupported regions on every publish.
+            $this->publish($key,['region_id'=>$region,'type_id'=>$type,'verified'=>false,
+                'collected_at'=>gmdate('c'),'reason'=>'CCP regional history currently unavailable']);
+            return null;
+        }
+    }
     public function refreshOffers(): array {
         $r=(new GuristasPublicIndustry())->offers();
         if(!is_array($r['data']??null)||!empty($r['meta']['stale'])||!empty($r['meta']['snapshot']))throw new RuntimeException('Current Commando Guri offers unavailable');
