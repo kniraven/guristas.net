@@ -58,7 +58,7 @@
                 if(method.includes('MANUFACTURE'))step('BUILD','Guristas LP blueprint + manufacturing',null,null,'Production facility / region not specified');
                 else if(method.includes('REDEEM'))step('REDEEM','Commando Guri LP store',null,null,'Redemption station / region not specified');
                 else step('BUY',order.source_station,order.source_system,order.source_region);
-                step('SELL',order.destination_station,order.destination_system,order.destination_region);
+                step(order.listing?'LIST':'SELL',order.destination_station,order.destination_system,order.destination_region);
                 card.appendChild(route);
                 const metrics=document.createElement('div');metrics.className='trade-order-metric-row';
                 for(const value of [order.margin,order.quantity]){const el=document.createElement('span');el.textContent=value||'';metrics.appendChild(el);}

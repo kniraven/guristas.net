@@ -12,6 +12,9 @@ final class GuristasTradeOrders {
     private const ASSUMED_ACCOUNTING_LEVEL=0;
     private const LP_SHADOW=1000.0;
     private const MAX_QTY=10000;
+    // NPC station listing fee is an assumption until the pilot's Broker Relations
+    // skill and unmodified NPC corporation/faction standings are known.
+    private const ASSUMED_LISTING_BROKER_FEE=0.03;
     public function __construct(?GuristasMarketIntelligence $intel=null, ?array $reference=null){
         $this->intel=$intel??new GuristasMarketIntelligence();
         $this->ref=$reference??guri_industry_reference();
@@ -67,17 +70,42 @@ final class GuristasTradeOrders {
         }
         return $missing?null:['cost'=>$total];
     }
-    private function candidate(int $type,int $qty,float $cost,float $lp,float $revenue,int $srcStation,int $destStation,string $kind,string $goal,string $note,bool $conditional=false):?array{
-        // Every suggested market sale immediately fills an existing buy order;
-        // no new broker fee applies. Hauling and expected loss are NOT estimated.
+    /** A listing is indicative, not an executable bid. Never conflate the two. */
+    private function listingQuotes(array $destSellers,array $destBuyers,int $qty):array{
+        $quotes=[];
+        foreach($destSellers as $station=>$asks){
+            if(empty($destBuyers[$station]))continue; // Some real evidence of local buyer interest.
+            $lowest=INF;
+            foreach($asks as $ask) $lowest=min($lowest,(float)$ask['p']);
+            if(!is_finite($lowest)||$lowest<=0)continue;
+            $demand=0;$topBid=0.0;
+            foreach($destBuyers[$station] as $bid){
+                $demand+=(int)$bid['v'];$topBid=max($topBid,(float)$bid['p']);
+            }
+            if($demand<1||$topBid<=0)continue;
+            // Quote at the prevailing lowest ask, without promising queue priority or fill.
+            $quotes[]=['station'=>(int)$station,'unit'=>$lowest,'revenue'=>$qty*$lowest,
+                'demand'=>$demand,'topBid'=>$topBid];
+        }
+        usort($quotes,static fn($a,$b)=>$b['revenue']<=>$a['revenue']);
+        return array_slice($quotes,0,3);
+    }
+    private function candidate(int $type,int $qty,float $cost,float $lp,float $revenue,int $srcStation,int $destStation,string $kind,string $goal,string $note,bool $conditional=false,bool $listing=false,int $depth=0):?array{
         $salesTaxRate=self::BASE_SALES_TAX*(1-0.11*self::ASSUMED_ACCOUNTING_LEVEL);
         $salesTax=$revenue*$salesTaxRate;
-        $net=$revenue-$salesTax-$cost-$lp*self::LP_SHADOW;
+        $brokerFee=$listing?$revenue*self::ASSUMED_LISTING_BROKER_FEE:0.0;
+        $net=$revenue-$salesTax-$brokerFee-$cost-$lp*self::LP_SHADOW;
         $capital=$cost+$lp*self::LP_SHADOW;
-        if($net<1000000||$net/max(1,$capital)<.05)return null;
-        $score=$net*(($goal==='FULCRUM')?1.20:($goal==='VENAL'?1.12:1.0));
+        $roi=$net/max(1,$capital);
+        if($net<1000000||$roi<.05)return null;
+        // Temper very large speculative returns and excessive capital commitments.
+        $capitalEfficiency=0.45+0.55*min(1.0,$roi/0.35);
+        $liquidity=$depth>0?min(1.0,$depth/max(1,$qty)):0.45;
+        $depthFactor=0.70+0.30*$liquidity;
+        $score=$net*$capitalEfficiency*$depthFactor*(($goal==='FULCRUM')?1.20:($goal==='VENAL'?1.12:1.0));
         if($conditional)$score*=.65;
-        return compact('type','qty','cost','lp','revenue','srcStation','destStation','kind','goal','note','conditional','net','score','salesTax')+['roi'=>$net/max(1,$capital)];
+        if($listing)$score*=.42; // Unsold inventory cannot compete as confirmed revenue.
+        return compact('type','qty','cost','lp','revenue','srcStation','destStation','kind','goal','note','conditional','net','score','salesTax','brokerFee','listing','depth','roi');
     }
     private function hold(string $label,string $explanation):array{
         return ['status'=>'standby','category'=>$label,'title'=>'NO VERIFIED ORDER','item'=>'AWAIT FRESH INTELLIGENCE','route'=>$explanation,'margin'=>'NET // NOT VERIFIED','quantity'=>'QTY // NONE','reason'=>'No profit claim is made. Check EVE market orders before traveling.'];
@@ -121,7 +149,7 @@ final class GuristasTradeOrders {
                     $acq=$this->acquire($allSell[$type]??[],$qty);
                     if($acq && $goal!=='EXPORT')foreach($bids as $b){
                         if($acq['station']===$b['station'])continue;
-                        $c=$this->candidate($type,$qty,$acq['cost'],0,$b['revenue'],$acq['station'],$b['station'],'MARKET',$goal,'Buy at source sell order; immediately fulfill the destination station buy order.');
+                        $c=$this->candidate($type,$qty,$acq['cost'],0,$b['revenue'],$acq['station'],$b['station'],'MARKET',$goal,'Buy at source sell order; immediately fulfill the destination station buy order.',false,false,$qty);
                         if($c)$pool[]=$c;
                     }
                     foreach($byReward[$type]??[] as $offer){
@@ -145,9 +173,38 @@ final class GuristasTradeOrders {
                                 if($c)$pool[]=$c;
                             }
                         }else foreach($bids as $b){
-                            $c=$this->candidate($type,$qty,$cost,$lp,$b['revenue'],0,$b['station'],'LP REDEEM',$goal,'Redeem Commando Guri LP with required items priced at available NPC market sell orders. LP assigned 1,000 ISK shadow value.');
+                            $c=$this->candidate($type,$qty,$cost,$lp,$b['revenue'],0,$b['station'],'LP REDEEM',$goal,'Redeem Commando Guri LP with required items priced at available NPC market sell orders. LP assigned 1,000 ISK shadow value.',false,false,$qty);
                             if($c)$pool[]=$c;
                         }
+                    }
+                }
+            }
+        }
+        // Conditional sell-order recommendations: observed competing asks are NOT sales.
+        // Require buyers at the same station as a basic indication of local demand.
+        foreach(['FULCRUM','VENAL'] as $goal){
+            foreach(($destBuy[$goal]??[]) as $type=>$buyers){
+                if(empty($allSell[$type]))continue;
+                // The sell market must have current competing asks at the destination.
+                $destAsks=[];
+                foreach($buyers as $station=>$orders){
+                    if(isset($allSell[$type][$station]))$destAsks[$station]=$allSell[$type][$station];
+                }
+                if(!$destAsks)continue;
+                foreach([1,2,5,10,20,100,1000,10000] as $qty){
+                    $acq=$this->acquire($allSell[$type],$qty);
+                    if(!$acq)continue;
+                    foreach($this->listingQuotes($destAsks,$buyers,$qty) as $quote){
+                        if($quote['station']===$acq['station'])continue;
+                        // The target ask must materially exceed the actual highest buy bid.
+                        if($quote['unit']<=$quote['topBid']*1.05)continue;
+                        $c=$this->candidate((int)$type,$qty,$acq['cost'],0,$quote['revenue'],
+                            $acq['station'],$quote['station'],'LIST FOR SALE',$goal,
+                            'Conditional sell listing: target price matches the observed lowest competing ask, NOT an available buyer. '
+                            .'Local buy-order volume is only a demand signal, not proof this listing will fill. '
+                            .'Listing fee assumed at 3%; price can change and the order may never sell.',
+                            true,true,$quote['demand']);
+                        if($c)$pool[]=$c;
                     }
                 }
             }
@@ -166,7 +223,7 @@ final class GuristasTradeOrders {
                 if(!$acq)continue;
                 foreach($this->bids($allBuy[$type],$qty) as $bid){
                     if($acq['station']===$bid['station'])continue;
-                    $c=$this->candidate($type,$qty,$acq['cost'],0,$bid['revenue'],$acq['station'],$bid['station'],'SPECIALTY MARKET','EXPORT','Rare Guristas loot: ordinary buy-low/sell-high calculation, not an LP-store reward.');
+                    $c=$this->candidate($type,$qty,$acq['cost'],0,$bid['revenue'],$acq['station'],$bid['station'],'SPECIALTY MARKET','EXPORT','Rare Guristas loot: ordinary buy-low/sell-high calculation, not an LP-store reward.',false,false,$qty);
                     if($c)$pool[]=$c;
                 }
             }
@@ -202,19 +259,19 @@ final class GuristasTradeOrders {
         foreach($picked as $p){
             $lp=$p['kind']!=='MARKET';$conditional=$p['conditional'];
             $orders[]=['status'=>$conditional?'conditional':'actionable','category'=>$p['goal'].' // '.$p['kind'],
-                'title'=>$conditional?'BUILD // VERIFY // SELL':($lp?'REDEEM // DELIVER // SELL':'BUY // DELIVER // SELL'),
+                'title'=>$p['listing']?'BUY // LIST // WAIT':($conditional?'BUILD // VERIFY // SELL':($lp?'REDEEM // DELIVER // SELL':'BUY // DELIVER // SELL')),
                 'item'=>$this->label($p['type']),
                 'route'=>($lp?'USE LP + INPUTS':'BUY AT NPC STATION #'.$p['srcStation']).' → SELL '.$p['qty'].' TO NPC STATION #'.$p['destStation'],
-                'margin'=>($conditional?'POTENTIAL PRE-HAUL':'PRE-HAUL').' // +'.$this->money($p['net']),
-                'quantity'=>'QTY // '.$p['qty'].' · ROI '.number_format($p['roi']*100,1).'%',
+                'margin'=>($p['listing']?'UNREALIZED IF SOLD':($conditional?'POTENTIAL PRE-HAUL':'PRE-HAUL')).' // +'.$this->money($p['net']),
+                'quantity'=>'QTY // '.$p['qty'].' · ROI '.number_format($p['roi']*100,1).'%', 'listing'=>$p['listing'], 'market_depth_units'=>$p['depth'],
                 'source_id'=>$p['srcStation'],'destination_id'=>$p['destStation'],'type_id'=>$p['type'],
                 'roi_ratio'=>$p['roi'],'cost_isk'=>$p['cost'],'revenue_isk'=>$p['revenue'],'lp_required'=>$p['lp'],
-                'sales_tax_isk'=>$p['salesTax'],'sales_tax_rate'=>self::BASE_SALES_TAX,'assumed_accounting_level'=>self::ASSUMED_ACCOUNTING_LEVEL,'broker_fee_isk'=>0,'hauling_risk_estimated'=>false,
-                'reason'=>$p['note'].' Total source ISK: '.$this->money($p['cost']).'; LP: '.number_format($p['lp']).'; gross sale: '.$this->money($p['revenue']).'. Includes '.number_format(self::BASE_SALES_TAX*100,1).'% base sales tax (assumed Accounting 0) and zero broker fee for instantly filling a buy order. LP is valued at an assumed 1,000 ISK each. Hauling costs, ship/cargo loss, route safety and market movement are NOT included. This is pre-haul profit, NOT risk-adjusted profit; market orders may change.'];
+                'sales_tax_isk'=>$p['salesTax'],'sales_tax_rate'=>self::BASE_SALES_TAX,'assumed_accounting_level'=>self::ASSUMED_ACCOUNTING_LEVEL,'broker_fee_isk'=>$p['brokerFee'],'hauling_risk_estimated'=>false,
+                'reason'=>$p['note'].' Total source ISK: '.$this->money($p['cost']).'; LP: '.number_format($p['lp']).'; target gross sale: '.$this->money($p['revenue']).'. Includes '.number_format(self::BASE_SALES_TAX*100,1).'% base sales tax (assumed Accounting 0) and '.($p['listing']?'3% assumed NPC broker fee for listing; sale is NOT confirmed':'no new broker fee for fulfilling an existing buy order').'. LP valued at an assumed 1,000 ISK each. Hauling costs, route safety, cargo loss and future market movement are not modeled. '.($p['listing']?'Unrealized profit only: competing sell prices and current local bids do not guarantee a buyer.':'Pre-haul profit, not risk-adjusted profit.').' Verify current orders and route before committing ISK.'];
         }
         while(count($orders)<3)$orders[]=$this->hold('ECONOMIC INTELLIGENCE','No independent qualifying order from sufficiently fresh covered public markets.');
         return ['orders'=>$orders,'as_of'=>$coverage?gmdate('c',$oldest):null,'stale'=>false,
             'coverage'=>['complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'lp_offers'=>$validOffers?count($offers['offers']):0],
-            'disclaimer'=>'Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
+            'disclaimer'=>'Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional sell listings include an assumed 3% NPC broker fee, use competing ASK prices only and are NOT guaranteed sales. Scoring balances ISK profit, ROI and available buy volume, not actual route security. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
     }
 }
