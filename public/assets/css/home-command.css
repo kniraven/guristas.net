@@ -933,3 +933,61 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
   .home-refresh .directive-row .trade-order-grid{overflow:auto;scrollbar-width:thin}
   .home-refresh .directive-row .trade-order-card{min-height:220px}
 }
+
+/* TR-07: TRADE shares RAID's fixed-height hardware enclosure.
+   Compact the information inside the cards; never hide station/system/region
+   behind an ellipsis. Long explanations remain available in their own overlay. */
+@media (min-width:901px){
+  .home-refresh .directive-row .selected-operation.home-briefing[data-mode="trade"]{
+    height:365px;min-height:365px;max-height:365px;
+  }
+  .home-refresh .directive-row .trade-order-card{
+    grid-template-rows:min-content min-content minmax(0,1fr) min-content min-content;
+    gap:4px;padding:7px 9px;
+  }
+  .home-refresh .directive-row .trade-order-card .trade-order-item{
+    font-size:clamp(.75rem,1.02vw,.88rem);line-height:1.15;
+  }
+  .home-refresh .directive-row .trade-order-steps{
+    justify-content:center;gap:5px;overflow:hidden;
+  }
+  .home-refresh .directive-row .trade-order-step{
+    grid-template-columns:3.15rem minmax(0,1fr);
+    gap:5px;font-size:.64rem;line-height:1.2;
+  }
+  .home-refresh .directive-row .trade-order-location{gap:1px}
+  .home-refresh .directive-row .trade-order-place{
+    font-size:.63rem;line-height:1.2;
+    overflow-wrap:break-word;
+  }
+  .home-refresh .directive-row .trade-order-system{
+    font-size:.58rem;line-height:1.2;
+    overflow-wrap:break-word;
+  }
+  .home-refresh .directive-row .trade-order-metric-row{
+    flex-wrap:nowrap;gap:4px;font-size:.60rem;padding-top:4px;
+  }
+  .home-refresh .directive-row .trade-order-metric-row span{
+    min-width:0;overflow-wrap:anywhere;
+  }
+  .home-refresh .directive-row .trade-order-metric-row span+span{font-size:.58rem;text-align:right}
+  .home-refresh .directive-row .trade-order-details summary{
+    min-height:16px;padding:2px 0 0;font-size:.55rem;
+  }
+}
+/* Narrow screens keep the site's normal responsive briefing height.
+   The stacked cards scroll inside the console, not by enlarging the deck. */
+@media (min-width:621px) and (max-width:900px){
+  .home-refresh .directive-row .selected-operation.home-briefing[data-mode="trade"]{
+    height:365px;min-height:365px;max-height:365px;
+  }
+  .home-refresh .directive-row .trade-order-grid{overflow-y:auto;overflow-x:hidden}
+  .home-refresh .directive-row .trade-order-card{min-height:178px}
+}
+@media (max-width:620px){
+  .home-refresh .directive-row .selected-operation.home-briefing[data-mode="trade"]{
+    height:445px;min-height:445px;max-height:445px;
+  }
+  .home-refresh .directive-row .trade-order-grid{overflow-y:auto;overflow-x:hidden}
+  .home-refresh .directive-row .trade-order-card{min-height:190px}
+}
