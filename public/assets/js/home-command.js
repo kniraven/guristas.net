@@ -95,23 +95,34 @@
                 // used by the server; never modify the calculated profit here.
                 const units=Number(order.unit_count||String(order.quantity||'').match(/QTY\s*\/\/\s*([\d,]+)/i)?.[1]?.replace(/,/g,''));
                 if(Number.isFinite(units)&&units>0){
-                    const moneyPerUnit=n=>Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' ISK';
+                    const formatISK=n=>{
+                        const v=Number(n);
+                        if(!Number.isFinite(v))return 'N/A';
+                        if(Math.abs(v)>=1e9)return (v/1e9).toFixed(2)+'B';
+                        if(Math.abs(v)>=1e6)return (v/1e6).toFixed(2)+'M';
+                        if(Math.abs(v)>=1e4)return (v/1e3).toFixed(1)+'K';
+                        return v.toLocaleString('en-US',{maximumFractionDigits:2});
+                    };
                     const priceRow=document.createElement('div');priceRow.className='trade-order-prices';
-                    const buy=document.createElement('span');
-                    const selling=document.createElement('span');
-                    if(method.includes('REDEEM')||method.includes('MANUFACTURE')){
-                        buy.textContent='INPUTS / '+moneyPerUnit(Number(order.cost_isk)/units)+' + LP';
-                    }else{
-                        buy.textContent='BUY / '+moneyPerUnit(Number(order.cost_isk)/units);
-                    }
-                    selling.textContent=(order.listing?'ASK':'SELL')+' / '+moneyPerUnit(Number(order.revenue_isk)/units);
-                    priceRow.append(buy,selling);card.appendChild(priceRow);
+                    const methodLabel=method.includes('REDEEM')||method.includes('MANUFACTURE')?'INPUTS + LP':'BUY';
+                    const addPrice=(label,amount)=>{
+                        const part=document.createElement('span');
+                        const key=document.createElement('small');key.textContent=label;
+                        const value=document.createElement('strong');value.textContent=formatISK(amount)+' ISK';
+                        value.title=Number(amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' ISK per unit';
+                        part.append(key,value);priceRow.appendChild(part);
+                    };
+                    addPrice(methodLabel,Number(order.cost_isk)/units);
+                    addPrice(order.listing?'ASK':'SELL',Number(order.revenue_isk)/units);
+                    card.appendChild(priceRow);
                 }
                 const metrics=document.createElement('div');metrics.className='trade-order-metric-row';
-                const quantity=Number.isFinite(Number(order.roi_ratio))
-                    ? String(order.quantity||'').replace(/ROI\s+[\d,.]+%/i,'ROI '+(Number(order.roi_ratio)*100).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'%')
-                    : String(order.quantity||'').replace(/(ROI\s+[\d,]+\.\d)\d+%/i,'$1%');
-                for(const value of [order.margin,quantity]){const el=document.createElement('span');el.textContent=value||'';metrics.appendChild(el);}
+                const profitLine=document.createElement('span');profitLine.className='trade-profit-line';
+                profitLine.textContent=String(order.margin||'').replace(' // ',' / ');
+                const statsLine=document.createElement('span');statsLine.className='trade-stats-line';
+                const roi=Number(order.roi_ratio)*100;
+                statsLine.textContent='QTY '+units.toLocaleString('en-US')+' · ROI '+(Number.isFinite(roi)?roi.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'%':'N/A');
+                metrics.append(profitLine,statsLine);
                 card.appendChild(metrics);
                 card.appendChild(dossier);
                 host.appendChild(card);

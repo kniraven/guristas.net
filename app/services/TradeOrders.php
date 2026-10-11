@@ -243,10 +243,37 @@ final class GuristasTradeOrders {
                 }
             }
         }
+        // Warm a small historical-data cache even if zero listings survive the
+        // initial live-order screen. CCP history is regional, never station-level.
+        // Max six new lookups per publication, including later listing checks.
+        $historyBudget=6;
+        $warm=[];
+        foreach(['FULCRUM'=>10001000,'VENAL'=>10000015] as $goal=>$region){
+            foreach($destBuy[$goal] as $type=>$stations){
+                if(empty($allSell[$type]))continue;
+                $volume=0;$bestBid=0.0;
+                foreach($stations as $station=>$bids){
+                    if(empty($allSell[$type][$station]))continue;
+                    foreach($bids as $bid){$volume+=(int)$bid['v'];$bestBid=max($bestBid,(float)$bid['p']);}
+                }
+                if($volume<1||$bestBid<=0)continue;
+                $warm[]=['region'=>$region,'type'=>(int)$type,'priority'=>log(1+$volume)*log(1+$bestBid)];
+            }
+        }
+        usort($warm,static fn($a,$b)=>$b['priority']<=>$a['priority']);
+        $warmed=0;
+        foreach($warm as $entry){
+            if($warmed>=$historyBudget)break;
+            $key='history-'.$entry['region'].'-'.$entry['type'];
+            $cached=$this->intel->read($key);
+            if($cached && (time()-(strtotime((string)($cached['collected_at']??''))?:0))<86400)continue;
+            $this->intel->marketHistory($entry['region'],$entry['type']);
+            $warmed++;
+        }
         usort($listingPool,static fn($a,$b)=>$b['score']<=>$a['score']);
         $validatedListings=[];
         // Limit ESI history lookups per publish. Cached history is reused for a day.
-        $lookups=0;$seenHistory=[];
+        $lookups=$warmed;$seenHistory=[];
         foreach($listingPool as $c){
             $region=$c['goal']==='FULCRUM'?10001000:10000015;
             $key=$region.'-'.$c['type'];
