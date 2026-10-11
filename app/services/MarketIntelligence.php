@@ -1,17 +1,23 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/PublicIndustry.php';
+require_once __DIR__.'/MarketPageClient.php';
 
 /** Public ESI market-book snapshots. All network activity is CLI-only. */
 final class GuristasMarketIntelligence {
     private GuristasEsiClient $esi;
     private string $dir;
+    private ?GuristasMarketPageClient $pageClient=null;
     public function __construct(?GuristasEsiClient $esi=null, ?string $dir=null) {
         if($esi!==null){$this->esi=$esi;}else{
             $config=require dirname(__DIR__,2).'/config/esi.php';
             $this->esi=new GuristasEsiClient($config,new GuristasEsiCache(dirname(__DIR__,2).'/storage/cache/public-industry'));
         }
         $this->dir=$dir??dirname(__DIR__,2).'/storage/cache/economic-intelligence';
+        if(get_class($this->esi)===GuristasEsiClient::class){
+            $config=require dirname(__DIR__,2).'/config/esi.php';
+            $this->pageClient=new GuristasMarketPageClient($config,$this->dir.'/pages');
+        }
     }
     public function dir(): string {return $this->dir;}
     public function read(string $name): ?array {
@@ -25,7 +31,7 @@ final class GuristasMarketIntelligence {
         if(!preg_match('/^[a-z0-9-]+$/',$name))throw new InvalidArgumentException('Invalid cache key');
         if(!is_dir($this->dir)&&!mkdir($this->dir,0775,true)&&!is_dir($this->dir))throw new RuntimeException('Intelligence directory unavailable');
         $tmp=tempnam($this->dir,'write-');
-        if(!$tmp)throw new RuntimeException('Unable to create temporary snapshot');
+        if(!$tmp||dirname($tmp)!==$this->dir)throw new RuntimeException('Intelligence directory is not writable');
         try{
             $content=json_encode($value,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES);
             if(file_put_contents($tmp,$content,LOCK_EX)===false)throw new RuntimeException('Unable to write snapshot');
@@ -64,12 +70,15 @@ final class GuristasMarketIntelligence {
         }
         return $types;
     }
+    private function marketPage(int $region,int $page):array{
+        return $this->pageClient!==null?$this->pageClient->getPage($region,$page):$this->esi->getJson('/markets/'.$region.'/orders',['order_type'=>'all','page'=>$page],300);
+    }
     public function collectRegion(int $region): array {
         if($region<10000001||$region>11000000)throw new InvalidArgumentException('Invalid market region');
         $priority=in_array($region,[10001000,10000015],true);
         $relevant=$priority?null:$this->relevantTypes();
         $path='/markets/'.$region.'/orders';
-        $first=$this->esi->getJson($path,['order_type'=>'all','page'=>1],300);
+        $first=$this->marketPage($region,1);
         $pages=(int)($first['meta']['pages']??0);
         if(!is_array($first['data']??null)||!empty($first['meta']['stale'])||$pages<1||$pages>750)throw new RuntimeException('Missing, stale or too-large regional order book: '.$region);
         $oldest=strtotime((string)($first['meta']['fetched_at']??''));
@@ -94,9 +103,9 @@ final class GuristasMarketIntelligence {
                 if(!is_finite($price)||$price<=0||$volume<1||$station<60000000||$station>=61000000)continue;
                 $row=['t'=>$type,'l'=>$station,'p'=>$price,'v'=>$volume,'m'=>max(1,(int)($o['min_volume']??1)),'b'=>(bool)$o['is_buy_order'],'r'=>$o['range']??'station'];
                 if($priority){$orders[]=$row;continue;}
-                $key=$type.':'.$station.':'.(int)$row['b'];
+                $key=$type.':'.(int)$row['b'];
                 $grouped[$key][]=$row;
-                if(count($grouped[$key])>6){
+                if(count($grouped[$key])>24){
                     usort($grouped[$key],static fn($a,$b)=>$a['b']?($b['p']<=>$a['p']):($a['p']<=>$b['p']));
                     array_pop($grouped[$key]);
                 }
@@ -107,13 +116,13 @@ final class GuristasMarketIntelligence {
         // Process and release each page before fetching the next.  This avoids the
         // old implementation's double-copy of the entire Jita order book.
         for($p=2;$p<=$pages;$p++){
-            $r=$this->esi->getJson($path,['order_type'=>'all','page'=>$p],300);
+            $r=$this->marketPage($region,$p);
             $consume($r,$p);
             unset($r);
         }
         if(!$priority){foreach($grouped as $rows)foreach($rows as $row)$orders[]=$row;unset($grouped);}
         $snapshot=['region'=>$region,'fetched_at'=>gmdate('c',$oldest),'collected_at'=>gmdate('c'),'pages'=>$pages,'orders'=>$orders,'complete'=>true,'source'=>'CCP ESI',
-            'total_seen'=>$seen,'retention'=>$priority?'all_npc_orders':'up_to_6_best_quotes_per_item_station_side',
+            'total_seen'=>$seen,'retention'=>$priority?'all_npc_orders':'up_to_24_best_quotes_per_item_side',
             'relevant_types'=>$relevant===null?null:count($relevant)];
         $this->publish('region-'.$region,$snapshot);
         return ['region'=>$region,'pages'=>$pages,'orders'=>count($orders),'seen'=>$seen];

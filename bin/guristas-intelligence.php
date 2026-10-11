@@ -10,7 +10,8 @@ $intel=new GuristasMarketIntelligence();
 $dir=$intel->dir();
 if(!is_dir($dir)&&!mkdir($dir,0775,true)&&!is_dir($dir))throw new RuntimeException('Cache directory unavailable');
 $lock=fopen($dir.'/'.($command==='raid'?'raid':'trade').'-collector.lock','c');
-if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){fwrite(STDERR,"Collector already running.\n");exit(3);}
+if(!$lock){fwrite(STDERR,"Cannot open collector lock file; verify cache permissions.\n");exit(3);}
+if(!flock($lock,LOCK_EX|LOCK_NB)){fwrite(STDERR,"Collector already running.\n");fclose($lock);exit(3);}
 try{
     $log=[];
     if($command==='raid')$log[]=$intel->refreshRaid();
