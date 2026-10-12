@@ -196,7 +196,13 @@ final class GuristasTradeOrders {
         $net=$revenue-$salesTax-$brokerFee-$cost-$lp*self::LP_SHADOW;
         $capital=$cost+$lp*self::LP_SHADOW;
         $roi=$net/max(1,$capital);
-        if($net<1000000||$roi<.05)return null;
+        // LP is a scarce currency, not an ISK purchase. Its 1,000 ISK shadow
+        // benchmark is a COMPARISON, never a disqualifier for the best LP use.
+        // For LP, require a positive cash yield after all known inputs and fees.
+        $cashYield=$revenue-$salesTax-$brokerFee-$cost;
+        if($lp>0){
+            if($cashYield<=0)return null;
+        }elseif($net<1000000||$roi<.05)return null;
         // Temper very large speculative returns and excessive capital commitments.
         $capitalEfficiency=0.45+0.55*min(1.0,$roi/0.35);
         $liquidity=$depth>0?min(1.0,$depth/max(1,$qty)):0.45;
@@ -341,9 +347,13 @@ final class GuristasTradeOrders {
     private static function selectHomepageSlots(array $candidates):array{
         $groups=['IMMEDIATE'=>[], 'NEW_ORDER'=>[], 'GURISTAS_LP'=>[]];
         foreach($candidates as $c){
-            if((float)($c['score']??0)<=0 || (float)($c['net']??0)<=0)continue;
             $kind=(string)($c['kind']??'');
             $lp=str_starts_with($kind,'LP ');
+            // Below the 1,000 ISK/LP shadow benchmark is NOT a loss of ISK.
+            // Do not reject a positive LP cash return before comparison.
+            if($lp){
+                if((float)($c['lp']??0)<=0 || (float)($c['net']??0)+(float)$c['lp']*self::LP_SHADOW<=0)continue;
+            }elseif((float)($c['score']??0)<=0 || (float)($c['net']??0)<=0)continue;
             if($lp){
                 if((float)($c['lp']??0)<=0)continue;
                 $groups['GURISTAS_LP'][]=$c;
@@ -602,6 +612,88 @@ final class GuristasTradeOrders {
                 }
             }
         }
+        // Evaluate LP redemption against mature-hub listings independently of
+        // whether an existing buy order exists. A listing is CONDITIONAL and
+        // must have corroborating regional completed sales; a public ask is
+        // neither a buyer nor a guaranteed realizable price.
+        $lpReferenceScreen=[];$lpReferenceRejects=['missing_ask'=>0,'missing_inputs'=>0,'no_positive_cash_yield'=>0,'missing_history'=>0,'insufficient_history'=>0,'price_above_trades'=>0];
+        if($validOffers){
+            foreach($offers['offers'] as $offer){
+                if(!is_array($offer)||(int)($offer['ak_cost']??0)>0 ||
+                    (int)($offer['lp_cost']??0)<1||(int)($offer['quantity']??0)<1)continue;
+                $type=(int)($offer['type_id']??0);
+                // Blueprint output needs separate manufacturing feasibility evidence.
+                // Do not sell a BPC as if it were its finished product.
+                if(isset($this->ref['blueprints'][(string)$type]))continue;
+                $qty=(int)$offer['quantity'];$lp=(float)$offer['lp_cost'];
+                $inputs=$this->costInputs($offer['required_items']??[],1,$allSell);
+                if(!$inputs){$lpReferenceRejects['missing_inputs']++;continue;}
+                $cost=(float)($offer['isk_cost']??0)+(float)$inputs['cost'];
+                $foundAsk=false;
+                foreach([10000002,10000032] as $region){
+                    foreach($allSell[$type]??[] as $station=>$asks){
+                        if(($stationRegions[(int)$station]??0)!==$region||!$asks)continue;
+                        $lowest=INF;$askDepth=0;
+                        foreach($asks as $ask){
+                            if((float)$ask['p']<$lowest){$lowest=(float)$ask['p'];$askDepth=(int)$ask['v'];}
+                            elseif(abs((float)$ask['p']-$lowest)<0.001)$askDepth+=(int)$ask['v'];
+                        }
+                        if(!is_finite($lowest)||$lowest<=0)continue;
+                        $foundAsk=true;
+                        // One batch, not a giant theoretical stack of LP products.
+                        // A competing ask has to exist but need not equal the batch size.
+                        $candidate=$this->candidate($type,$qty,$cost,$lp,$qty*$this->validAsk($lowest),
+                            0,(int)$station,'LP REDEEM LIST','EXPORT',
+                            'Reference-valued LP redemption using an existing external-hub ask. '
+                            .'No buyer or sale is guaranteed; regional completed volume must corroborate the asking price.',
+                            true,true,$askDepth);
+                        if(!$candidate){$lpReferenceRejects['no_positive_cash_yield']++;continue;}
+                        $candidate['lp_ref_region']=$region;
+                        $candidate['lp_ref_ask']=$lowest;
+                        $candidate['lp_ref_ask_units']=$askDepth;
+                        $candidate['lp_ref_cash_isk_per_lp']=($qty*$lowest*(1-self::BASE_SALES_TAX-self::ASSUMED_LISTING_BROKER_FEE)-$cost)/$lp;
+                        $lpReferenceScreen[]=$candidate;
+                    }
+                }
+                if(!$foundAsk)$lpReferenceRejects['missing_ask']++;
+            }
+        }
+        usort($lpReferenceScreen,static fn($a,$b)=>$b['lp_ref_cash_isk_per_lp']<=>$a['lp_ref_cash_isk_per_lp']);
+        $lpReferenceListings=[];$lpRefChecked=[];$lpRefFreshCalls=0;
+        // Small bounded number of ESI history checks, using the shared cache.
+        foreach(array_slice($lpReferenceScreen,0,60) as $c){
+            $region=(int)$c['lp_ref_region'];$type=(int)$c['type'];
+            $key=$region.'-'.$type;
+            if(!array_key_exists($key,$lpRefChecked)){
+                $cached=$this->intel->read('history-'.$key);
+                $fresh=$cached && time()-(strtotime((string)($cached['collected_at']??''))?:0)<86400;
+                if(!$fresh && $lpRefFreshCalls>=3){$lpReferenceRejects['missing_history']++;continue;}
+                if(!$fresh)$lpRefFreshCalls++;
+                $lpRefChecked[$key]=$this->intel->marketHistory($region,$type);
+            }
+            $history=$lpRefChecked[$key];
+            if(!$history||empty($history['verified'])){$lpReferenceRejects['missing_history']++;continue;}
+            $start=strtotime(gmdate('Y-m-d').' 00:00:00 UTC')-13*86400;
+            $volume=0;$traded=0.0;$days=0;
+            foreach($history['days']??[] as $day){
+                $when=strtotime((string)($day['date']??''));
+                $v=(int)($day['volume']??0);$avg=(float)($day['average']??0);
+                if($when===false||$when<$start||$when>time()||$v<1||$avg<=0)continue;
+                $volume+=$v;$traded+=$v*$avg;$days++;
+            }
+            if($days<5||$volume<max(10,3*(int)$c['qty'])){$lpReferenceRejects['insufficient_history']++;continue;}
+            $vwap=$traded/$volume;
+            $ask=(float)$c['lp_ref_ask'];
+            if($ask>$vwap*1.15){$lpReferenceRejects['price_above_trades']++;continue;}
+            $c['quote_evidence']=['listing_unit_price'=>$ask,'competing_ask_units'=>(int)$c['lp_ref_ask_units'],
+                'regional_volume_14d'=>$volume,'regional_vwap_14d'=>$vwap,
+                'station_sales_verified'=>false,'reference_market_region'=>$region];
+            $c['note'].=' ESI regional 14-day completed volume '.number_format($volume).
+                ' units; volume-weighted executed price '.$this->money($vwap).'/unit. '
+                .'Station executions and listing fill-time are not known.';
+            $lpReferenceListings[]=$c;
+        }
+        foreach($lpReferenceListings as $c)$pool[]=$c;
         // Guristas LP redemption can be sold to an existing bid OR listed at
         // an observed competing ask. The second path is conditional, never a
         // confirmed sale. Both paths use exactly the same redeemed-unit costs.
@@ -655,7 +747,7 @@ final class GuristasTradeOrders {
         // Warm a small historical-data cache even if zero listings survive the
         // initial live-order screen. CCP history is regional, never station-level.
         // Max six new lookups per publication, including later listing checks.
-        $historyBudget=max(0,6-$lpHistoryNew);
+        $historyBudget=max(0,6-$lpHistoryNew-$lpRefFreshCalls);
         $warm=[];
         foreach($listingDestinations as $goal=>$types){
             foreach($types as $type=>$stations){
@@ -685,7 +777,7 @@ final class GuristasTradeOrders {
         usort($listingPool,static fn($a,$b)=>$b['score']<=>$a['score']);
         $validatedListings=[];$rejects=['history_missing'=>0,'history_inconsistent'=>0,'history_volume'=>0,'price_vs_trades'=>0,'price_instability'=>0,'local_bid_depth'=>0,'competing_supply'=>0,'history_budget'=>0];
         // Limit ESI history lookups per publish. Cached history is reused for a day.
-        $lookups=$warmed+$lpHistoryNew;$seenHistory=[];
+        $lookups=$warmed+$lpHistoryNew+$lpRefFreshCalls;$seenHistory=[];
         foreach($listingPool as $c){
             $region=$stationRegions[$c['destStation']]??0;
             if($region<=0)continue;
@@ -886,15 +978,15 @@ final class GuristasTradeOrders {
                 'title'=>!empty($p['buy_order'])?'POST BID // WAIT FOR FILL':($p['listing']?($lp?'REDEEM LP // CREATE SELL ORDER':'BUY // LIST // UNCONFIRMED'):($conditional?'BUILD // VERIFY // SELL':($lp?'REDEEM // DELIVER // SELL':'BUY // DELIVER // SELL'))),
                 'item'=>$this->label($p['type']),
                 'route'=>($lp?'USE LP + INPUTS':'BUY AT NPC STATION #'.$p['srcStation']).' → SELL '.$p['qty'].' TO NPC STATION #'.$p['destStation'],
-                'margin'=>(!empty($p['buy_order'])?'POTENTIAL / BUY ORDER NOT FILLED':($p['listing']?'UNREALIZED / STATION SALES UNKNOWN':($conditional?'POTENTIAL PRE-HAUL':'PRE-HAUL'))).' // +'.$this->money($p['net']),
-                'quantity'=>'QTY // '.$p['qty'].' · ROI '.number_format($p['roi']*100,1).'%', 'listing'=>$p['listing'], 'buy_order'=>!empty($p['buy_order']), 'buy_order_unit_price'=>$p['buy_order_unit_price']??null, 'source_lowest_ask'=>$p['source_lowest_ask']??null, 'source_ask_units'=>$p['source_ask_units']??null, 'market_depth_units'=>$p['depth'],'lp_listing_vs_bid_profit_isk'=>$p['lp_comparison_extra_profit_isk']??null, 'market_evidence'=>$p['evidence']??null,'quote_evidence'=>$p['quote_evidence']??null, 'confidence'=>!empty($p['buy_order'])?'PROPOSED BUY ORDER / NOT FILLED':(!empty($p['listing'])?'REGIONAL SALES / STATION SALES UNKNOWN':(!empty($p['conditional'])?'CONDITIONAL':'FIRM BID SNAPSHOT')),
+                'margin'=>($lp?('LP YIELD // '.number_format(($p['revenue']-$p['salesTax']-$p['brokerFee']-$p['cost'])/max(1,$p['lp']),0).' ISK/LP · '.($p['listing']?'UNSOLD':'FIRM BID')):(!empty($p['buy_order'])?'POTENTIAL / BUY ORDER NOT FILLED':($p['listing']?'UNREALIZED / STATION SALES UNKNOWN':($conditional?'POTENTIAL PRE-HAUL':'PRE-HAUL'))).' // +'.$this->money($p['net'])),
+                'quantity'=>$lp?('LP // '.number_format($p['lp']).' · QTY '.$p['qty']):('QTY // '.$p['qty'].' · ROI '.number_format($p['roi']*100,1).'%'), 'listing'=>$p['listing'], 'buy_order'=>!empty($p['buy_order']), 'buy_order_unit_price'=>$p['buy_order_unit_price']??null, 'source_lowest_ask'=>$p['source_lowest_ask']??null, 'source_ask_units'=>$p['source_ask_units']??null, 'market_depth_units'=>$p['depth'],'lp_listing_vs_bid_profit_isk'=>$p['lp_comparison_extra_profit_isk']??null, 'market_evidence'=>$p['evidence']??null,'quote_evidence'=>$p['quote_evidence']??null, 'confidence'=>!empty($p['buy_order'])?'PROPOSED BUY ORDER / NOT FILLED':(!empty($p['listing'])?'REGIONAL SALES / STATION SALES UNKNOWN':(!empty($p['conditional'])?'CONDITIONAL':'FIRM BID SNAPSHOT')),
                 'source_id'=>$p['srcStation'],'destination_id'=>$p['destStation'],'type_id'=>$p['type'],
                 'roi_ratio'=>$p['roi'],'extreme_roi_requires_manual_validation'=>($p['roi']>100),'cost_isk'=>$p['cost'],'revenue_isk'=>$p['revenue'],'lp_required'=>$p['lp'],
                 'sales_tax_isk'=>$p['salesTax'],'sales_tax_rate'=>self::BASE_SALES_TAX,'assumed_accounting_level'=>self::ASSUMED_ACCOUNTING_LEVEL,'broker_fee_isk'=>$p['brokerFee']+($p['buy_order_broker_fee']??0),'order_ids_complete'=>!empty($p['quote_evidence']['destination_buy_order']['order_id']) && !empty($p['quote_evidence']['source_asks_used'][0]['order_id']),'hauling_risk_estimated'=>false,
                 'reason'=>$p['note'].' Total source ISK: '.$this->money($p['cost']).'; LP: '.number_format($p['lp']).'; target gross sale: '.$this->money($p['revenue']).'. Includes '.number_format(self::BASE_SALES_TAX*100,1).'% base sales tax (assumed Accounting 0) and '.(!empty($p['buy_order'])?'3% assumed NPC broker fee on the proposed purchase order; that order is NOT filled':($p['listing']?'3% assumed NPC broker fee for listing; sale is NOT confirmed':'no new broker fee for fulfilling an existing buy order')).'. LP valued at an assumed 1,000 ISK each. Hauling costs, route safety, cargo loss and future market movement are not modeled. '.(!empty($p['buy_order'])?'Potential profit only: the proposed buy order has NOT filled. Existing source asks do not establish that a seller will accept this bid.':($p['listing']?'Unrealized profit only: competing sell prices and current local bids do not guarantee a buyer.':'Pre-haul profit, not risk-adjusted profit.')).' Verify current orders and route before committing ISK.'];
         }
         return ['orders'=>$orders,'as_of'=>$coverage?gmdate('c',$oldest):null,'stale'=>false,
-            'coverage'=>['selection_mask'=>$bestMask,'selection_combined_score'=>round($bestEconomic,2),'selection_distinct_strategies'=>$bestVariety,'selection_audit'=>$selectionAudit,'homepage_required_slots'=>$slotAudit,'lp_selling_comparisons'=>$lpComparison,'lp_same_quantity_comparisons'=>$lpFairComparisons,'selected_lp_count'=>count(array_filter($picked,static fn($x)=>str_starts_with((string)$x['kind'],'LP '))),'lp_listing_candidates'=>count($lpListingPool),'lp_verified_sell_listings'=>count($verifiedLpListings),'lp_listing_rejections'=>$lpListingRejected,'selection_requirements_met'=>($bestMask&31)===31,'missing_requirements'=>array_values(array_keys(array_filter(['FULCRUM'=>(bool)(~$bestMask&1),'VENAL'=>(bool)(~$bestMask&2),'GURISTAS_LP'=>(bool)(~$bestMask&4),'NEW_ORDER'=>(bool)(~$bestMask&8),'IMMEDIATE_TRADE'=>(bool)(~$bestMask&16)]))),'complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'history_supported_listings'=>count($validatedListings),'qualified_buy_order_proposals'=>count($buyOrderPool),'listing_candidates'=>count($listingPool),'listing_rejections'=>$rejects,'extraordinary_quotes_excluded'=>$extraordinaryRejected,'order_id_provenance'=>'ESI order IDs retained for new regional snapshots; old snapshots cannot pass extraordinary quote gate','excluded_outside_pirate_economy'=>$this->excludedOutsidePirateEconomy,'lp_offers'=>$validOffers?count($offers['offers']):0],
+            'coverage'=>['selection_mask'=>$bestMask,'selection_combined_score'=>round($bestEconomic,2),'selection_distinct_strategies'=>$bestVariety,'selection_audit'=>$selectionAudit,'homepage_required_slots'=>$slotAudit,'lp_selling_comparisons'=>$lpComparison,'lp_same_quantity_comparisons'=>$lpFairComparisons,'selected_lp_count'=>count(array_filter($picked,static fn($x)=>str_starts_with((string)$x['kind'],'LP '))),'lp_reference_listings'=>count($lpReferenceListings),'lp_reference_screened'=>count($lpReferenceScreen),'lp_reference_rejections'=>$lpReferenceRejects,'lp_listing_candidates'=>count($lpListingPool),'lp_verified_sell_listings'=>count($verifiedLpListings),'lp_listing_rejections'=>$lpListingRejected,'selection_requirements_met'=>($bestMask&31)===31,'missing_requirements'=>array_values(array_keys(array_filter(['FULCRUM'=>(bool)(~$bestMask&1),'VENAL'=>(bool)(~$bestMask&2),'GURISTAS_LP'=>(bool)(~$bestMask&4),'NEW_ORDER'=>(bool)(~$bestMask&8),'IMMEDIATE_TRADE'=>(bool)(~$bestMask&16)]))),'complete_regions'=>array_keys($coverage),'region_count'=>count($coverage),'fresh_regions'=>count(array_filter($coverage,static fn($x)=>$x['age_seconds']>=0&&$x['age_seconds']<=10800)),'candidate_items'=>$demandCount,'items'=>count($allBuy),'history_supported_listings'=>count($validatedListings),'qualified_buy_order_proposals'=>count($buyOrderPool),'listing_candidates'=>count($listingPool),'listing_rejections'=>$rejects,'extraordinary_quotes_excluded'=>$extraordinaryRejected,'order_id_provenance'=>'ESI order IDs retained for new regional snapshots; old snapshots cannot pass extraordinary quote gate','excluded_outside_pirate_economy'=>$this->excludedOutsidePirateEconomy,'lp_offers'=>$validOffers?count($offers['offers']):0],
             'disclaimer'=>'Homepage reserves exactly three roles: a verified market ask-to-bid route, a proposed buy/sell order, and a Guristas LP conversion. If no qualified candidate exists, that role displays standby rather than substituting an unrelated trade. LP opportunities are ranked by estimated ISK returned per LP after cash input costs and sales tax, while individual card profit still deducts a modeled 1,000 ISK/LP opportunity cost. The previous diversity portfolio is retained for comparison only. Economic ranking uses pre-haul profit, ROI, order depth and bounded supporting evidence; Fulcrum/Venal have NO category bonus in the score; a maximum 1.5% near-tie preference favors distinct strategies. Gaps are explicitly reported. Market trades must start or end at a verified station in Venal or The Fulcrum. Commando Guri LP redemptions and their associated blueprint production are exempt because they directly use pirate LP, even where the redemption station is unspecified. Sell listings require corroborating regional completed-trade history and station order book evidence, including selected outside trade hubs; station sales velocity and actual fill time remain unverified. At least one of the three selected trades should create a buy or sell order when credible evidence exists; neither kind is guaranteed to fill. Estimates assume Accounting 0 (7.5% sales tax); instant fulfillment of existing buy orders incurs no new broker fee. Conditional listings assume 3% NPC broker fee and are NOT guaranteed sales. Ranking blends pre-haul ISK profit, ROI, and available order quantities; explores several acquisition stations and firm bid prices, but cannot guarantee global highest profit across unscanned/stale regions. Route security remains unmeasured. No hauling expense, route loss probability or risk buffer is deducted. Pre-haul estimates are not risk-adjusted. LP shadow value assumes 1,000 ISK/LP. LP redeem-and-list candidates share the same redemption inputs as immediate LP sales and require separate regional trading history plus station order-book evidence; any additional potential profit is unrealized. Scheduled public NPC-market snapshots only; regions scanned over time; snapshots older than 3h excluded. LP BPC manufacturing is conditional; confirm runs and facilities. No guaranteed fill.' ];
     }
 }

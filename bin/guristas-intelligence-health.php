@@ -48,6 +48,11 @@ foreach(['trade-orders','build-orders','raid'] as $key){
             }
             echo "  Homepage role policy: strict; old coverage score is diagnostic only.\n";
         }
+        printf("  LP store: %d fresh offers; reference-listing screen: %d; history-backed LP listings: %d\n",
+            (int)($coverage['lp_offers']??0),(int)($coverage['lp_reference_screened']??0),(int)($coverage['lp_reference_listings']??0));
+        foreach(($coverage['lp_reference_rejections']??[]) as $reason=>$count){
+            if((int)$count>0)printf("    LP reference rejected %-26s %d\n",$reason,(int)$count);
+        }
         echo "  NOTE: Ranking score gap is NOT an ISK profit difference.\n";
     }
     if($key==='build-orders'){
