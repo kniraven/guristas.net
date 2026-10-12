@@ -57,7 +57,8 @@
     const buildNextStep=(card,skills)=>{
         if(!skills)return null;
         if(card.activity==='manufacture' && Number(skills['3380']||0)<1)return 'PILOT CHECK: Train Industry to begin improving production efficiency. Confirm the blueprint’s actual requirements in-game.';
-        if(card.activity==='mine' && Number(skills['3386']||0)<1)return 'PILOT CHECK: Train Mining and use a qualified mining ship. Verify ore and refining requirements in-game.';
+        if(card.activity==='mine' && card.resource_category==='ice' && Number(skills['16281']||0)<1)return 'PILOT CHECK: Ice Harvesting I is needed for this ice. Verify Mining IV and ice equipment prerequisites.';
+        if(card.activity==='mine' && card.resource_category!=='ice' && Number(skills['3386']||0)<1)return 'PILOT CHECK: Train Mining and use a qualified mining ship. Verify ore and refining requirements in-game.';
         if(card.activity==='pi' && Number(skills['13279']||0)<1)return 'PILOT CHECK: Train Remote Sensing before planning a planetary colony.';
         if(card.activity==='pi')return `PILOT CHECK: Remote Sensing ${skills['13279']||0}; Interplanetary Consolidation ${skills['2495']||0}. Review colony availability and planet surveys.`;
         return 'PILOT CHECK: Basic activity skill detected. Confirm equipment, facility, blueprint and any advanced prerequisites in-game.';
@@ -77,7 +78,15 @@
             catch(_ignored){}
             host.replaceChildren();
             for(let i=0;i<3;i++){
-                const c=report.orders[i];
+                let c=report.orders[i];
+                // The public ranking is unchanged. Signed-in pilots prefer an alternative
+                // they are qualified to attempt; missing skill data never implies access.
+                const canAttempt=choice=>Object.entries(choice.requires_skills||{}).every(([id,level])=>
+                    skills!==null && Number(skills[id]||0)>=Number(level));
+                if(skills && !canAttempt(c) && Array.isArray(c.alternatives)){
+                    const eligible=c.alternatives.find(canAttempt);
+                    if(eligible)c=eligible;
+                }
                 const card=document.createElement('article');card.className='build-order-card';
                 card.dataset.buildStatus=c.state||'unavailable';
                 card.title=c.state==='market_lead'?'Solid orange: cost-backed manufacturing margin; excludes actual job and hauling costs.':c.state==='market_context'?'Solid purple: verified market price, not verified mining or PI net profit.':c.state==='supply_objective'?'Dashed purple: a Guristas supply objective, profit unverified.':'No sufficient evidence.';
@@ -92,6 +101,7 @@
                 const title=document.createElement('strong');title.className='build-order-title';title.textContent=c.title||'INTELLIGENCE PENDING';
                 const action=document.createElement('div');action.className='build-order-action';
                 let nextAction=String(c.action||'REVIEW INTELLIGENCE');
+                if(skills && !canAttempt(c))nextAction='SKILL REQUIRED // '+nextAction;
                 const key=document.createElement('span');key.textContent='YOUR ORDERS';
                 const value=document.createElement('strong');value.textContent=nextAction;value.title=nextAction;
                 action.append(key,value);
@@ -118,6 +128,7 @@
                 addLine('OBJECTIVE',String(c.action||'Review the opportunity')+'. '+String(c.detail||''));
                 if(Array.isArray(c.steps))c.steps.forEach((step,index)=>addLine('STEP '+(index+1),String(step)));
                 addLine('EVIDENCE',String(c.reason||'No evidence explanation available.'));
+                if(Array.isArray(c.alternatives) && c.alternatives.length)addLine('ALTERNATIVES',c.alternatives.map(o=>o.title).join(' · '));
                 addLine('CONFIDENCE',c.state==='market_lead'?'Input cost and buyer quote observed. Actual job/haul costs and access remain unverified.':c.state==='market_context'?'Real item price, but no confirmed extraction yield, site or net production profit.':'Verified supply relationship only; no confirmed market profit.');
                 const personal=buildNextStep(c,skills);if(personal)addLine('PILOT',personal);
                 const goto=document.createElement('a');goto.className='command-screen-link build-order-tool';goto.href=c.url||'/industry/';goto.textContent='OPEN INDUSTRY TOOL ↗';

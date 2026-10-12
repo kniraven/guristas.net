@@ -18,6 +18,6 @@ try {
         echo json_encode(['ok'=>true,'state'=>'unknown']);exit;
     }
     $levels=[];
-    foreach([3380,3386,13279,2495] as $skill)$levels[(string)$skill]=(int)($data['data'][$skill]??0);
+    foreach([3380,3386,13279,2495,16281] as $skill)$levels[(string)$skill]=(int)($data['data'][$skill]??0);
     echo json_encode(['ok'=>true,'state'=>'ready','levels'=>$levels],JSON_THROW_ON_ERROR);
 } catch(Throwable $e){http_response_code(503);echo json_encode(['ok'=>false,'state'=>'unknown']);}

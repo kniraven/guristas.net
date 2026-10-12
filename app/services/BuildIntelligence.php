@@ -76,41 +76,57 @@ final class GuristasBuildIntelligence {
         return self::card('manufacture','market_lead',$this->name($best['product_type_id']),($best['region']==='Jita export'?'BUILD IN VENAL → SELL JITA':'BUILD IN VENAL → SELL '.$best['region']),
             '1 run: '.number_format($best['yield']).' unit(s) · buyer order #'.$best['bid_order_id'],
             'NEXT STEPS: redeem the blueprint for '.number_format($best['offer']['lp']).' LP plus '.number_format($best['offer']['isk']).' ISK; buy the required materials at Jita 4-4; confirm a manufacturing-capable Venal facility and job quote; run the blueprint once; sell '.number_format($best['yield']).' output unit(s) into buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'. Modeled sales tax 7.5% and LP 1,000 ISK/LP. Material estimates use actual asks. Before starting, verify blueprint runs and material efficiency, facility/job fees, hauling cost, buyer availability and safe transport. Margin is not net profit.',
-            ['metric_isk'=>$best['margin'],'metric_label'=>'MARGIN BEFORE JOB/HAUL','evidence'=>$best,'steps'=>['Redeem blueprint: '.number_format($best['offer']['lp']).' Commando Guri LP + '.number_format($best['offer']['isk']).' ISK.','Buy blueprint materials at Jita 4-4; confirm the actual blueprint run count and skills.','Confirm a manufacturing-capable facility and quote in Venal BEFORE hauling.','Build '.number_format($best['yield']).' unit(s); verify then fulfill buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'.'],'url'=>'/industry/?view=build&bp='.$best['blueprint_id']]);
+            ['requires_skills'=>['3380'=>1],'metric_isk'=>$best['margin'],'metric_label'=>'MARGIN BEFORE JOB/HAUL','evidence'=>$best,'steps'=>['Redeem blueprint: '.number_format($best['offer']['lp']).' Commando Guri LP + '.number_format($best['offer']['isk']).' ISK.','Buy blueprint materials at Jita 4-4; confirm the actual blueprint run count and skills.','Confirm a manufacturing-capable facility and quote in Venal BEFORE hauling.','Build '.number_format($best['yield']).' unit(s); verify then fulfill buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'.'],'url'=>'/industry/?view=build&bp='.$best['blueprint_id']]);
     }
-    /** Real ore prices, not an assertion that a belt currently contains that ore. */
-    private function mineralLead(?array $jita,?array $venal=null):array {
-        // CCP SDE type IDs and ore volumes: Scordite 0.15m³; Pyroxeres 0.30m³.
-        // These are physical mineable ores, unlike Pyerite which is a refined mineral.
-        $ore=[1228=>['name'=>'Scordite','m3'=>0.15,'mineral'=>'Tritanium + Pyerite'],
-              1224=>['name'=>'Pyroxeres','m3'=>0.30,'mineral'=>'Pyerite + Mexallon']];
-        $best=null;
-        foreach($ore as $id=>$info){
-            foreach([10000015=>[$venal,'Venal'],10000002=>[$jita,'Jita']] as $region=>$target){
-                [$market,$name]=$target;
+    /** Market-quoted resource choices: ore and ice. CCP's ESI does not expose live deposit inventories.
+     * Candidate lists describe types suitable to check in nullsec, not confirmed live sites.
+     * Gas is intentionally excluded from Venal recommendations until a credible Venal spawn source is verified.
+     */
+    private function resourceLeads(?array $jita,?array $venal):array {
+        $resources=[
+            1224=>['name'=>'Pyroxeres','category'=>'ore','m3'=>0.30,'min_skill'=>3386,'minimum'=>1,'site'=>'Venal asteroid belts or ore anomalies'],
+            1228=>['name'=>'Scordite','category'=>'ore','m3'=>0.15,'min_skill'=>3386,'minimum'=>1,'site'=>'Venal asteroid belts or ore anomalies'],
+            16268=>['name'=>'Gelidus','category'=>'ice','m3'=>1000.0,'min_skill'=>16281,'minimum'=>1,'site'=>'Venal ice anomalies; ZD4-G9 has a mapped ice-belt location (ice type unconfirmed)'],
+            16269=>['name'=>'Krystallos','category'=>'ice','m3'=>1000.0,'min_skill'=>16281,'minimum'=>1,'site'=>'Venal ice anomalies; ZD4-G9 has a mapped ice-belt location (ice type unconfirmed)'],
+        ];
+        $leads=[];
+        foreach($resources as $id=>$resource){
+            foreach([10000015=>[$venal,'Venal'],10000002=>[$jita,'Jita']] as $region=>$dest){
+                [$market,$place]=$dest;
                 if(!self::fresh($market))continue;
-                foreach(self::orderRows($market,$id,true,$region===10000002?60003760:0) as $bid){
-                    $qty=(int)$bid['v'];if($qty<100 || (int)($bid['m']??1)>100)continue;
-                    $price=(float)$bid['p'];$perM3=$price/$info['m3'];
-                    // Market demand at the same price may be exhausted by a single buyer.
-                    // Prefer a Venal buyer when normalized values are reasonably close.
-                    $score=$perM3*($region===10000015?1.12:1.0);
-                    if($best===null||$score>$best['score'])$best=['id'=>$id,'name'=>$info['name'],'unit_price'=>$price,'per_m3'=>$perM3,'volume'=>$qty,'region'=>$name,'order'=>(int)$bid['i'],'score'=>$score,'minerals'=>$info['mineral']];
-                }
+                $rows=self::orderRows($market,$id,true,$region===10000002?60003760:0);
+                if(!$rows)continue;
+                $bid=$rows[0];$qty=(int)$bid['v'];
+                if($qty<(int)$resource['minimum'])continue;
+                $gross=(float)$bid['p'];$perM3=$gross/$resource['m3'];
+                $leads[]=['type_id'=>$id,'type'=>$resource,'place'=>$place,'bid'=>$bid,'quantity'=>$qty,'gross_per_m3'=>$perM3,'unit_value'=>$gross,'score'=>$perM3*($place==='Venal'?1.05:1)];
             }
         }
-        if($best){
-            $local=$best['region']==='Venal';
-            return self::card('mine','market_context','Mine '.$best['name'].' in Venal',
-                'FIND '.$best['name'].' → SELL '.strtoupper($best['region']),
-                'Buyer order #'.$best['order'].' · '.number_format($best['unit_price'],2).' ISK/ore · at least 100 units',
-                'NEXT STEPS: scan Venal asteroid belts and ore anomalies for '.$best['name'].'; confirm a real deposit before deploying; mine up to the available buyer quantity (currently '.$best['volume'].' units) and transport ore to the '.($local?'Venal':'Jita 4-4').' buyer (order #'.$best['order'].'). Refines into '.$best['minerals'].'; compare direct ore sale against refining first. Gross order value '.number_format($best['per_m3'],0).' ISK/m³, NOT ISK/hour. Current asteroid availability, mining yield, hauling and loss risk are NOT verified.',
-                ['evidence'=>['ore_type_id'=>$best['id'],'buy_order_id'=>$best['order'],'bid_units'=>$best['volume'],'market'=>$best['region'],'gross_isk_per_m3'=>$best['per_m3']], 'steps'=>['Scout Venal belts and ore anomalies for actual '.$best['name'].' deposits.','Mine a starter batch of 100 units ONLY if this ore is present and accessible.','Check existing buyer order #'.$best['order'].' ('. $best['region'].') and transport risk before selling.'],'url'=>'/industry/']);
+        usort($leads,static fn($a,$b)=>$b['score']<=>$a['score']);
+        $out=[];$seen=[];
+        foreach($leads as $lead){
+            // Only one buyer per mineable resource; include independent alternative resources.
+            if(isset($seen[$lead['type_id']]))continue;
+            $seen[$lead['type_id']]=true;
+            $resource=$lead['type'];$name=$resource['name'];$category=$resource['category'];
+            $batch=min($lead['quantity'],$category==='ore'?100:1);
+            $location=$lead['place'];$order=(int)$lead['bid']['i'];
+            $out[]=self::card('mine','market_context','Mine '.$name.' in Venal',
+                'FIND '.$name.' → SELL '.strtoupper($location),
+                'Buyer #'.$order.' · '.number_format($lead['unit_value'],2).' ISK/unit · '.$batch.'-unit example',
+                'RESOURCE: '.$name.' ('.$category.'), '.number_format($resource['m3'],2).' m³/unit. CONFIRMED: buyer order #'.$order.' for up to '.number_format($lead['quantity']).' units at '. $location .'; posted price '.number_format($lead['unit_value'],2).' ISK/unit. EXAMPLE gross proceeds for '.$batch.' units: '.number_format($batch*$lead['unit_value']).' ISK before taxes and transport. START: Check the in-game map Specific Ores / nearby Ore Anomalies, or ice anomalies as appropriate. Then inspect the site and confirm '.$name.' is actually present. TARGET: '.$resource['site'].'. This is not verified ISK/hour, current yield, or local resource availability. Compared by quoted gross ISK per m³, not net mining profit.',
+                ['resource_category'=>$category,'requires_skills'=>[(string)$resource['min_skill']=>1],'evidence'=>['item_type_id'=>$lead['type_id'],'item_category'=>$category,'unit_m3'=>$resource['m3'],'bid_station_id'=>(int)$lead['bid']['l'],'bid_order_id'=>$order,'bid_units'=>$lead['quantity'],'gross_isk_per_m3'=>$lead['gross_per_m3'],'snapshot_market'=>$location,'live_deposit_verified'=>false],
+                  'steps'=>['Open EVE map: Specific Ores / Ore Anomalies (or ice anomaly list) to check Venal resource availability.','Confirm an actual '.$name.' deposit in the selected system. Never treat a market order as proof of a local spawn.','Mine '.$batch.' units only if your ship, skills and risk tolerance allow it.','Verify buyer order #'.$order.' at station ID '.(int)$lead['bid']['l'].' and compare direct sale versus refining, hauling and risk.'],'url'=>'/industry/']);
         }
-        return self::card('mine','supply_objective','Scout ore for Guristas hulls','FIND VENAL ORE SITES',
-            'Search belts / ore anomalies · confirm deposits in-game',
-            'Actual ore types produce minerals needed for ordinary industry, but no timely profitable ore buyer or live mining-site availability is verified. Compare selling ore with refining it after checking yield and transport. Do not treat this as a profit estimate.',
-            ['evidence'=>['known_ore_type_ids'=>[1228,1224]],'steps'=>['Search a Venal system for asteroid belts or ore anomalies.','Check whether Scordite or Pyroxeres is actually present.','Compare an available ore buyer against your mining and hauling costs before extracting.'],'url'=>'/industry/']);
+        return $out;
+    }
+    private function mineralLead(?array $jita,?array $venal=null):array {
+        $leads=$this->resourceLeads($jita,$venal);
+        if($leads){$best=$leads[0];$best['alternatives']=array_slice($leads,1,4);return $best;}
+        return self::card('mine','supply_objective','Scout Pyroxeres in Venal','CHECK PYROXERES DEPOSITS',
+            'Ore ID 1224 · use EVE map Specific Ores / Ore Anomalies',
+            'Pyroxeres is a mineable ore used for minerals in conventional ship production. No qualified destination buyer or live site has been verified. Confirm Pyroxeres is present in-game before mining; compare direct sale versus processing with your actual refining rate. Ice alternative: survey ice anomalies for Gelidus; do not assume a mapped ice belt contains that specific ice. Gas harvesting in Venal is NOT recommended by name until its local spawn evidence is independently verified.',
+            ['resource_category'=>'ore','requires_skills'=>['3386'=>1],'evidence'=>['ore_type_id'=>1224,'live_deposit_verified'=>false], 'steps'=>['Use the in-game map to locate Pyroxeres or Ore Anomalies in Venal.','Confirm a visible ore deposit before fitting and deploying a mining ship.','Compare actual ore buyer prices and net refining returns before hauling.'],'url'=>'/industry/']);
     }
     /** Verified Synthetic Synapses P3 schematic: 10 Supertensile Plastics + 10 Test Cultures -> 3 units / hour.
      * Schematic data is stable reference; price estimates still exclude colony operating costs. */
@@ -139,12 +155,12 @@ final class GuristasBuildIntelligence {
                 'PRODUCE 3 → SELL '.strtoupper($best['name']),
                 '10 Supertensile Plastics + 10 Test Cultures · 1-hour P3 cycle',
                 'NEXT STEPS: obtain 10 Supertensile Plastics and 10 Test Cultures (priced at Jita asks); supply a Venal Advanced Industry Facility on a suitable colony; run one hourly schematic cycle to produce 3 Synthetic Synapses; compare customs taxes, imports, exports and hauling; then sell to buyer order #'.(int)$best['bid']['i'].'. The estimate of '.number_format($best['surplus'],0).' ISK is after modeled 7.5% sales tax, BEFORE all colony taxes, facility/cargo costs, hauling and installation. Not verified net profit or planet extraction yield.',
-                ['evidence'=>['item_type_id'=>$output,'inputs'=>$inputs,'output_qty'=>3,'cycle_hours'=>1,'buyer_order_id'=>(int)$best['bid']['i'],'buyer_station_id'=>(int)$best['bid']['l'],'buyer_region'=>$best['name'],'estimated_surplus_before_pi_costs'=>$best['surplus']],'metric_isk'=>$best['surplus'],'steps'=>['Buy or produce 10 Supertensile Plastics and 10 Test Cultures.','Confirm a Venal colony with an Advanced Industry Facility; set schematic 92 (1 hour).','Produce 3 Synthetic Synapses; calculate actual customs and import/export expenses.','If still profitable, verify buyer order #'.(int)$best['bid']['i'].' at station ID '.(int)$best['bid']['l'].' before hauling.'],'url'=>'/industry/']);
+                ['requires_skills'=>['13279'=>1],'evidence'=>['item_type_id'=>$output,'inputs'=>$inputs,'output_qty'=>3,'cycle_hours'=>1,'buyer_order_id'=>(int)$best['bid']['i'],'buyer_station_id'=>(int)$best['bid']['l'],'buyer_region'=>$best['name'],'estimated_surplus_before_pi_costs'=>$best['surplus']],'metric_isk'=>$best['surplus'],'steps'=>['Buy or produce 10 Supertensile Plastics and 10 Test Cultures.','Confirm a Venal colony with an Advanced Industry Facility; set schematic 92 (1 hour).','Produce 3 Synthetic Synapses; calculate actual customs and import/export expenses.','If still profitable, verify buyer order #'.(int)$best['bid']['i'].' at station ID '.(int)$best['bid']['l'].' before hauling.'],'url'=>'/industry/']);
         }
         return self::card('pi','supply_objective','PI: Synthetic Synapses','RUN 1 P3 CYCLE IN VENAL',
             '10 Supertensile Plastics + 10 Test Cultures → 3 Synthetic Synapses / hour',
             'NEXT STEPS: select a suitable Venal planet and confirm its Advanced Industry Facility and colony access; import or produce 10 Supertensile Plastics plus 10 Test Cultures; produce 3 Synthetic Synapses in a one-hour cycle. This is a verified P3 schematic and Guristas blueprint ingredient, NOT a verified profitable colony. No reliable buyer/input quote combination survived the cost check. Check customs fees, extraction and transport before starting.',
-            ['evidence'=>['item_type_id'=>$output,'input_names'=>$ingredientNames,'input_quantities'=>[10,10],'output_qty'=>3,'cycle_hours'=>1],'steps'=>['Confirm a Venal colony with an Advanced Industry Facility and suitable available planet.','Import or produce 10 Supertensile Plastics and 10 Test Cultures.','Run Synthetic Synapses schematic 92 for one hour to produce 3 units.','Check current input/output prices, customs charges and hauling before repeating.'],'url'=>'/industry/']);
+            ['requires_skills'=>['13279'=>1],'evidence'=>['item_type_id'=>$output,'input_names'=>$ingredientNames,'input_quantities'=>[10,10],'output_qty'=>3,'cycle_hours'=>1],'steps'=>['Confirm a Venal colony with an Advanced Industry Facility and suitable available planet.','Import or produce 10 Supertensile Plastics and 10 Test Cultures.','Run Synthetic Synapses schematic 92 for one hour to produce 3 units.','Check current input/output prices, customs charges and hauling before repeating.'],'url'=>'/industry/']);
     }
     private function fallbackManufacture():array {
         $worm=$this->ref['blueprints']['17931']??null;
@@ -152,7 +168,7 @@ final class GuristasBuildIntelligence {
         $items=[];foreach(array_slice($worm['materials']??[],0,3) as $m)$items[]=$this->name((int)$m['typeID']).' ×'.(int)$m['quantity'];
         return self::card('manufacture','supply_objective','Worm blueprint supply chain','PREPARE WORM COMPONENTS',
             implode(' · ',$items),'Worm manufacturing recipe is from the site’s CCP SDE reference. No verified destination bid, manufacturing job cost, LP redemption economics, or executable profit is claimed.',
-            ['evidence'=>['blueprint_id'=>17931,'product_type_id'=>17930],'url'=>'/industry/?view=build&bp=17931']);
+            ['requires_skills'=>['3380'=>1],'evidence'=>['blueprint_id'=>17931,'product_type_id'=>17930],'url'=>'/industry/?view=build&bp=17931']);
     }
     public function collect():array {
         $snap=[];foreach([10000002,10000015,10001000] as $rid){$s=$this->intel->read('region-'.$rid);$snap[$rid]=self::fresh($s)?$s:null;}
@@ -177,7 +193,7 @@ final class GuristasBuildIntelligence {
             $pi['evidence']['planet_catalog_complete']=!empty($catalog['complete']);
         }
         $cards=[$manufacture??$this->fallbackManufacture(),$this->mineralLead($snap[10000002],$snap[10000015]),$pi];
-        return ['as_of'=>gmdate('c'),'status'=>'ready','orders'=>$cards,'coverage'=>['activity_count'=>3,'manufacturing_recipes'=>count($this->ref['blueprints']),'market_snapshot_regions'=>array_keys(array_filter($snap)), 'qualifying_manufacturing_opportunity'=>$manufacture!==null, 'fallback_count'=>count(array_filter($cards,static fn($c)=>$c['state']==='supply_objective'))],
+        return ['as_of'=>gmdate('c'),'status'=>'ready','orders'=>$cards,'coverage'=>['activity_count'=>3,'manufacturing_recipes'=>count($this->ref['blueprints']),'market_snapshot_regions'=>array_keys(array_filter($snap)), 'qualifying_manufacturing_opportunity'=>$manufacture!==null, 'fallback_count'=>count(array_filter($cards,static fn($c)=>$c['state']==='supply_objective')),'resource_alternatives'=>count($cards[1]['alternatives']??[]),'venal_planets_surveyed'=>count($catalog['planets']??[])],
             'note'=>'Only MARKET LEAD can display an estimated margin, before omitted costs. MARKET CONTEXT provides observed prices, not activity profit. SUPPLY OBJECTIVE is a verified input relationship without verified economics.','source'=>'CCP SDE site reference, current Commando Guri LP offers and collected ESI regional market orders.'];
     }
 }
