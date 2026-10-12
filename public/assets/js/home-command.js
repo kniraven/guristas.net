@@ -219,11 +219,11 @@
         const campaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
         const running = campaigns.filter(c=>c.state==='ACTIVE' && !c.ended_at);
         if (running.length!==1 || campaigns.length!==1) return {title:'HOLD POSITION',detail:'No confirmed active insurgency. Stage your ship and await the next target assignment.'};
-        const systems = Array.isArray(data?.systems) ? data.systems : [];
-        // Only recommend verified active campaign systems. Do not suggest Stage 5 targets.
-        const candidates=systems.filter(s=>Number.isInteger(s?.id) && Number.isInteger(s.corruption_stage) && s.corruption_stage>=0 && s.corruption_stage<5);
-        if(!candidates.length) return {title:'HOLD POSITION',detail:'All reported targets are at Stage 5, or no eligible target was verified.'};
-        // Calculate minimum in-campaign jumps to a system with a verified high-sec gate.
+        // Match the published server selection when the browser uses its fallback path.
+        // Suppression 5 prevents an unfinished system from reaching Corruption 5.
+        const candidates=systems.filter(s=>Number.isInteger(s?.id) && Number.isInteger(s.corruption_stage) && s.corruption_stage>=0 && s.corruption_stage<5
+            && (!Number.isInteger(s.suppression_stage)||s.suppression_stage<5));
+        if(!candidates.length) return {title:'HOLD POSITION',detail:'No verified Corruption target remains eligible; Suppression 5 blocks further advancement to Corruption 5.'};
         const distances=new Map(), queue=[];
         for(const s of systems){if(s.highsec_adjacent===true){distances.set(s.id,0);queue.push(s.id);}}
         const adj=new Map(systems.map(s=>[s.id,[]]));
@@ -233,15 +233,32 @@
         for(let i=0;i<queue.length;i++)for(const next of adj.get(queue[i])||[])if(!distances.has(next)){
             distances.set(next,distances.get(queue[i])+1);queue.push(next);
         }
-        candidates.sort((a,b)=> b.corruption_stage-a.corruption_stage
-            || (Number.isFinite(b.corruption_percent)?b.corruption_percent:-1)-(Number.isFinite(a.corruption_percent)?a.corruption_percent:-1)
+        const score=s=>{
+            const c=s.corruption_stage, sup=s.suppression_stage;
+            const pct=Number.isFinite(s.corruption_percent)?Math.max(0,Math.min(100,s.corruption_percent)):0;
+            const contested=Number.isInteger(sup)&&sup>=0&&sup<5&&sup>c;
+            let result=c*100+pct;
+            if(contested) result+=40;
+            if(contested&&sup===4)result+=20;
+            if(contested&&c>=2&&sup-c<=1)result+=15;
+            if(sup===4&&c===4)result+=25;
+            if(c===4&&Number.isFinite(s.corruption_percent)&&s.corruption_percent>=80)result+=100;
+            return result;
+        };
+        candidates.sort((a,b)=>score(b)-score(a)
             || (distances.get(a.id)??Infinity)-(distances.get(b.id)??Infinity)
             || String(a.name||'').localeCompare(String(b.name||'')));
-        const winner=candidates[0];
-        const distance=distances.get(winner.id);
-        const highsec=distance===0?'Direct high-sec gate':Number.isInteger(distance)?`${distance} insurgency jump${distance===1?'':'s'} to a high-sec gate`:'High-sec proximity unverified';
-        const pct=Number.isFinite(winner.corruption_percent)?` · ${winner.corruption_percent.toFixed(1)}%` : '';
-        return {title:`DEPLOY TO ${winner.name||'SYSTEM '+winner.id} // RAISE CORRUPTION`,detail:`Current corruption: Stage ${winner.corruption_stage}/5${pct}. ${highsec}. Target chosen for the highest unfinished corruption progress.`};
+        const w=candidates[0], distance=distances.get(w.id);
+        const near=distance===0?'Direct high-sec gate':Number.isInteger(distance)?`${distance} insurgency jumps to a high-sec gate`:'High-sec proximity not verified';
+        const pct=Number.isFinite(w.corruption_percent)?` · ${w.corruption_percent.toFixed(1)}%`:'';
+        const sup=Number.isInteger(w.suppression_stage)?` Suppression Stage ${w.suppression_stage}/5.`:' Suppression unverified.';
+        const contested=Number.isInteger(w.suppression_stage)&&w.suppression_stage>=0&&w.suppression_stage<5&&w.suppression_stage>w.corruption_stage;
+        const finish=w.corruption_stage===4&&Number.isFinite(w.corruption_percent)&&w.corruption_percent>=80;
+        const reason=finish?'FINISH THE JOB: Corruption 5 is close; secure the objective before diverting pilots.'
+            :contested?'TURN THE TIDE: Empire Suppression is ahead. Contest complexes to deny further enemy captures while advancing Corruption.'
+            :'SECURE CORRUPTION: Advance the strongest viable unfinished objective.';
+        return {title:`DEPLOY TO ${w.name||'SYSTEM '+w.id} // ${contested?'TURN THE TIDE':'RAISE CORRUPTION'}`,
+            detail:`Corruption Stage ${w.corruption_stage}/5${pct}.${sup} ${reason} ${near}.`};
     }
     function renderRaidRecommendation(){
         const r=raidRecommendation(campaign,campaignMeta,campaignFailed);

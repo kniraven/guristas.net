@@ -292,36 +292,10 @@ final class GuristasMarketIntelligence {
         }
         unset($order);
     }
-    /** Same documented ranking as the previous browser implementation, computed at collection time. */
+    /** Precompute RAID target once during publication; clients do not rerank it. */
     private function raidTarget(array $data): array {
-        $campaigns=$data['campaigns']??[];
-        if(!is_array($campaigns)||count($campaigns)!==1||($campaigns[0]['state']??'')!=='ACTIVE'||!empty($campaigns[0]['ended_at']))
-            return ['title'=>'HOLD POSITION','detail'=>'No single confirmed active insurgency.'];
-        $systems=is_array($data['systems']??null)?$data['systems']:[];
-        $eligible=array_values(array_filter($systems,static fn($s)=>is_array($s)&&isset($s['id'],$s['corruption_stage'])
-            &&is_int($s['corruption_stage'])&&$s['corruption_stage']>=0&&$s['corruption_stage']<5));
-        if(!$eligible)return ['title'=>'HOLD POSITION','detail'=>'No eligible unfinished corruption target was verified.'];
-        $adj=[];$dist=[];$queue=[];
-        foreach($systems as $s){$id=(int)($s['id']??0);if($id<1)continue;$adj[$id]=[];
-            if(($s['highsec_adjacent']??false)===true){$dist[$id]=0;$queue[]=$id;}
-        }
-        foreach($data['edges']??[] as $edge){$a=(int)($edge['a']??0);$b=(int)($edge['b']??0);
-            if(isset($adj[$a],$adj[$b])){$adj[$a][]=$b;$adj[$b][]=$a;}
-        }
-        for($i=0;$i<count($queue);$i++){
-            $id=$queue[$i];foreach($adj[$id]??[] as $next)if(!isset($dist[$next])){$dist[$next]=$dist[$id]+1;$queue[]=$next;}
-        }
-        usort($eligible,static function($a,$b)use($dist){
-            return $b['corruption_stage']<=>$a['corruption_stage']
-              ?: (is_numeric($b['corruption_percent']??null)?(float)$b['corruption_percent']:-1)<=> (is_numeric($a['corruption_percent']??null)?(float)$a['corruption_percent']:-1)
-              ?: ($dist[(int)$a['id']]??PHP_INT_MAX)<=>($dist[(int)$b['id']]??PHP_INT_MAX)
-              ?: strcmp((string)($a['name']??''),(string)($b['name']??''));
-        });
-        $winner=$eligible[0];$id=(int)$winner['id'];$distance=$dist[$id]??null;
-        $near=$distance===0?'Direct high-sec gate':($distance!==null?$distance.' insurgency jumps to a high-sec gate':'High-sec proximity not verified');
-        $percent=is_numeric($winner['corruption_percent']??null)?' · '.number_format((float)$winner['corruption_percent'],1).'%':'';
-        return ['title'=>'DEPLOY TO '.($winner['name']??'SYSTEM '.$id).' // RAISE CORRUPTION',
-            'detail'=>'Stage '.$winner['corruption_stage'].'/5'.$percent.'. '.$near.'. Highest unfinished corruption progress.'];
+        require_once __DIR__.'/RaidPriority.php';
+        return GuristasRaidPriority::recommend($data);
     }
     public function refreshRaid(): array {
         require_once __DIR__.'/DataServices.php';
