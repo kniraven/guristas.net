@@ -101,7 +101,7 @@ final class GuristasMarketIntelligence {
                 $price=(float)$o['price'];$volume=(int)$o['volume_remain'];
                 $station=(int)$o['location_id'];
                 if(!is_finite($price)||$price<=0||$volume<1||$station<60000000||$station>=61000000)continue;
-                $row=['t'=>$type,'l'=>$station,'p'=>$price,'v'=>$volume,'m'=>max(1,(int)($o['min_volume']??1)),'b'=>(bool)$o['is_buy_order'],'r'=>$o['range']??'station'];
+                $row=['t'=>$type,'l'=>$station,'p'=>$price,'v'=>$volume,'m'=>max(1,(int)($o['min_volume']??1)),'b'=>(bool)$o['is_buy_order'],'r'=>$o['range']??'station','i'=>(int)($o['order_id']??0)];
                 if($priority){$orders[]=$row;continue;}
                 $key=$type.':'.(int)$row['b'];
                 $grouped[$key][]=$row;
