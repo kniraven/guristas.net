@@ -46,13 +46,21 @@
         link.setAttribute('aria-label','Open Market Intelligence');
         footer.appendChild(link);
     }
-    // BUILD uses only server-published, evidence-filtered research leads.
+    // BUILD v21: one independent recommendation each for manufacture, mine, and PI.
     let buildLoading=false,buildLastSuccess=0;
     const buildISK=value=>{
         const n=Number(value);if(!Number.isFinite(n))return 'UNKNOWN';
         if(Math.abs(n)>=1e9)return (n/1e9).toFixed(2)+'B';
         if(Math.abs(n)>=1e6)return (n/1e6).toFixed(2)+'M';
         return (n/1e3).toFixed(1)+'K';
+    };
+    const buildNextStep=(card,skills)=>{
+        if(!skills)return null;
+        if(card.activity==='manufacture' && Number(skills['3380']||0)<1)return 'PILOT CHECK: Train Industry to begin improving production efficiency. Confirm the blueprint’s actual requirements in-game.';
+        if(card.activity==='mine' && Number(skills['3386']||0)<1)return 'PILOT CHECK: Train Mining and use a qualified mining ship. Verify ore and refining requirements in-game.';
+        if(card.activity==='pi' && Number(skills['13279']||0)<1)return 'PILOT CHECK: Train Remote Sensing before planning a planetary colony.';
+        if(card.activity==='pi')return `PILOT CHECK: Remote Sensing ${skills['13279']||0}; Interplanetary Consolidation ${skills['2495']||0}. Review colony availability and planet surveys.`;
+        return 'PILOT CHECK: Basic activity skill detected. Confirm equipment, facility, blueprint and any advanced prerequisites in-game.';
     };
     async function loadBuild(){
         if(buildLoading||Date.now()-buildLastSuccess<300000)return;
@@ -61,43 +69,49 @@
         const control=new AbortController();const timer=setTimeout(()=>control.abort(),12000);
         try {
             const report=(await json('/api/industry/build-orders.php',control.signal)).data;
-            if(!Array.isArray(report?.orders))throw new Error('Invalid build report');
+            if(!Array.isArray(report?.orders)||report.orders.length!==3)throw new Error('Invalid BUILD report');
+            // Self-only endpoint: no EVE token or full skill catalog is sent to the browser.
+            let skills=null;
+            try {const response=await fetch('/api/industry/build-skills.php',{credentials:'same-origin',cache:'no-store',signal:control.signal});
+                if(response.ok){const body=await response.json();if(body.ok&&body.state==='ready')skills=body.levels||null;}}
+            catch(_ignored){}
             host.replaceChildren();
             for(let i=0;i<3;i++){
-                const order=report.orders[i];
-                const card=document.createElement('article');card.className='build-order-card';
-                const label=document.createElement('span');label.className='build-order-label';
-                label.textContent=String(i+1).padStart(2,'0')+' // '+(order?'INDUSTRY LEAD':'NO VERIFIED LEAD');
-                const heading=document.createElement('strong');heading.textContent=order?.product||'INTELLIGENCE PENDING';
-                const details=document.createElement('p');details.className='build-order-info';
-                details.textContent=order?`${order.quantity} unit(s) · ${order.destination.region} buy order · ${order.inputs.length} material types`:'No complete, recent material quote and eligible pirate-region buyer. No fabricated profit.';
-                card.append(label,heading,details);
-                if(order){
-                    const margin=document.createElement('span');margin.className='build-order-spread';
-                    margin.textContent='BEFORE JOB/HAUL // +'+buildISK(order.room_before_job_and_haul_isk)+' ISK';
-                    margin.title='NOT verified profit. Includes modeled 7.5% tax and full one-off LP blueprint acquisition at 1,000 ISK/LP. Excludes job fees, shipping and risk.';
-                    const link=document.createElement('a');link.className='command-screen-link';
-                    link.href='/industry/?view=build&bp='+encodeURIComponent(order.blueprint_id);
-                    link.textContent='☞ CHECK FULL COSTS ↗';
-                    const explanation=document.createElement('button');explanation.type='button';explanation.className='build-order-intel';explanation.textContent='VIEW EVIDENCE';
-                    const dossier=document.createElement('div');dossier.className='build-order-dossier';dossier.hidden=true;
-                    dossier.textContent=`Jita 4-4 material ask total: ${buildISK(order.materials_cost_isk)} ISK. Destination bid: ${buildISK(order.bid_revenue_isk)} ISK at NPC station ${order.destination.station_id} (order ${order.destination.order_id}). LP blueprint offer: ${order.blueprint_redemption.lp.toLocaleString()} LP + ${buildISK(order.blueprint_redemption.isk)} ISK. ${order.assumptions}`;
-                    explanation.addEventListener('click',()=>{dossier.hidden=!dossier;explanation.setAttribute('aria-expanded',String(!dossier.hidden));});
-                    explanation.setAttribute('aria-expanded','false');
-                    card.append(margin,explanation,link,dossier);
+                const c=report.orders[i];const card=document.createElement('article');card.className='build-order-card';
+                const tag=document.createElement('span');tag.className='build-order-label';
+                tag.textContent=String(i+1).padStart(2,'0')+' // '+['MANUFACTURE','MINE','PLANETARY'][i]+' // '+(c.state==='market_lead'?'PRICE VERIFIED':c.state==='market_context'?'MARKET CONTEXT':c.state==='supply_objective'?'SUPPLY OBJECTIVE':'NO VERIFIED LEAD');
+                const head=document.createElement('strong');head.textContent=c.title||'INTELLIGENCE PENDING';
+                const desc=document.createElement('p');desc.className='build-order-info';
+                let nextAction=c.action;
+                if(skills){
+                    if(c.activity==='manufacture'&&Number(skills['3380']||0)===0)nextAction='TRAIN INDUSTRY // '+c.action;
+                    if(c.activity==='mine'&&Number(skills['3386']||0)===0)nextAction='TRAIN MINING // '+c.action;
+                    if(c.activity==='pi'&&Number(skills['13279']||0)===0)nextAction='TRAIN REMOTE SENSING // '+c.action;
                 }
-                host.appendChild(card);
+                desc.textContent=nextAction+' · '+c.detail;
+                card.append(tag,head,desc);
+                if(Number.isFinite(Number(c.metric_isk))&&c.state==='market_lead'){
+                    const profit=document.createElement('span');profit.className='build-order-spread';
+                    profit.textContent='BEFORE JOB/HAUL // +'+buildISK(c.metric_isk)+' ISK';card.appendChild(profit);
+                }
+                const explanation=document.createElement('button');explanation.type='button';explanation.className='build-order-intel command-screen-link';
+                explanation.textContent='☞ VIEW INTEL';explanation.setAttribute('aria-expanded','false');
+                const dossier=document.createElement('div');dossier.className='build-order-dossier';dossier.hidden=true;
+                const evidence=document.createElement('p');evidence.textContent=c.reason||'No evidence explanation available.';dossier.appendChild(evidence);
+                const personal=buildNextStep(c,skills);
+                if(personal){const line=document.createElement('p');line.textContent=personal;dossier.appendChild(line);}
+                const goto=document.createElement('a');goto.className='command-screen-link';goto.href=c.url||'/industry/';goto.textContent='☞ INDUSTRY TOOL ↗';
+                explanation.addEventListener('click',()=>{dossier.hidden=!dossier.hidden;explanation.setAttribute('aria-expanded',String(!dossier.hidden));});
+                card.append(explanation,goto,dossier);host.appendChild(card);
             }
             const stamp=Date.parse(report.as_of||'');
-            text('[data-build-freshness]',`CCP SDE + ESI // ${Number.isFinite(stamp)?new Date(stamp).toISOString().slice(5,16).replace('T',' ')+' EVE':'NO VERIFIED TIME'} · ${report.coverage?.qualified_leads||0} LEADS · JOB/HAUL COSTS NOT INCLUDED`);
+            text('[data-build-freshness]',`CCP SDE + ESI // ${Number.isFinite(stamp)?new Date(stamp).toISOString().slice(5,16).replace('T',' ')+' EVE':'NO VERIFIED TIME'} · MARKET LEAD / CONTEXT / SUPPLY OBJECTIVE · COSTS VARY`);
             buildLastSuccess=Date.now();
         }catch(_error){
-            host.replaceChildren();
-            const card=document.createElement('article');card.className='build-order-card';
-            const title=document.createElement('strong');title.textContent='BUILD INTELLIGENCE UNAVAILABLE';
-            const note=document.createElement('p');note.textContent='Awaiting scheduled, verified market evidence. Use the fabrication console for manual calculations.';
-            card.append(title,note);host.appendChild(card);
-            text('[data-build-freshness]','CCP SDE + ESI // NO VERIFIED REPORT');
+            host.replaceChildren();for(let i=0;i<3;i++){
+                const card=document.createElement('article');card.className='build-order-card';const title=document.createElement('strong');title.textContent=['MANUFACTURE','MINE','PLANETARY'][i]+' // INTEL UNAVAILABLE';
+                const note=document.createElement('p');note.textContent='Server publication unavailable. Verify production details in-game.';card.append(title,note);host.appendChild(card);}
+            text('[data-build-freshness]','CCP SDE + ESI // AWAITING REPORT');
         }finally{clearTimeout(timer);buildLoading=false;}
     }
     // The public trade endpoint shares a server-side market snapshot between visitors.

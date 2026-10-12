@@ -1397,3 +1397,10 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
 .build-order-dossier:not([hidden]){position:absolute;inset:4px;z-index:3;background:var(--panel-solid);border:1px solid var(--accent-bright);padding:9px;overflow:auto;font:.68rem/1.45 ui-monospace,monospace;color:var(--text)}
 .build-orders-footer{min-height:20px;flex-wrap:nowrap}.build-orders-footer>[data-build-freshness]{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.build-orders-footer>a{flex:none}
 @media(max-width:700px){.build-order-grid{grid-template-columns:1fr;overflow:auto}.build-order-card{min-height:135px}.home-refresh .directive-row .directive-build-console{overflow:auto}}
+
+/* BUILD v21: preserve the existing fixed-height three-card console. */
+.build-order-card{gap:4px}
+.build-order-info{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.build-order-card>.build-order-intel{margin-top:auto;border:1px solid var(--accent-bright);border-radius:3px;padding:3px 6px;background:rgba(0,0,0,.22)}
+.build-order-card>.command-screen-link{margin-top:0}
+.build-order-card>.build-order-spread{margin-top:0}
