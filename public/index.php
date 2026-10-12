@@ -190,13 +190,49 @@ $navActive = 'command';
 $headerClass = 'site-header';
 $headerSubtitle = 'Pirate Command Network';
 require dirname(__DIR__) . '/app/views/partials/site-header.php';
+
+// The site header has already verified the faction posture (or owner visual preview).
+// Hero messaging is presentational and never controls authorization.
+$heroPosture = (string)($factionStatus['posture'] ?? 'unknown');
+$pilotName = trim((string)($viewer['character_name'] ?? ''));
+$greeting = $pilotName !== '' && $heroPosture !== 'guest' ? $pilotName . ', ' : '';
+$heroCopy = match ($heroPosture) {
+    'guest' => [
+        'relay' => 'VENAL RELAY // UNIDENTIFIED CAPSULEER',
+        'message' => 'You found the pirate network. Explore the intel, then sign in to identify your pilot.',
+    ],
+    'neutral' => [
+        'relay' => 'VENAL RELAY // INDEPENDENT CAPSULEER',
+        'message' => '' . $greeting . 'no militia colors detected. Your next move could be with Guristas. Explore the network and consider enlisting.',
+    ],
+    'guristas' => [
+        'relay' => 'VENAL RELAY // GURISTAS OPERATIVE',
+        'message' => '' . $greeting . 'your pirate credentials check out. Find your next profitable move, supply The Fulcrum, and keep the warzone burning.',
+    ],
+    'angel' => [
+        'relay' => 'VENAL RELAY // ANGEL CARTEL ALLY',
+        'message' => '' . $greeting . 'Angel Cartel credentials accepted. The Fulcrum has room for fellow pirates. Keep the empire navies guessing.',
+    ],
+    'amarr', 'minmatar' => [
+        'relay' => 'VENAL RELAY // IMPERIAL MILITIA DETECTED',
+        'message' => '' . $greeting . 'you wear an empire uniform, but you are not our primary enemy. Consider leaving it behind and flying with Guristas.',
+    ],
+    'unknown' => [
+        'relay' => 'VENAL RELAY // IDENTITY UNCONFIRMED',
+        'message' => '' . $greeting . 'your militia status cannot be verified right now. Public intelligence remains available while your identity is checked.',
+    ],
+    default => [
+        'relay' => 'VENAL RELAY // VISITING CAPSULEER',
+        'message' => 'Explore pirate warfare, profitable operations and Guristas intelligence. Your next move is yours.',
+    ],
+};
 ?>
 
     <main id="command">
         <section class="hero shell">
             <div class="hero-copy reveal">
                 <p class="eyebrow">
-                    VENAL RELAY // PUBLIC ACCESS
+                    <?= escape($heroCopy['relay']) ?>
                 </p>
 
                 <h1>
@@ -207,7 +243,7 @@ require dirname(__DIR__) . '/app/views/partials/site-header.php';
                 </h1>
 
                 <p class="hero-lede">
-                    Pirate warfare, profitable plans and stories worth stealing. Explore EVE’s Guristas network. Your next move is yours.
+                    <?= escape($heroCopy['message']) ?>
                 </p>
 
                 <details class="rookie-brief">

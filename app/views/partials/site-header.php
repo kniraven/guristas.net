@@ -1,4 +1,19 @@
 <?php
+// v18.1: authenticated Caldari and Gallente pilots are intercepted.
+// Admin-only visual preview never changes real ESI identity or API permissions.
+require_once __DIR__ . '/../../services/FactionAccess.php';
+$factionViewer = isset($viewer) && is_array($viewer) ? $viewer : (function_exists('eve_current_user') ? eve_current_user() : null);
+$factionStatus = GuristasFactionAccess::resolve($factionViewer);
+// Keep the owner's preview controls reachable, even while simulating a firewall.
+$factionAdminRoute = str_starts_with((string)($_SERVER['REQUEST_URI'] ?? ''), '/admin/');
+if (!$factionAdminRoute) $factionStatus = GuristasFactionAccess::previewForOwner($factionViewer, $factionStatus);
+if (!$factionAdminRoute && in_array(($factionStatus['posture'] ?? ''), ['caldari','gallente'], true)) {
+    if (!headers_sent()) { http_response_code(403); header('Cache-Control: private, no-store'); header('Vary: Cookie'); }
+    require __DIR__ . '/faction-firewall.php';
+    exit;
+}
+?>
+<?php
 // Set $navActive, $headerClass and $headerSubtitle before including this partial.
 // Uses the page theme choices and initial theme, plus the signed-in viewer.
 ?>
@@ -118,3 +133,4 @@
             <?php require __DIR__ . '/site-nav.php'; ?>
         </div>
     </header>
+<?php require __DIR__ . '/faction-preview-switch.php'; ?>

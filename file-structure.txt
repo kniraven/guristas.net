@@ -19,6 +19,8 @@ app/services/EveAuth.php
 app/services/FrontlinesService.php
 app/services/GuristasDashboard.php
 app/services/GuristasProgress.php
+app/services/MarketIntelligence.php
+app/services/MarketPageClient.php
 app/services/PilotCombat.php
 app/services/PilotDataService.php
 app/services/PilotEntityNames.php
@@ -36,6 +38,8 @@ app/services/StreamMessageService.php
 app/services/TicketAttachments.php
 app/services/TicketService.php
 app/services/TicketStorageBridge.php
+app/services/TradeAudit.php
+app/services/TradeOrders.php
 app/services/UniverseService.php
 app/services/VenalActivityHistory.php
 app/services/VenalService.php
@@ -58,6 +62,8 @@ app/views/partials/site-header.php
 app/views/partials/site-nav.php
 app/views/partials/supply-job.php
 app/views/partials/supply-record.php
+bin/guristas-intelligence.php
+bin/guristas-trade-audit.php
 config/.gitkeep
 config/auth.local.php.example
 config/esi-scopes.php
@@ -102,6 +108,7 @@ public/api/account/pilot.php
 public/api/account/ship-layout.php
 public/api/industry/offers.php
 public/api/industry/quote.php
+public/api/industry/trade-orders.php
 public/api/status.php
 public/api/stream/intelligence.php
 public/api/stream/messages.php
@@ -110,6 +117,7 @@ public/api/venal/history.php
 public/api/venal/map.php
 public/api/venal/overlay.php
 public/api/war/guristas-overlay.php
+public/api/war/raid-orders.php
 public/api/zarzakh/overlay.php
 public/assets/audio/black-rabbits-demo.mp3
 public/assets/audio/fatal-mistake-demo.mp3

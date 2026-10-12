@@ -95,6 +95,7 @@ function escape(string $value): string
                 <h2 id="staff-heading">Staff access</h2>
                 <p>Manage who can access staff tools.</p>
                 <a class="button" href="/admin/tickets/?staff=1">Manage staff</a>
+                <a class="button" href="/admin/faction-preview/">Preview faction access</a>
             </section>
         <?php endif; ?>
     </main>
