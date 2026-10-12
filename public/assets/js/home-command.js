@@ -80,6 +80,7 @@
                 const c=report.orders[i];
                 const card=document.createElement('article');card.className='build-order-card';
                 card.dataset.buildStatus=c.state||'unavailable';
+                card.title=c.state==='market_lead'?'Solid orange: cost-backed manufacturing margin; excludes actual job and hauling costs.':c.state==='market_context'?'Solid purple: verified market price, not verified mining or PI net profit.':c.state==='supply_objective'?'Dashed purple: a Guristas supply objective, profit unverified.':'No sufficient evidence.';
                 const type=['MANUFACTURE','MINE','PLANETARY'][i];
                 const evidenceLabel=c.state==='market_lead'?'COST-BACKED LEAD':c.state==='market_context'?'PRICE CONTEXT':c.state==='supply_objective'?'SUPPLY OBJECTIVE':'NO VERIFIED LEAD';
                 const heading=document.createElement('div');heading.className='build-order-heading';
@@ -103,11 +104,11 @@
                 const metric=document.createElement('div');metric.className='build-order-metric';
                 const metricLabel=document.createElement('strong');
                 if(c.state==='market_lead'&&Number.isFinite(Number(c.metric_isk))){
-                    metricLabel.textContent='EST. MARGIN / +'+buildISK(c.metric_isk)+' ISK';
+                    metricLabel.textContent='PRE-JOB MARGIN / +'+buildISK(c.metric_isk)+' ISK';
                     metric.title='Estimated margin before manufacturing job, hauling and other unverified costs.';
                 }else metricLabel.textContent=evidenceLabel;
                 const metricNote=document.createElement('small');
-                metricNote.textContent=c.state==='market_lead'?'BEFORE JOB / HAUL':c.state==='market_context'?'NOT MINING / PI PROFIT':'PROFIT NOT VERIFIED';
+                metricNote.textContent=c.state==='market_lead'?'NOT NET PROFIT':c.state==='market_context'?'NOT MINING / PI PROFIT':'PROFIT NOT VERIFIED';
                 metric.append(metricLabel,metricNote);
                 const dossier=document.createElement('section');dossier.className='build-order-dossier';dossier.hidden=true;
                 const dossierHead=document.createElement('div');dossierHead.className='build-order-dossier-head';

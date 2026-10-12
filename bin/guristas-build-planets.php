@@ -22,8 +22,19 @@ try {
         };
         if(!isset($state['region_loaded'])){$r=$get('/universe/regions/10000015');$state['constellations']=array_map('intval',$r['constellations']??[]);$state['region_loaded']=true;}
         while($calls<$limit&&$state['constellations']){$id=(int)$state['constellations'][0];$r=$get('/universe/constellations/'.$id);foreach($r['systems']??[] as $sid)$state['systems'][]=(int)$sid;array_shift($state['constellations']);}
-        while($calls<$limit&&!$state['constellations']&&$state['systems']){$id=(int)$state['systems'][0];$r=$get('/universe/systems/'.$id);foreach($r['planets']??[] as $p){$pid=(int)($p['planet_id']??0);if($pid>0)$state['pending_planets'][]=['id'=>$pid,'system_id'=>$id];}array_shift($state['systems']);}
-        while($calls<$limit&&!$state['constellations']&&!$state['systems']&&$state['pending_planets']){$item=$state['pending_planets'][0];$r=$get('/universe/planets/'.$item['id']);$type=(int)($r['type_id']??0);if($type>0)$state['planets'][]=['id'=>$item['id'],'system_id'=>$item['system_id'],'type_id'=>$type];array_shift($state['pending_planets']);}
+        // Interleave system lookup and planet-type lookup. Older logic waited
+        // until every system was scanned, leaving the catalog empty for hours.
+        while($calls<$limit && !$state['constellations'] && ($state['systems'] || $state['pending_planets'])){
+            if($state['pending_planets']){
+                $item=$state['pending_planets'][0];$r=$get('/universe/planets/'.$item['id']);$type=(int)($r['type_id']??0);
+                if($type>0)$state['planets'][]=['id'=>$item['id'],'system_id'=>$item['system_id'],'type_id'=>$type];
+                array_shift($state['pending_planets']);
+            }else{
+                $id=(int)$state['systems'][0];$r=$get('/universe/systems/'.$id);
+                foreach($r['planets']??[] as $p){$pid=(int)($p['planet_id']??0);if($pid>0)$state['pending_planets'][]=['id'=>$pid,'system_id'=>$id];}
+                array_shift($state['systems']);
+            }
+        }
         if(!$state['constellations']&&!$state['systems']&&!$state['pending_planets']){$state['complete']=true;$state['collected_at']=gmdate('c');}
         $state['updated_at']=gmdate('c');$state['source']='CCP ESI public planet type inventory, NOT live extraction yields';
         $intel->publish('build-venal-planets',$state);

@@ -61,46 +61,56 @@ final class GuristasBuildIntelligence {
             if(!$input)continue;
             $product=(int)($bp['product']['typeID']??0);$yield=(int)($bp['product']['quantity']??0);
             if($product<1||$yield<1)continue;
-            foreach([10000015=>'Venal',10001000=>'The Fulcrum'] as $region=>$name){
-                foreach(self::orderRows($markets[$region],$product,true) as $bid){
+            foreach([10000015=>'Venal',10001000=>'The Fulcrum',10000002=>'Jita export'] as $region=>$name){
+                if(empty($markets[$region]))continue;
+                $destination=$region===10000002?60003760:0;
+                foreach(self::orderRows($markets[$region],$product,true,$destination) as $bid){
                     if((int)$bid['v']<$yield)continue;
                     $revenue=$yield*(float)$bid['p'];$margin=.925*$revenue-$input['cost']-$offer['cost'];
-                    if($margin<=0 || ($best && $margin<=$best['margin']))continue;
+                    if($margin<2000000 || ($best && $margin<=$best['margin']))continue;
                     $best=['margin'=>$margin,'blueprint_id'=>(int)$bpId,'product_type_id'=>$product,'yield'=>$yield,'cost'=>$input['cost'],'offer'=>$offer,'inputs'=>$input['inputs'],'bid_order_id'=>(int)$bid['i'],'bid_station_id'=>(int)$bid['l'],'region'=>$name,'revenue'=>$revenue];
                 }
             }
         }
         if(!$best)return null;
-        return self::card('manufacture','market_lead',$this->name($best['product_type_id']),'MANUFACTURE FOR '.$best['region'],
+        return self::card('manufacture','market_lead',$this->name($best['product_type_id']),($best['region']==='Jita export'?'PLAN VENAL PRODUCTION → JITA':'PLAN VENAL PRODUCTION → '.$best['region']),
             '1 blueprint run · '.number_format($best['yield']).' finished unit(s)',
-            'Recent, traceable destination buy order and full Jita material asks. BPC charged at full LP-store acquisition cost (1,000 ISK/LP). Modeled 7.5% sales tax; job fees, access, haul and BPC run count not verified.',
+            'Real destination buy order and executable Jita material asks. BPC charged at full LP-store acquisition cost (1,000 ISK/LP), plus modeled 7.5% sales tax. Venal facility availability, actual job fees, blueprint efficiency, transport and safe access NOT verified; not final net profit.',
             ['metric_isk'=>$best['margin'],'metric_label'=>'MARGIN BEFORE JOB/HAUL','evidence'=>$best,'url'=>'/industry/?view=build&bp='.$best['blueprint_id']]);
     }
-    /** Mineral demand is grounded in Guristas blueprints. Mining site/ore presence is NOT inferred from market data. */
-    private function mineralLead(?array $jita):array {
-        $use=[];
-        foreach($this->ref['blueprints'] as $bp){
-            foreach($bp['materials']??[] as $m){$id=(int)($m['typeID']??0);if($id>=34&&$id<=40)$use[$id]=($use[$id]??0)+(int)($m['quantity']??0);}
+    /** Real ore prices, not an assertion that a belt currently contains that ore. */
+    private function mineralLead(?array $jita,?array $venal=null):array {
+        // CCP SDE type IDs and ore volumes: Scordite 0.15m³; Pyroxeres 0.30m³.
+        // These are physical mineable ores, unlike Pyerite which is a refined mineral.
+        $ore=[1228=>['name'=>'Scordite','m3'=>0.15,'mineral'=>'Tritanium + Pyerite'],
+              1224=>['name'=>'Pyroxeres','m3'=>0.30,'mineral'=>'Pyerite + Mexallon']];
+        $best=null;
+        foreach($ore as $id=>$info){
+            foreach([10000015=>[$venal,'Venal'],10000002=>[$jita,'Jita']] as $region=>$target){
+                [$market,$name]=$target;
+                if(!self::fresh($market))continue;
+                foreach(self::orderRows($market,$id,true,$region===10000002?60003760:0) as $bid){
+                    $qty=(int)$bid['v'];if($qty<100 || (int)($bid['m']??1)>100)continue;
+                    $price=(float)$bid['p'];$perM3=$price/$info['m3'];
+                    // Market demand at the same price may be exhausted by a single buyer.
+                    // Prefer a Venal buyer when normalized values are reasonably close.
+                    $score=$perM3*($region===10000015?1.12:1.0);
+                    if($best===null||$score>$best['score'])$best=['id'=>$id,'name'=>$info['name'],'unit_price'=>$price,'per_m3'=>$perM3,'volume'=>$qty,'region'=>$name,'order'=>(int)$bid['i'],'score'=>$score,'minerals'=>$info['mineral']];
+                }
+            }
         }
-        $chosen=null;
-        foreach($use as $id=>$units){
-            if(!self::fresh($jita))continue;
-            $bid=self::orderRows($jita,$id,true,60003760)[0]??null;
-            if(!$bid)continue;
-            $value=$units*(float)$bid['p'];
-            if($chosen===null || $value>$chosen['weighted'])$chosen=['id'=>$id,'weighted'=>$value,'price'=>(float)$bid['p'],'order'=>(int)$bid['i'],'units'=>$units];
+        if($best){
+            $local=$best['region']==='Venal';
+            return self::card('mine','market_context','Mine '.$best['name'].' in Venal',
+                'SCOUT VENAL BELTS / ORE SITES',
+                ($local?'Venal':'Jita').' buy bid '.number_format($best['unit_price'],2).' ISK/ore · '.number_format($best['per_m3'],0).' ISK/m³ gross',
+                'Market quote is for mineable '.$best['name'].' ore, with an identified buyer ('.$best['volume'].' units available). Ore yields '.$best['minerals'].' on refining, but no guaranteed ore spawn is known in Venal. Gross listed value per m³ is NOT ISK/hour or net mining profit. Survey the ore in-game; check mining yield, travel, hauling, and refinery output before committing.',
+                ['evidence'=>['ore_type_id'=>$best['id'],'buy_order_id'=>$best['order'],'bid_units'=>$best['volume'],'market'=>$best['region'],'gross_isk_per_m3'=>$best['per_m3']], 'url'=>'/industry/']);
         }
-        if($chosen){
-            return self::card('mine','market_context','Mine for '.$this->name($chosen['id']),'SCOUT VENAL ORE SOURCES',
-                'Reference mineral: '.$this->name($chosen['id']).' · Jita bid '.number_format($chosen['price'],2).' ISK / unit',
-                'Demand context comes from the Guristas blueprint recipes and a real Jita buy order. The weighted value ranks ingredients, NOT ore mining profitability. Ore availability, mineral yield, refinery taxes and local demand must be verified before mining.',
-                ['evidence'=>['type_id'=>$chosen['id'],'jita_order_id'=>$chosen['order'],'blueprint_units'=>$chosen['units']],'url'=>'/industry/']);
-        }
-        // Morphite is an actual input in multiple Guristas blueprints, but local Mercoxit availability is not established.
-        return self::card('mine','supply_objective','Morphite for Guristas production','LOCATE SUITABLE VENAL ORE',
-            'Guristas blueprint input · verify ore presence and refining yield in-game',
-            'The Guristas blueprint reference establishes material demand, not live asteroid availability or profitable extraction. Do not assume Mercoxit is present in any named system.',
-            ['evidence'=>['material_type_id'=>11399,'blueprint_recipes_using_input'=>count(array_filter($this->ref['blueprints'],static fn($bp)=>in_array(11399,array_column($bp['materials']??[],'typeID'),true)))],'url'=>'/industry/']);
+        return self::card('mine','supply_objective','Scout ore for Guristas hulls','FIND VENAL ORE SITES',
+            'Look for Scordite / Pyroxeres · survey before mining',
+            'Actual ore types produce minerals needed for ordinary industry, but no timely profitable ore buyer or live mining-site availability is verified. Compare selling ore with refining it after checking yield and transport. Do not treat this as a profit estimate.',
+            ['evidence'=>['known_ore_type_ids'=>[1228,1224]],'url'=>'/industry/']);
     }
     /** PI material demand from SDE recipes. Production-chain sourcing remains a planning lead. */
     private function piLead(?array $jita,?array $venal,?array $fulcrum):array {
@@ -114,7 +124,7 @@ final class GuristasBuildIntelligence {
             foreach([10000015=>'Venal',10001000=>'The Fulcrum'] as $rid=>$name){
                 if(!self::fresh($rid===10000015?$venal:$fulcrum))continue;
                 $row=self::orderRows($rid===10000015?$venal:$fulcrum,$id,true)[0]??null;
-                if($row && (!$bid || (float)$row['p']>(float)$bid['p'])){$bid=$row;$region=$name;}
+                if($row && (int)$row['v']>=5 && (!$bid || (float)$row['p']>(float)$bid['p'])){$bid=$row;$region=$name;}
             }
             if($bid){$score=(float)$bid['p']*$uses[$id];if($best===null||$score>$best['score'])$best=['id'=>$id,'score'=>$score,'region'=>$region,'bid'=>$bid,'use'=>$uses[$id]];}
         }
@@ -141,17 +151,24 @@ final class GuristasBuildIntelligence {
         $snap=[];foreach([10000002,10000015,10001000] as $rid){$s=$this->intel->read('region-'.$rid);$snap[$rid]=self::fresh($s)?$s:null;}
         $o=$this->intel->read('lp-offers');$ts=strtotime((string)($o['fetched_at']??''));
         $offers=$o && is_array($o['offers']??null) && $ts!==false && time()-$ts<=172800?$o['offers']:[];
-        $manufacture=$snap[10000002]&&$snap[10000015]&&$snap[10001000]&&$offers?$this->bestManufacture($snap,$offers):null;
+        $manufacture=$snap[10000002]&&$offers?$this->bestManufacture($snap,$offers):null;
         $pi=$this->piLead($snap[10000002],$snap[10000015],$snap[10001000]);
         $catalog=$this->intel->read('build-venal-planets');
         if(!empty($catalog['planets']) && is_array($catalog['planets'])) {
             $count=count($catalog['planets']);
+            $example=$catalog['planets'][0]??null;
+            if(is_array($example) && !empty($example['system_id'])){
+                $planetKinds=[11=>'temperate',12=>'ice',13=>'gas',2014=>'oceanic',2015=>'lava',2016=>'barren',2017=>'storm',2063=>'plasma'];
+                $kind=$planetKinds[(int)($example['type_id']??0)]??'unknown-type';
+                $pi['reason'].=' Example verified Venal planet: ID '.(int)$example['id'].' in system '.(int)$example['system_id'].' ('.$kind.'). Planet type does not prove ingredients, extraction rate, or profitability for Synthetic Synapses.';
+                $pi['evidence']['survey_example_planet']=$example;
+            }
             $pi['detail'].=' · '.$count.' Venal planet types surveyed'.(!empty($catalog['complete'])?' (catalog complete)':' (catalog in progress)');
             $pi['reason'].=' Public ESI planet-type inventory surveyed '.$count.' planets; does not establish resource density or full production-chain viability.';
             $pi['evidence']['venal_planets_surveyed']=$count;
             $pi['evidence']['planet_catalog_complete']=!empty($catalog['complete']);
         }
-        $cards=[$manufacture??$this->fallbackManufacture(),$this->mineralLead($snap[10000002]),$pi];
+        $cards=[$manufacture??$this->fallbackManufacture(),$this->mineralLead($snap[10000002],$snap[10000015]),$pi];
         return ['as_of'=>gmdate('c'),'status'=>'ready','orders'=>$cards,'coverage'=>['activity_count'=>3,'manufacturing_recipes'=>count($this->ref['blueprints']),'market_snapshot_regions'=>array_keys(array_filter($snap)), 'qualifying_manufacturing_opportunity'=>$manufacture!==null, 'fallback_count'=>count(array_filter($cards,static fn($c)=>$c['state']==='supply_objective'))],
             'note'=>'Only MARKET LEAD can display an estimated margin, before omitted costs. MARKET CONTEXT provides observed prices, not activity profit. SUPPLY OBJECTIVE is a verified input relationship without verified economics.','source'=>'CCP SDE site reference, current Commando Guri LP offers and collected ESI regional market orders.'];
     }
