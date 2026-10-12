@@ -38,6 +38,16 @@ foreach(['trade-orders','build-orders','raid'] as $key){
             isset($audit['opportunity_score_difference_pct'])?(string)$audit['opportunity_score_difference_pct']:'unknown');
         printf("  Coverage policy: %s; within score budget: %s\n",
             (string)($audit['coverage_policy']??'legacy'),!empty($audit['chosen_within_economic_budget'])?'YES':'NO');
+        $slots=$coverage['homepage_required_slots']??[];
+        if($slots){
+            foreach(['IMMEDIATE','NEW_ORDER','GURISTAS_LP'] as $slot){
+                $detail=$slots[$slot]??[];
+                printf("  Homepage %-13s %s (qualified shortlist: %d)\n",
+                    $slot,!empty($detail['selected'])?'READY':'NO VERIFIED CANDIDATE',
+                    (int)($detail['qualified_candidates']??0));
+            }
+            echo "  Homepage role policy: strict; old coverage score is diagnostic only.\n";
+        }
         echo "  NOTE: Ranking score gap is NOT an ISK profit difference.\n";
     }
     if($key==='build-orders'){
