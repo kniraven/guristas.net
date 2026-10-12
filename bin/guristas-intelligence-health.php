@@ -19,10 +19,16 @@ foreach($regions as $rid=>$label){
         foreach($benchmarks as $id=>$name)printf("  %-26s %s\n",$name,isset($present[$id])?'QUOTED':'NO RETAINED ORDER');
     }
 }
-foreach(['trade-orders','build-orders','raid-orders'] as $key){
+foreach(['trade-orders','build-orders','raid'] as $key){
     $r=$intel->read($key);
     if(!$r){echo "$key: NOT FOUND\n";continue;}
     $data=$r['data']??$r;
+    if($key==='raid'){
+        $campaigns=$data['campaigns']??[];
+        $target=$data['server_recommendation']??null;
+        printf("raid: %d campaigns; recommendation: %s\n",count($campaigns),is_array($target)?(string)($target['title']??'UNKNOWN'):'NO PUBLISHED RECOMMENDATION');
+        continue;
+    }
     printf("%s: %d cards\n",$key,count($data['orders']??[]));
     if($key==='trade-orders'){
         $coverage=$data['coverage']??[];$audit=$coverage['selection_audit']??[];
@@ -30,6 +36,8 @@ foreach(['trade-orders','build-orders','raid-orders'] as $key){
             !empty($coverage['selection_requirements_met'])?'YES':'NO',
             (int)($coverage['selected_lp_count']??0),
             isset($audit['opportunity_score_difference_pct'])?(string)$audit['opportunity_score_difference_pct']:'unknown');
+        printf("  Coverage policy: %s; within score budget: %s\n",
+            (string)($audit['coverage_policy']??'legacy'),!empty($audit['chosen_within_economic_budget'])?'YES':'NO');
         echo "  NOTE: Ranking score gap is NOT an ISK profit difference.\n";
     }
     if($key==='build-orders'){
