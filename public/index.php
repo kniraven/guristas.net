@@ -339,6 +339,13 @@ $heroCopy = match ($heroPosture) {
                             </div>
                             <div class="trade-orders-footer"><span data-trade-freshness>SOURCE // CCP ESI · CHECKING</span><span>Estimated fees, risk and LP valuation; verify in EVE.</span></div>
                         </div>
+                        <div class="directive-build-console" data-directive-build hidden aria-label="Guristas industrial intelligence">
+                            <div class="build-orders-heading"><span>INDUSTRIAL COMMAND // VERIFIED MARKET LEADS</span></div>
+                            <div class="build-order-grid" data-build-orders role="status" aria-live="polite">
+                                <article class="build-order-card"><strong>CONTACTING INDUSTRY RELAY</strong></article>
+                            </div>
+                            <div class="build-orders-footer"><span data-build-freshness>CCP SDE + ESI // CHECKING</span><a class="command-screen-link" href="/industry/">☞ FABRICATION CONSOLE ↗</a></div>
+                        </div>
                         <div class="directive-raid-console" data-directive-raid>
             <section class="guri-console" aria-labelledby="guri-console-heading" data-guri-console data-state="loading">
                 <div class="gc-housing">
