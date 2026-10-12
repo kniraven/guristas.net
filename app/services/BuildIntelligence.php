@@ -73,10 +73,10 @@ final class GuristasBuildIntelligence {
             }
         }
         if(!$best)return null;
-        return self::card('manufacture','market_lead',$this->name($best['product_type_id']),($best['region']==='Jita export'?'PLAN VENAL PRODUCTION → JITA':'PLAN VENAL PRODUCTION → '.$best['region']),
-            '1 blueprint run · '.number_format($best['yield']).' finished unit(s)',
-            'Real destination buy order and executable Jita material asks. BPC charged at full LP-store acquisition cost (1,000 ISK/LP), plus modeled 7.5% sales tax. Venal facility availability, actual job fees, blueprint efficiency, transport and safe access NOT verified; not final net profit.',
-            ['metric_isk'=>$best['margin'],'metric_label'=>'MARGIN BEFORE JOB/HAUL','evidence'=>$best,'url'=>'/industry/?view=build&bp='.$best['blueprint_id']]);
+        return self::card('manufacture','market_lead',$this->name($best['product_type_id']),($best['region']==='Jita export'?'BUILD IN VENAL → SELL JITA':'BUILD IN VENAL → SELL '.$best['region']),
+            '1 run: '.number_format($best['yield']).' unit(s) · buyer order #'.$best['bid_order_id'],
+            'NEXT STEPS: redeem the blueprint for '.number_format($best['offer']['lp']).' LP plus '.number_format($best['offer']['isk']).' ISK; buy the required materials at Jita 4-4; confirm a manufacturing-capable Venal facility and job quote; run the blueprint once; sell '.number_format($best['yield']).' output unit(s) into buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'. Modeled sales tax 7.5% and LP 1,000 ISK/LP. Material estimates use actual asks. Before starting, verify blueprint runs and material efficiency, facility/job fees, hauling cost, buyer availability and safe transport. Margin is not net profit.',
+            ['metric_isk'=>$best['margin'],'metric_label'=>'MARGIN BEFORE JOB/HAUL','evidence'=>$best,'steps'=>['Redeem blueprint: '.number_format($best['offer']['lp']).' Commando Guri LP + '.number_format($best['offer']['isk']).' ISK.','Buy blueprint materials at Jita 4-4; confirm the actual blueprint run count and skills.','Confirm a manufacturing-capable facility and quote in Venal BEFORE hauling.','Build '.number_format($best['yield']).' unit(s); verify then fulfill buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'.'],'url'=>'/industry/?view=build&bp='.$best['blueprint_id']]);
     }
     /** Real ore prices, not an assertion that a belt currently contains that ore. */
     private function mineralLead(?array $jita,?array $venal=null):array {
@@ -102,42 +102,49 @@ final class GuristasBuildIntelligence {
         if($best){
             $local=$best['region']==='Venal';
             return self::card('mine','market_context','Mine '.$best['name'].' in Venal',
-                'SCOUT VENAL BELTS / ORE SITES',
-                ($local?'Venal':'Jita').' buy bid '.number_format($best['unit_price'],2).' ISK/ore · '.number_format($best['per_m3'],0).' ISK/m³ gross',
-                'Market quote is for mineable '.$best['name'].' ore, with an identified buyer ('.$best['volume'].' units available). Ore yields '.$best['minerals'].' on refining, but no guaranteed ore spawn is known in Venal. Gross listed value per m³ is NOT ISK/hour or net mining profit. Survey the ore in-game; check mining yield, travel, hauling, and refinery output before committing.',
-                ['evidence'=>['ore_type_id'=>$best['id'],'buy_order_id'=>$best['order'],'bid_units'=>$best['volume'],'market'=>$best['region'],'gross_isk_per_m3'=>$best['per_m3']], 'url'=>'/industry/']);
+                'FIND '.$best['name'].' → SELL '.strtoupper($best['region']),
+                'Buyer order #'.$best['order'].' · '.number_format($best['unit_price'],2).' ISK/ore · at least 100 units',
+                'NEXT STEPS: scan Venal asteroid belts and ore anomalies for '.$best['name'].'; confirm a real deposit before deploying; mine up to the available buyer quantity (currently '.$best['volume'].' units) and transport ore to the '.($local?'Venal':'Jita 4-4').' buyer (order #'.$best['order'].'). Refines into '.$best['minerals'].'; compare direct ore sale against refining first. Gross order value '.number_format($best['per_m3'],0).' ISK/m³, NOT ISK/hour. Current asteroid availability, mining yield, hauling and loss risk are NOT verified.',
+                ['evidence'=>['ore_type_id'=>$best['id'],'buy_order_id'=>$best['order'],'bid_units'=>$best['volume'],'market'=>$best['region'],'gross_isk_per_m3'=>$best['per_m3']], 'steps'=>['Scout Venal belts and ore anomalies for actual '.$best['name'].' deposits.','Mine a starter batch of 100 units ONLY if this ore is present and accessible.','Check existing buyer order #'.$best['order'].' ('. $best['region'].') and transport risk before selling.'],'url'=>'/industry/']);
         }
         return self::card('mine','supply_objective','Scout ore for Guristas hulls','FIND VENAL ORE SITES',
-            'Look for Scordite / Pyroxeres · survey before mining',
+            'Search belts / ore anomalies · confirm deposits in-game',
             'Actual ore types produce minerals needed for ordinary industry, but no timely profitable ore buyer or live mining-site availability is verified. Compare selling ore with refining it after checking yield and transport. Do not treat this as a profit estimate.',
-            ['evidence'=>['known_ore_type_ids'=>[1228,1224]],'url'=>'/industry/']);
+            ['evidence'=>['known_ore_type_ids'=>[1228,1224]],'steps'=>['Search a Venal system for asteroid belts or ore anomalies.','Check whether Scordite or Pyroxeres is actually present.','Compare an available ore buyer against your mining and hauling costs before extracting.'],'url'=>'/industry/']);
     }
-    /** PI material demand from SDE recipes. Production-chain sourcing remains a planning lead. */
+    /** Verified Synthetic Synapses P3 schematic: 10 Supertensile Plastics + 10 Test Cultures -> 3 units / hour.
+     * Schematic data is stable reference; price estimates still exclude colony operating costs. */
     private function piLead(?array $jita,?array $venal,?array $fulcrum):array {
-        // Verified PI-derived ingredients used by the Guristas blueprint dataset.
-        $ids=[2346,2348,12836];$uses=[];
-        foreach($this->ref['blueprints'] as $bp){foreach($bp['materials']??[] as $m){$id=(int)($m['typeID']??0);if(in_array($id,$ids,true))$uses[$id]=($uses[$id]??0)+(int)$m['quantity'];}}
+        $output=2346; $ingredients=[2312=>10,2319=>10];
+        $ingredientNames=['Supertensile Plastics','Test Cultures'];
+        $unitCost=0.0; $inputs=[]; $complete=self::fresh($jita);
+        foreach($ingredients as $type=>$quantity){
+            $name=$type===2312?'Supertensile Plastics':'Test Cultures';
+            $quote=$complete?self::fills(self::orderRows($jita,$type,false,60003760),$quantity):null;
+            if(!$quote){$complete=false;break;}
+            $unitCost+=$quote['value'];$inputs[]=['type_id'=>$type,'item'=>$name,'quantity'=>$quantity,'cost_isk'=>$quote['value'],'order_ids'=>$quote['ids']];
+        }
         $best=null;
-        foreach($ids as $id){
-            if(empty($uses[$id]))continue;
-            $bid=null;$region='';
-            foreach([10000015=>'Venal',10001000=>'The Fulcrum'] as $rid=>$name){
-                if(!self::fresh($rid===10000015?$venal:$fulcrum))continue;
-                $row=self::orderRows($rid===10000015?$venal:$fulcrum,$id,true)[0]??null;
-                if($row && (int)$row['v']>=5 && (!$bid || (float)$row['p']>(float)$bid['p'])){$bid=$row;$region=$name;}
+        foreach([10000015=>['Venal',$venal,0],10001000=>['The Fulcrum',$fulcrum,0],10000002=>['Jita export',$jita,60003760]] as $region=>$row){
+            [$name,$market,$station]=$row;
+            if(!self::fresh($market))continue;
+            foreach(self::orderRows($market,$output,true,$station) as $bid){
+                if((int)$bid['v']<3)continue;
+                $gross=3*(float)$bid['p'];$surplus=.925*$gross-$unitCost;
+                if($complete && $surplus>0 && (!$best||$surplus>$best['surplus']))$best=['surplus'=>$surplus,'name'=>$name,'bid'=>$bid,'gross'=>$gross];
             }
-            if($bid){$score=(float)$bid['p']*$uses[$id];if($best===null||$score>$best['score'])$best=['id'=>$id,'score'=>$score,'region'=>$region,'bid'=>$bid,'use'=>$uses[$id]];}
         }
         if($best){
-            return self::card('pi','market_context','PI: '.$this->name($best['id']),'PLAN INDUSTRIAL PI IN VENAL',
-                'Observed '.$best['region'].' buyer · '.number_format((float)$best['bid']['p'],2).' ISK / unit',
-                'PI-derived material is required by Guristas ship blueprints. An existing buy order supports demand, NOT extraction yield or net colony profit. Verify intermediate recipes, planetary suitability, customs taxes and transport.',
-                ['evidence'=>['item_type_id'=>$best['id'],'order_id'=>(int)$best['bid']['i'],'required_in_blueprint_materials'=>$best['use']],'url'=>'/industry/']);
+            return self::card('pi','market_context','PI: Synthetic Synapses',
+                'PRODUCE 3 → SELL '.strtoupper($best['name']),
+                '10 Supertensile Plastics + 10 Test Cultures · 1-hour P3 cycle',
+                'NEXT STEPS: obtain 10 Supertensile Plastics and 10 Test Cultures (priced at Jita asks); supply a Venal Advanced Industry Facility on a suitable colony; run one hourly schematic cycle to produce 3 Synthetic Synapses; compare customs taxes, imports, exports and hauling; then sell to buyer order #'.(int)$best['bid']['i'].'. The estimate of '.number_format($best['surplus'],0).' ISK is after modeled 7.5% sales tax, BEFORE all colony taxes, facility/cargo costs, hauling and installation. Not verified net profit or planet extraction yield.',
+                ['evidence'=>['item_type_id'=>$output,'inputs'=>$inputs,'output_qty'=>3,'cycle_hours'=>1,'buyer_order_id'=>(int)$best['bid']['i'],'buyer_station_id'=>(int)$best['bid']['l'],'buyer_region'=>$best['name'],'estimated_surplus_before_pi_costs'=>$best['surplus']],'metric_isk'=>$best['surplus'],'steps'=>['Buy or produce 10 Supertensile Plastics and 10 Test Cultures.','Confirm a Venal colony with an Advanced Industry Facility; set schematic 92 (1 hour).','Produce 3 Synthetic Synapses; calculate actual customs and import/export expenses.','If still profitable, verify buyer order #'.(int)$best['bid']['i'].' at station ID '.(int)$best['bid']['l'].' before hauling.'],'url'=>'/industry/']);
         }
-        return self::card('pi','supply_objective','PI: Synthetic Synapses','ESTABLISH A VENAL PI SUPPLY CHAIN',
-            'Guristas blueprint ingredient · survey suitable planets and production steps',
-            'Synthetic Synapses (type 2346) is an actual ingredient in the local Guristas ship blueprint reference. This does not verify planet resource density, a specific planet, production feasibility for one character, or profitability.',
-            ['evidence'=>['item_type_id'=>2346,'blueprint_recipes_using_input'=>count(array_filter($this->ref['blueprints'],static fn($bp)=>in_array(2346,array_column($bp['materials']??[],'typeID'),true)))],'url'=>'/industry/']);
+        return self::card('pi','supply_objective','PI: Synthetic Synapses','RUN 1 P3 CYCLE IN VENAL',
+            '10 Supertensile Plastics + 10 Test Cultures → 3 Synthetic Synapses / hour',
+            'NEXT STEPS: select a suitable Venal planet and confirm its Advanced Industry Facility and colony access; import or produce 10 Supertensile Plastics plus 10 Test Cultures; produce 3 Synthetic Synapses in a one-hour cycle. This is a verified P3 schematic and Guristas blueprint ingredient, NOT a verified profitable colony. No reliable buyer/input quote combination survived the cost check. Check customs fees, extraction and transport before starting.',
+            ['evidence'=>['item_type_id'=>$output,'input_names'=>$ingredientNames,'input_quantities'=>[10,10],'output_qty'=>3,'cycle_hours'=>1],'steps'=>['Confirm a Venal colony with an Advanced Industry Facility and suitable available planet.','Import or produce 10 Supertensile Plastics and 10 Test Cultures.','Run Synthetic Synapses schematic 92 for one hour to produce 3 units.','Check current input/output prices, customs charges and hauling before repeating.'],'url'=>'/industry/']);
     }
     private function fallbackManufacture():array {
         $worm=$this->ref['blueprints']['17931']??null;
@@ -160,9 +167,10 @@ final class GuristasBuildIntelligence {
             if(is_array($example) && !empty($example['system_id'])){
                 $planetKinds=[11=>'temperate',12=>'ice',13=>'gas',2014=>'oceanic',2015=>'lava',2016=>'barren',2017=>'storm',2063=>'plasma'];
                 $kind=$planetKinds[(int)($example['type_id']??0)]??'unknown-type';
-                $pi['reason'].=' Example verified Venal planet: ID '.(int)$example['id'].' in system '.(int)$example['system_id'].' ('.$kind.'). Planet type does not prove ingredients, extraction rate, or profitability for Synthetic Synapses.';
+                $pi['reason'].=' Survey candidate: Venal planet ID '.(int)$example['id'].' in solar system ID '.(int)$example['system_id'].' ('.$kind.'). Confirm the planet name and colony access in EVE before acting; type alone cannot establish input extraction rates.';
                 $pi['evidence']['survey_example_planet']=$example;
             }
+            $pi['reason'].=' Current public planet catalog includes '.$count.' planet entries.';
             $pi['detail'].=' · '.$count.' Venal planet types surveyed'.(!empty($catalog['complete'])?' (catalog complete)':' (catalog in progress)');
             $pi['reason'].=' Public ESI planet-type inventory surveyed '.$count.' planets; does not establish resource density or full production-chain viability.';
             $pi['evidence']['venal_planets_surveyed']=$count;

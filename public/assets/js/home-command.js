@@ -92,12 +92,7 @@
                 const title=document.createElement('strong');title.className='build-order-title';title.textContent=c.title||'INTELLIGENCE PENDING';
                 const action=document.createElement('div');action.className='build-order-action';
                 let nextAction=String(c.action||'REVIEW INTELLIGENCE');
-                if(skills){
-                    if(c.activity==='manufacture'&&Number(skills['3380']||0)===0)nextAction='TRAIN INDUSTRY FIRST';
-                    if(c.activity==='mine'&&Number(skills['3386']||0)===0)nextAction='TRAIN MINING FIRST';
-                    if(c.activity==='pi'&&Number(skills['13279']||0)===0)nextAction='TRAIN REMOTE SENSING FIRST';
-                }
-                const key=document.createElement('span');key.textContent='NEXT ACTION';
+                const key=document.createElement('span');key.textContent='YOUR ORDERS';
                 const value=document.createElement('strong');value.textContent=nextAction;value.title=nextAction;
                 action.append(key,value);
                 const detail=document.createElement('p');detail.className='build-order-detail';detail.textContent=c.detail||'More information in INTEL';detail.title=detail.textContent;
@@ -106,9 +101,12 @@
                 if(c.state==='market_lead'&&Number.isFinite(Number(c.metric_isk))){
                     metricLabel.textContent='PRE-JOB MARGIN / +'+buildISK(c.metric_isk)+' ISK';
                     metric.title='Estimated margin before manufacturing job, hauling and other unverified costs.';
+                }else if(c.activity==='pi'&&c.state==='market_context'&&Number.isFinite(Number(c.metric_isk))){
+                    metricLabel.textContent='BEFORE PI COSTS / +'+buildISK(c.metric_isk)+' ISK';
+                    metric.title='Only PI materials, quoted buyer revenue and modeled sales tax. Planetary customs, hauling and operating costs are not included.';
                 }else metricLabel.textContent=evidenceLabel;
                 const metricNote=document.createElement('small');
-                metricNote.textContent=c.state==='market_lead'?'NOT NET PROFIT':c.state==='market_context'?'NOT MINING / PI PROFIT':'PROFIT NOT VERIFIED';
+                metricNote.textContent=c.state==='market_lead'||(c.activity==='pi'&&c.state==='market_context'&&Number.isFinite(Number(c.metric_isk)))?'NOT NET PROFIT':c.state==='market_context'?'NOT MINING PROFIT':'PROFIT NOT VERIFIED';
                 metric.append(metricLabel,metricNote);
                 const dossier=document.createElement('section');dossier.className='build-order-dossier';dossier.hidden=true;
                 const dossierHead=document.createElement('div');dossierHead.className='build-order-dossier-head';
@@ -118,6 +116,7 @@
                 const dossierContent=document.createElement('div');dossierContent.className='build-order-dossier-text';
                 const addLine=(label,message)=>{const p=document.createElement('p');const h=document.createElement('strong');h.textContent=label+' // ';p.append(h,document.createTextNode(message));dossierContent.append(p);};
                 addLine('OBJECTIVE',String(c.action||'Review the opportunity')+'. '+String(c.detail||''));
+                if(Array.isArray(c.steps))c.steps.forEach((step,index)=>addLine('STEP '+(index+1),String(step)));
                 addLine('EVIDENCE',String(c.reason||'No evidence explanation available.'));
                 addLine('CONFIDENCE',c.state==='market_lead'?'Input cost and buyer quote observed. Actual job/haul costs and access remain unverified.':c.state==='market_context'?'Real item price, but no confirmed extraction yield, site or net production profit.':'Verified supply relationship only; no confirmed market profit.');
                 const personal=buildNextStep(c,skills);if(personal)addLine('PILOT',personal);
