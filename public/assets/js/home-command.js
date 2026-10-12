@@ -55,11 +55,11 @@
         return (n/1e3).toFixed(1)+'K';
     };
     const buildNextStep=(card,skills)=>{
-        if(!skills)return null;
+        if(!skills)return 'Character skills not verified. This is the public recommendation; confirm your skills and equipment in EVE.';
         if(card.activity==='manufacture' && Number(skills['3380']||0)<1)return 'PILOT CHECK: Train Industry to begin improving production efficiency. Confirm the blueprint’s actual requirements in-game.';
         if(card.activity==='mine' && card.resource_category==='ice' && Number(skills['16281']||0)<1)return 'PILOT CHECK: Ice Harvesting I is needed for this ice. Verify Mining IV and ice equipment prerequisites.';
         if(card.activity==='mine' && card.resource_category!=='ice' && Number(skills['3386']||0)<1)return 'PILOT CHECK: Train Mining and use a qualified mining ship. Verify ore and refining requirements in-game.';
-        if(card.activity==='pi' && Number(skills['13279']||0)<1)return 'PILOT CHECK: Train Remote Sensing before planning a planetary colony.';
+        if(card.activity==='pi' && Number(skills['13279']||0)<1)return 'Remote Sensing is not required to run an Advanced Industry Facility on an accessible colony; it helps with remote planet surveys. Check colony slots, command-center access and installation skills in EVE.';
         if(card.activity==='pi')return `PILOT CHECK: Remote Sensing ${skills['13279']||0}; Interplanetary Consolidation ${skills['2495']||0}. Review colony availability and planet surveys.`;
         return 'PILOT CHECK: Basic activity skill detected. Confirm equipment, facility, blueprint and any advanced prerequisites in-game.';
     };
@@ -83,9 +83,10 @@
                 // they are qualified to attempt; missing skill data never implies access.
                 const canAttempt=choice=>Object.entries(choice.requires_skills||{}).every(([id,level])=>
                     skills!==null && Number(skills[id]||0)>=Number(level));
+                let chosenAlternative=false;
                 if(skills && !canAttempt(c) && Array.isArray(c.alternatives)){
                     const eligible=c.alternatives.find(canAttempt);
-                    if(eligible)c=eligible;
+                    if(eligible){c=eligible;chosenAlternative=true;}
                 }
                 const card=document.createElement('article');card.className='build-order-card';
                 card.dataset.buildStatus=c.state||'unavailable';
@@ -97,26 +98,29 @@
                 const explanation=document.createElement('button');explanation.type='button';explanation.className='build-order-intel';
                 explanation.textContent='☞ VIEW INTEL';explanation.setAttribute('aria-expanded','false');
                 explanation.setAttribute('aria-label','View evidence for '+(c.title||type));
-                heading.append(tag,explanation);
+                const skillIndicator=document.createElement('span');skillIndicator.className='build-order-skill';
+                skillIndicator.textContent=skills===null?'SKILLS: UNCHECKED':canAttempt(c)?(chosenAlternative?'SKILLS: MATCHED ALT':'SKILLS: BASIC CHECK'):'SKILLS: CHECK';
+                skillIndicator.title=skills===null?'No verified character skills were available; public recommendation shown.':canAttempt(c)?'Listed minimum skill levels checked. Other ship, facility, blueprint and colony requirements may apply.':'One or more listed minimum skills are missing. See INTEL.';
+                heading.append(tag,skillIndicator,explanation);
                 const title=document.createElement('strong');title.className='build-order-title';title.textContent=c.title||'INTELLIGENCE PENDING';
                 const action=document.createElement('div');action.className='build-order-action';
                 let nextAction=String(c.action||'REVIEW INTELLIGENCE');
                 if(skills && !canAttempt(c))nextAction='SKILL REQUIRED // '+nextAction;
-                const key=document.createElement('span');key.textContent='YOUR ORDERS';
+                const key=document.createElement('span');key.textContent='NEXT ACTION';
                 const value=document.createElement('strong');value.textContent=nextAction;value.title=nextAction;
                 action.append(key,value);
                 const detail=document.createElement('p');detail.className='build-order-detail';detail.textContent=c.detail||'More information in INTEL';detail.title=detail.textContent;
                 const metric=document.createElement('div');metric.className='build-order-metric';
                 const metricLabel=document.createElement('strong');
                 if(c.state==='market_lead'&&Number.isFinite(Number(c.metric_isk))){
-                    metricLabel.textContent='PRE-JOB MARGIN / +'+buildISK(c.metric_isk)+' ISK';
+                    metricLabel.textContent='BEFORE JOB + HAUL / +'+buildISK(c.metric_isk)+' ISK';
                     metric.title='Estimated margin before manufacturing job, hauling and other unverified costs.';
                 }else if(c.activity==='pi'&&c.state==='market_context'&&Number.isFinite(Number(c.metric_isk))){
-                    metricLabel.textContent='BEFORE PI COSTS / +'+buildISK(c.metric_isk)+' ISK';
+                    metricLabel.textContent='INPUT-OUTPUT GAP / +'+buildISK(c.metric_isk)+' ISK';
                     metric.title='Only PI materials, quoted buyer revenue and modeled sales tax. Planetary customs, hauling and operating costs are not included.';
                 }else metricLabel.textContent=evidenceLabel;
                 const metricNote=document.createElement('small');
-                metricNote.textContent=c.state==='market_lead'||(c.activity==='pi'&&c.state==='market_context'&&Number.isFinite(Number(c.metric_isk)))?'NOT NET PROFIT':c.state==='market_context'?'NOT MINING PROFIT':'PROFIT NOT VERIFIED';
+                metricNote.textContent=c.state==='market_lead'?'JOB, HAUL EXCLUDED':c.activity==='pi'&&c.state==='market_context'&&Number.isFinite(Number(c.metric_isk))?'CUSTOMS, HAUL EXCLUDED':c.state==='market_context'?'BUYER PRICE ONLY':c.state==='supply_objective'?'GURISTAS INPUT NEEDED':'DATA UNAVAILABLE';
                 metric.append(metricLabel,metricNote);
                 const dossier=document.createElement('section');dossier.className='build-order-dossier';dossier.hidden=true;
                 const dossierHead=document.createElement('div');dossierHead.className='build-order-dossier-head';
@@ -127,10 +131,28 @@
                 const addLine=(label,message)=>{const p=document.createElement('p');const h=document.createElement('strong');h.textContent=label+' // ';p.append(h,document.createTextNode(message));dossierContent.append(p);};
                 addLine('OBJECTIVE',String(c.action||'Review the opportunity')+'. '+String(c.detail||''));
                 if(Array.isArray(c.steps))c.steps.forEach((step,index)=>addLine('STEP '+(index+1),String(step)));
-                addLine('EVIDENCE',String(c.reason||'No evidence explanation available.'));
+                addLine('WHY THIS',String(c.why_selected||'This supports a known Guristas production input. Profit is not established.'));
+                const ev=c.evidence||{};
+                if(c.activity==='manufacture'){
+                    if(ev.blueprint_id)addLine('BLUEPRINT','Type '+ev.blueprint_id+' · LP and materials priced where available');
+                    if(ev.bid_order_id)addLine('BUYER','Order #'+ev.bid_order_id+' · station '+ev.bid_station_id+' · '+(ev.region||'destination'));
+                    if(Array.isArray(ev.inputs))addLine('MATERIALS',ev.inputs.map(x=>x.quantity+' × '+x.name).join(' · '));
+                    addLine('COST GAPS','Venal facility, actual job quote, blueprint efficiency, shipping and market changes');
+                }else if(c.activity==='mine'){
+                    if(ev.item_type_id)addLine('RESOURCE',(c.title||'Ore')+' · item #'+ev.item_type_id+' · '+(ev.unit_m3||'?')+' m³/unit');
+                    if(ev.bid_order_id)addLine('BUYER','Order #'+ev.bid_order_id+' · station '+ev.bid_station_id+' · '+(ev.snapshot_market||'market'));
+                    addLine('LOCATION','Venal deposit not verified; check an actual belt or anomaly before mining');
+                    addLine('VALUE','Buyer price is gross revenue, not mining profit or ISK/hour');
+                }else if(c.activity==='pi'){
+                    addLine('RECIPE','10 Supertensile Plastics + 10 Test Cultures → 3 Synthetic Synapses in one hour');
+                    if(ev.buyer_order_id)addLine('BUYER','Order #'+ev.buyer_order_id+' · station '+ev.buyer_station_id);
+                    addLine('LOCATION','Venal planet access, colony facility and input logistics must be checked');
+                    addLine('COST GAPS','Customs, transport, colony setup and extraction/processing costs');
+                }
+                if(c.reason){const details=document.createElement('details');details.className='build-order-method';const summary=document.createElement('summary');summary.textContent='FULL SOURCE NOTES';const body=document.createElement('p');body.textContent=String(c.reason);details.append(summary,body);dossierContent.append(details);}
                 if(Array.isArray(c.alternatives) && c.alternatives.length)addLine('ALTERNATIVES',c.alternatives.map(o=>o.title).join(' · '));
                 addLine('CONFIDENCE',c.state==='market_lead'?'Input cost and buyer quote observed. Actual job/haul costs and access remain unverified.':c.state==='market_context'?'Real item price, but no confirmed extraction yield, site or net production profit.':'Verified supply relationship only; no confirmed market profit.');
-                const personal=buildNextStep(c,skills);if(personal)addLine('PILOT',personal);
+                const personal=buildNextStep(c,skills);if(personal)addLine('SKILL CHECK',personal);
                 const goto=document.createElement('a');goto.className='command-screen-link build-order-tool';goto.href=c.url||'/industry/';goto.textContent='OPEN INDUSTRY TOOL ↗';
                 dossier.append(dossierHead,dossierContent,goto);
                 const setOpen=open=>{dossier.hidden=!open;explanation.setAttribute('aria-expanded',String(open));};
