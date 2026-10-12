@@ -7,6 +7,11 @@ $now=time();
 $regions=[10000002=>'Jita / The Forge',10000015=>'Venal',10001000=>'The Fulcrum / Yasna Zakh',10000032=>'Dodixie / Sinq Laison'];
 $benchmarks=[1224=>'Pyroxeres',1228=>'Scordite',16268=>'Gelidus',16269=>'Krystallos',2312=>'Supertensile Plastics',2319=>'Test Cultures',2346=>'Synthetic Synapses'];
 echo "GURISTAS ECONOMIC INTELLIGENCE HEALTH (READ ONLY)\n";
+$offerSnapshot=$intel->read('lp-offers');
+$lpStamp=strtotime((string)($offerSnapshot['fetched_at']??''))?:0;
+$lpAge=$lpStamp?max(0,$now-$lpStamp):null;
+printf("LP offers: %d; age=%s; next scheduled refresh threshold=18h; eligibility limit=24h\n",
+    count($offerSnapshot['offers']??[]),$lpAge===null?'missing':$lpAge.'s');
 foreach($regions as $rid=>$label){
     $snapshot=$intel->read('region-'.$rid);
     $ts=strtotime((string)($snapshot['fetched_at']??''))?:0;
@@ -52,6 +57,10 @@ foreach(['trade-orders','build-orders','raid'] as $key){
             (int)($coverage['lp_offers']??0),(int)($coverage['lp_reference_screened']??0),(int)($coverage['lp_reference_listings']??0));
         foreach(($coverage['lp_reference_rejections']??[]) as $reason=>$count){
             if((int)$count>0)printf("    LP reference rejected %-26s %d\n",$reason,(int)$count);
+        }
+        foreach(array_slice($coverage['lp_top_ranked']??[],0,5) as $rank=>$lead){
+            printf("  LP candidate #%d %-35s %9.2f ISK/LP  [%s]\n",$rank+1,(string)$lead['name'],
+                (float)$lead['cash_isk_per_lp'],!empty($lead['conditional'])?'CONDITIONAL':'EXISTING BID');
         }
         echo "  NOTE: Ranking score gap is NOT an ISK profit difference.\n";
     }

@@ -44,6 +44,21 @@ try{
         }
     }
     if(in_array($command,['offers','trade-cycle'],true))$log[]=$intel->refreshOffers();
+    // LP offers expire after 24h in TRADE; a normal scheduled publish must not
+    // silently drop an entire mandatory homepage role when offers age out.
+    // Refresh at 18h, but never use the old snapshot if refresh fails and it
+    // has crossed the existing 24h eligibility limit.
+    if(in_array($command,['publish','priority','region','rotate'],true)){
+        $snapshot=$intel->read('lp-offers');
+        $stamp=strtotime((string)($snapshot['fetched_at']??''))?:0;
+        if(!$stamp || time()-$stamp>=64800){
+            try{$log[]=['lp_auto_refresh'=>$intel->refreshOffers()];}
+            catch(Throwable $e){
+                error_log('Guristas LP scheduled refresh failed: '.$e->getMessage());
+                $log[]=['lp_auto_refresh'=>'failed; stale offers excluded by existing 24h guard'];
+            }
+        }
+    }
     if(in_array($command,['publish','trade-cycle','priority','region','rotate','offers'],true)){
         require_once dirname(__DIR__).'/app/services/TradeOrders.php';
         $report=(new GuristasTradeOrders($intel))->collect();

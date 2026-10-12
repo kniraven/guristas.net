@@ -188,7 +188,7 @@
                 const card=document.createElement('article');card.className='trade-order-card';card.dataset.tradeStatus=order.status||'standby';card.dataset.tradeSlot=String(i+1);
                 const add=(tag,className,value)=>{const el=document.createElement(tag);el.className=className;el.textContent=value||'';card.appendChild(el);};
                 const heading=document.createElement('div');heading.className='trade-order-heading';
-                const kind=document.createElement('span');kind.className='trade-order-kind';kind.textContent=String(i+1).padStart(2,'0')+' // '+(i===2?'NEW MARKET ORDER':(order.category||'ORDER'));
+                const kind=document.createElement('span');kind.className='trade-order-kind';kind.textContent=String(i+1).padStart(2,'0')+' // '+(i===2?'GURISTAS LP // REDEEM':(order.category||'ORDER'));
                 const assumptions=document.createElement('button');assumptions.type='button';assumptions.className='trade-order-assumptions';
                 assumptions.textContent='VIEW INTEL';
                 assumptions.setAttribute('aria-label','View order basis and assumptions for '+(order.item||'trade order'));
@@ -209,7 +209,13 @@
                 if(Number.isFinite(Number(order.revenue_isk)))line('TARGET SALE',isk(order.revenue_isk));
                 if(Number.isFinite(Number(order.sales_tax_isk)))line('SALES TAX',isk(order.sales_tax_isk)+' (base Accounting 0 estimate)');
                 if(Number(order.broker_fee_isk)>0)line('BROKER FEE',isk(order.broker_fee_isk)+' estimated');
-                if(Number(order.lp_required)>0)line('LP SPENT',Number(order.lp_required).toLocaleString('en-US')+' LP, valued at 1,000 ISK per LP');
+                if(Number(order.lp_required)>0){
+                    line('REDEMPTION',Number(order.lp_required).toLocaleString('en-US')+' LP + '+isk(order.redemption_isk_and_inputs_isk)+' in ISK and required item inputs');
+                    if(Number.isFinite(Number(order.unit_count))&&Number(order.unit_count)>0)line('REWARD QUANTITY',Number(order.unit_count).toLocaleString('en-US')+' units per recommended redemption lot');
+                    if(Number.isFinite(Number(order.lp_cash_isk_per_lp)))line('CASH RETURN PER LP',Number(order.lp_cash_isk_per_lp).toLocaleString('en-US',{maximumFractionDigits:2})+' ISK/LP after modeled cash costs and fees; LP opportunity value not deducted');
+                    if(Number.isFinite(Number(order.lp_cash_return_isk)))line('CASH RETURN',isk(order.lp_cash_return_isk)+' before transport, market movement, or uncertain sell-order fills');
+                    line('LP BENCHMARK','1,000 ISK/LP is an optional comparison value, not the price paid to redeem and not a guaranteed return.');
+                }
                 if(buyOrder){line('SOURCE ASK',isk(order.source_lowest_ask)+' per unit, '+Number(order.source_ask_units||0).toLocaleString('en-US')+' units at that price. This is NOT an agreed sale.');line('OUR LIMIT','A competitive bid may never fill, even if sellers have inventory. No station-specific fill time is verified.');}
                 if(listing && order.market_evidence){
                     const e=order.market_evidence;
@@ -250,8 +256,9 @@
                     unit.textContent=label;
                     head.append(key,unit);
                     const price=document.createElement('strong');price.className='trade-order-action-price';
-                    price.textContent=formatISK(amount)+' ISK / unit';
-                    price.title=Number(amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' ISK per unit';
+                    const isLpInput=Number(order.lp_required)>0&&(verb==='REDEEM'||verb==='BUILD');
+                    price.textContent=isLpInput?Number(order.lp_required).toLocaleString('en-US')+' LP + INPUTS':formatISK(amount)+' ISK / unit';
+                    price.title=isLpInput?'Cash and items required: '+formatISK(order.redemption_isk_and_inputs_isk)+' ISK (see INTEL)':Number(amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' ISK per unit';
                     const location=document.createElement('div');location.className='trade-order-location';
                     const place=document.createElement('span');place.className='trade-order-place';place.textContent=station||'Station not verified';
                     const geography=document.createElement('span');geography.className='trade-order-system';
@@ -259,7 +266,8 @@
                     location.append(place,geography);line.append(head,price,location);route.appendChild(line);
                 };
                 const quantityLabel=Number.isFinite(units)?units.toLocaleString('en-US')+' UNITS':'QUANTITY N/A';
-                const entryPrice=buyOrder?Number(order.buy_order_unit_price):Number(order.cost_isk)/units;
+                const lpRedemption=Number(order.lp_required)>0;
+                const entryPrice=lpRedemption?Number(order.redemption_isk_and_inputs_isk)/units:(buyOrder?Number(order.buy_order_unit_price):Number(order.cost_isk)/units);
                 if(method.includes('MANUFACTURE'))step('BUILD','Guristas LP blueprint + manufacturing',null,null,'Production facility / region not specified',entryPrice,quantityLabel);
                 else if(method.includes('REDEEM'))step('REDEEM','Commando Guri LP store',null,null,'Redemption station / region not specified',entryPrice,quantityLabel);
                 else step(buyOrder?'CREATE BUY ORDER':'BUY',order.source_station,order.source_system,order.source_region,'',entryPrice,quantityLabel);
@@ -272,7 +280,7 @@
                 profitLine.title=fullMargin;
                 const profitMatch=fullMargin.match(/([+-]\s*[\d,.]+\s*[KMB]?\s*ISK)\s*$/i);
                 const profitValue=profitMatch?profitMatch[1].replace(/\s+/g,' ').trim():'NOT VERIFIED';
-                profitLine.textContent='EST. PROFIT / '+profitValue;
+                profitLine.textContent=lpRedemption&&Number.isFinite(Number(order.lp_cash_isk_per_lp))?'LP YIELD / '+Number(order.lp_cash_isk_per_lp).toLocaleString('en-US',{maximumFractionDigits:0})+' ISK/LP':('EST. PROFIT / '+profitValue);
                 const statsLine=document.createElement('span');statsLine.className='trade-stats-line';
                 statsLine.textContent=buyOrder?'BUY ORDER MUST FILL':order.listing?'SELL ORDER MUST FILL':'EXCLUDES HAULING COSTS';
                 metrics.append(profitLine,statsLine);
