@@ -68,6 +68,13 @@ final class GuristasMarketIntelligence {
                 }
             }
         }
+        // Venal economic development must not require an existing local buy order.
+        // Collect these explicit industry benchmark items from mature trade hubs
+        // even when nobody has yet placed an order in Venal or The Fulcrum.
+        // The bounded external-market collector still keeps only competitive quotes.
+        foreach ([1224, 1228, 16268, 16269, 2312, 2319, 2346] as $id) {
+            $types[$id]=true;
+        }
         return $types;
     }
     private function marketPage(int $region,int $page):array{

@@ -193,7 +193,7 @@ final class GuristasBuildIntelligence {
             $pi['evidence']['planet_catalog_complete']=!empty($catalog['complete']);
         }
         $cards=[$manufacture??$this->fallbackManufacture(),$this->mineralLead($snap[10000002],$snap[10000015]),$pi];
-        return ['as_of'=>gmdate('c'),'status'=>'ready','orders'=>$cards,'coverage'=>['activity_count'=>3,'manufacturing_recipes'=>count($this->ref['blueprints']),'market_snapshot_regions'=>array_keys(array_filter($snap)), 'qualifying_manufacturing_opportunity'=>$manufacture!==null, 'fallback_count'=>count(array_filter($cards,static fn($c)=>$c['state']==='supply_objective')),'resource_alternatives'=>count($cards[1]['alternatives']??[]),'venal_planets_surveyed'=>count($catalog['planets']??[])],
+        return ['as_of'=>gmdate('c'),'status'=>'ready','orders'=>$cards,'coverage'=>['activity_count'=>3,'manufacturing_recipes'=>count($this->ref['blueprints']),'market_snapshot_regions'=>array_keys(array_filter($snap)), 'qualifying_manufacturing_opportunity'=>$manufacture!==null, 'fallback_count'=>count(array_filter($cards,static fn($c)=>$c['state']==='supply_objective')),'resource_alternatives'=>count($cards[1]['alternatives']??[]),'resource_benchmark_types'=>[1224,1228,16268,16269],'pi_benchmark_types'=>[2312,2319,2346],'venal_planets_surveyed'=>count($catalog['planets']??[])],
             'note'=>'Only MARKET LEAD can display an estimated margin, before omitted costs. MARKET CONTEXT provides observed prices, not activity profit. SUPPLY OBJECTIVE is a verified input relationship without verified economics.','source'=>'CCP SDE site reference, current Commando Guri LP offers and collected ESI regional market orders.'];
     }
 }
