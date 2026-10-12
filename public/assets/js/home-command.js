@@ -20,12 +20,29 @@
         const console=$('[data-directive-raid]'), mission=$('[data-directive-mission]');
         if(console)console.hidden=!raid;
         const tradePane=$('[data-directive-trade]');if(tradePane)tradePane.hidden=!trade;
-        if(trade)loadTrade();
+        if(trade){prepareTradeNavigation();loadTrade();}
         if(mission)mission.hidden=raid||trade;
         const categories={trade:['MARKET INTELLIGENCE','◇'],build:['INDUSTRIAL OPERATIONS','⬡'],lore:['ARCHIVE ACCESS','✧'],signals:['SIGNAL INTERCEPTION','◈'],join:['PERSONNEL RECRUITMENT','✦']};
         const info=categories[key] || ['WARFARE COMMAND','◆'];
         text('[data-directive-category]',info[0]);text('[data-directive-symbol]',info[1]);
         const pane=$('#directive-briefing');if(pane)pane.dataset.mode=raid?'raid':trade?'trade':'mission';
+    }
+    // Keep navigation controls in the same lower-right screen position as RAID.
+    function prepareTradeNavigation(){
+        const heading=$('.trade-orders-heading');
+        const footer=$('.trade-orders-footer');
+        const link=heading?.querySelector('a[href]');
+        if(!heading||!footer||!link)return;
+        const notice=Array.from(footer.children).find(el=>el!==link&&!el.hasAttribute('data-trade-freshness'));
+        if(notice){
+            notice.title='Estimated fees and LP valuation. Hauling costs, losses and changes in market prices are excluded; verify orders in EVE.';
+            notice.textContent='FEES EST. · LP VALUED · NO HAUL';
+            notice.classList.add('trade-orders-caveat');
+        }
+        link.classList.add('command-screen-link');
+        link.textContent='MARKET INTEL';
+        link.setAttribute('aria-label','Open Market Intelligence');
+        footer.appendChild(link);
     }
     // The public trade endpoint shares a server-side market snapshot between visitors.
     let tradeLoading=false, tradeLastCheck=0, tradeLastSuccess=0;
@@ -45,7 +62,7 @@
                 const heading=document.createElement('div');heading.className='trade-order-heading';
                 const kind=document.createElement('span');kind.className='trade-order-kind';kind.textContent=String(i+1).padStart(2,'0')+' // '+(i===2?'NEW MARKET ORDER':(order.category||'ORDER'));
                 const assumptions=document.createElement('button');assumptions.type='button';assumptions.className='trade-order-assumptions';
-                assumptions.textContent='INTEL ▸';
+                assumptions.textContent='VIEW INTEL';
                 assumptions.setAttribute('aria-label','View order basis and assumptions for '+(order.item||'trade order'));
                 // The dossier flips over this card, leaving the command console unchanged.
                 const dossier=document.createElement('section');dossier.className='trade-order-dossier';
@@ -76,7 +93,7 @@
                 if(Number(order.roi_ratio)>10)line('EXTREME RETURN','ROI is unusually high. One thin or temporary order can create misleading profits. Treat this as unconfirmed.');
                 line('THE CATCH','Pre-haul profit excludes travel costs, ambushes, cargo losses and market changes. The selection bonus for Fulcrum/Venal NEVER increases the displayed ISK profit.');
                 dossierHead.append(dossierName,dismiss);dossier.append(dossierHead,dossierText);
-                const setExpanded=open=>{dossier.hidden=!open;assumptions.setAttribute('aria-expanded',String(open));assumptions.textContent=open?'INTEL ▴':'INTEL ▸';};
+                const setExpanded=open=>{dossier.hidden=!open;assumptions.setAttribute('aria-expanded',String(open));assumptions.textContent=open?'CLOSE INTEL':'VIEW INTEL';};
                 assumptions.setAttribute('aria-expanded','false');
                 assumptions.addEventListener('click',()=>setExpanded(dossier.hidden));
                 dismiss.addEventListener('click',()=>{setExpanded(false);assumptions.focus();});
@@ -127,10 +144,9 @@
                 profitLine.title=fullMargin;
                 const profitMatch=fullMargin.match(/([+-]\s*[\d,.]+\s*[KMB]?\s*ISK)\s*$/i);
                 const profitValue=profitMatch?profitMatch[1].replace(/\s+/g,' ').trim():'NOT VERIFIED';
-                const profitKind=buyOrder?'POTENTIAL':order.listing?'UNREALIZED':'PRE-HAUL';
-                profitLine.textContent=profitKind+' / '+profitValue;
+                profitLine.textContent='EST. PROFIT / '+profitValue;
                 const statsLine=document.createElement('span');statsLine.className='trade-stats-line';
-                statsLine.textContent=buyOrder||order.listing?'NEW ORDER · FILL NOT GUARANTEED':'AFTER TAX · BEFORE HAUL';
+                statsLine.textContent=buyOrder?'BUY ORDER MUST FILL':order.listing?'SELL ORDER MUST FILL':'EXCLUDES HAULING COSTS';
                 metrics.append(profitLine,statsLine);
                 card.appendChild(metrics);
                 card.appendChild(dossier);

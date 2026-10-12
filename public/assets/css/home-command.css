@@ -1329,3 +1329,54 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
   .home-refresh .directive-row .trade-order-action-price{font-weight:800;color:var(--accent-bright);}
   .home-refresh .directive-row .trade-order-prices{display:none!important;}
 }
+
+/* UI-17: Common in-screen navigation controls. No hardware/card dimension changes. */
+.home-refresh .directive-row :is(.trade-orders-footer a.command-screen-link,.directive-raid-console .gc-actions a,.directive-mission-controls .home-links a){
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  box-sizing:border-box;border:1px solid var(--accent-bright);
+  border-radius:3px;background:linear-gradient(180deg,#ffffff12,#00000032);
+  color:var(--accent-bright);padding:3px 7px;
+  text-decoration:none;font-style:italic;font-weight:800;
+  line-height:1.15;white-space:nowrap;cursor:pointer;
+  box-shadow:inset 0 1px 0 #ffffff16,0 0 6px #0007;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+.home-refresh .directive-row :is(.trade-orders-footer a.command-screen-link,.directive-raid-console .gc-actions a,.directive-mission-controls .home-links a)::before{
+  content:"\261E";font-style:normal;font-weight:400;font-size:1.08em;line-height:1;
+}
+.home-refresh .directive-row :is(.trade-orders-footer a.command-screen-link,.directive-raid-console .gc-actions a,.directive-mission-controls .home-links a):hover{
+  background:color-mix(in srgb,var(--accent-bright) 17%,var(--panel-solid));
+  box-shadow:0 0 10px color-mix(in srgb,var(--accent-bright) 38%,transparent);
+}
+.home-refresh .directive-row :is(.trade-orders-footer a.command-screen-link,.directive-raid-console .gc-actions a,.directive-mission-controls .home-links a):focus-visible{
+  outline:2px solid var(--secondary-bright);outline-offset:2px;
+}
+.home-refresh .directive-row .trade-orders-footer{flex-wrap:nowrap;gap:6px;min-width:0;}
+.home-refresh .directive-row .trade-orders-footer [data-trade-freshness]{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.home-refresh .directive-row .trade-orders-footer .trade-orders-caveat{flex:0 1 auto;min-width:0;white-space:nowrap;font-size:.54rem;letter-spacing:0;}
+.home-refresh .directive-row .trade-orders-footer a.command-screen-link{flex:none;min-height:21px;font-size:.61rem;}
+.home-refresh .directive-row .trade-order-card[data-trade-status="conditional"]{border-color:var(--secondary-bright);border-style:dashed;}
+.home-refresh .directive-row .trade-order-card[data-trade-status="actionable"]{border-color:var(--accent-bright);border-style:solid;}
+.home-refresh .directive-row .trade-order-heading .trade-order-assumptions{
+  border:1px solid var(--secondary-bright);border-radius:3px;
+  background:color-mix(in srgb,var(--secondary-bright) 11%,var(--panel-solid));
+  color:var(--secondary-bright);font-style:italic;
+  padding:2px 4px;line-height:1.1;min-height:18px;
+  text-decoration:none;
+}
+.home-refresh .directive-row .trade-order-heading .trade-order-assumptions::before{
+  content:"\261E";font-style:normal;margin-right:4px;font-size:1.1em;
+}
+.home-refresh .directive-row .trade-order-heading .trade-order-assumptions:hover{
+  background:color-mix(in srgb,var(--secondary-bright) 21%,var(--panel-solid));
+  box-shadow:0 0 8px color-mix(in srgb,var(--secondary-bright) 30%,transparent);
+}
+.home-refresh .directive-row .trade-order-heading .trade-order-assumptions:focus-visible{
+  outline:2px solid var(--accent-bright);outline-offset:2px;
+}
+@media(max-width:950px){
+ .home-refresh .directive-row .trade-orders-footer .trade-orders-caveat{display:none;}
+}
+@media(prefers-reduced-motion:reduce){
+ .home-refresh .directive-row :is(.trade-orders-footer a.command-screen-link,.directive-raid-console .gc-actions a,.directive-mission-controls .home-links a){transition:none;}
+}
