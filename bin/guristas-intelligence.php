@@ -49,6 +49,15 @@ try{
         $report=(new GuristasTradeOrders($intel))->collect();
         $intel->decorateTrade($report);
         $intel->publish('trade-orders',['data'=>$report,'collected_at'=>gmdate('c')]);
+        // Observational shadow audit: never prevent publishing if audit storage fails.
+        try {
+            require_once dirname(__DIR__).'/app/services/TradeAudit.php';
+            $audit=GuristasTradeAudit::record($dir,$report,GuristasTradeAudit::snapshots($intel,$dir,$report));
+            $log[]=['shadow_audit'=>'recorded','observations'=>$audit['observations']];
+        } catch (Throwable $auditError) {
+            error_log('Guristas trade shadow audit failed: '.$auditError->getMessage());
+            $log[]=['shadow_audit'=>'failed; recommendations still published'];
+        }
         $log[]=['published'=>count($report['orders']),'candidates'=>$report['coverage']['candidate_items']??0];
     }
     echo json_encode(['ok'=>true,'steps'=>$log],JSON_THROW_ON_ERROR|JSON_PRETTY_PRINT)."\n";
