@@ -1404,3 +1404,38 @@ html[data-theme=kniraven] .home-refresh .directive-row .gc-recommendation [data-
 .build-order-card>.build-order-intel{margin-top:auto;border:1px solid var(--accent-bright);border-radius:3px;padding:3px 6px;background:rgba(0,0,0,.22)}
 .build-order-card>.command-screen-link{margin-top:0}
 .build-order-card>.build-order-spread{margin-top:0}
+
+
+/* BUILD v22: fixed-height command cards match TRADE's information hierarchy. */
+.home-refresh .directive-row .build-order-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;overflow:hidden;align-items:stretch}
+.home-refresh .directive-row .build-order-card{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto;align-content:stretch;gap:5px;overflow:hidden;padding:9px 11px;border-radius:6px;box-sizing:border-box;background:linear-gradient(180deg,#ffffff08,#0000001b),var(--panel-solid);box-shadow:inset 0 2px 9px #0009,0 1px 0 #ffffff16}
+.home-refresh .directive-row .build-order-card[data-build-status="market_lead"]{border-color:var(--accent-bright);border-style:solid}
+.home-refresh .directive-row .build-order-card[data-build-status="market_context"]{border-color:var(--line-strong);border-style:solid}
+.home-refresh .directive-row .build-order-card[data-build-status="supply_objective"]{border-color:var(--secondary-bright);border-style:dashed}
+.home-refresh .directive-row .build-order-heading{display:flex;align-items:center;justify-content:space-between;gap:7px;min-width:0}
+.home-refresh .directive-row .build-order-label{font:750 .57rem/1.2 ui-monospace,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.home-refresh .directive-row .build-order-heading .build-order-intel{display:inline-flex;align-items:center;justify-content:center;flex:none;min-height:19px;box-sizing:border-box;border:1px solid var(--secondary-bright);border-radius:3px;background:color-mix(in srgb,var(--secondary-bright) 11%,var(--panel-solid));color:var(--secondary-bright);padding:2px 5px;cursor:pointer;font:800 italic .58rem/1.1 ui-monospace,monospace;white-space:nowrap;text-decoration:none}
+.home-refresh .directive-row .build-order-heading .build-order-intel:hover{background:color-mix(in srgb,var(--secondary-bright) 24%,var(--panel-solid));box-shadow:0 0 9px color-mix(in srgb,var(--secondary-bright) 30%,transparent)}
+.home-refresh .directive-row .build-order-heading .build-order-intel:focus-visible{outline:2px solid var(--accent-bright);outline-offset:2px}
+.home-refresh .directive-row .build-order-title{font:800 clamp(.76rem,1.06vw,.94rem)/1.18 ui-monospace,monospace;color:var(--text);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.home-refresh .directive-row .build-order-action{min-height:0;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.home-refresh .directive-row .build-order-action>span{font:750 .54rem/1.15 ui-monospace,monospace;color:var(--muted)}
+.home-refresh .directive-row .build-order-action>strong{font:800 .7rem/1.24 ui-monospace,monospace;color:var(--accent-bright);overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.home-refresh .directive-row .build-order-detail{font:600 .61rem/1.25 ui-monospace,monospace!important;color:var(--muted)!important;margin:0!important;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.home-refresh .directive-row .build-order-metric{border-top:1px solid var(--line-strong);padding-top:4px;display:flex;justify-content:space-between;gap:6px;min-width:0;align-items:flex-end}
+.home-refresh .directive-row .build-order-metric>strong{font:800 .69rem/1.2 ui-monospace,monospace;color:var(--accent-bright);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.home-refresh .directive-row .build-order-metric>small{font:700 .52rem/1.15 ui-monospace,monospace;color:var(--muted);text-align:right;white-space:nowrap}
+.home-refresh .directive-row .build-order-dossier[hidden]{display:none!important}
+.home-refresh .directive-row .build-order-dossier{position:absolute;inset:0;z-index:15;box-sizing:border-box;padding:10px 12px;border-radius:5px;background:var(--panel-solid);display:flex;flex-direction:column;overflow:hidden}
+.home-refresh .directive-row .build-order-dossier-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--line-strong);font:800 .64rem/1.25 ui-monospace,monospace;color:var(--accent-bright)}
+.home-refresh .directive-row .build-order-dossier-head>strong{min-width:0;overflow-wrap:anywhere}
+.home-refresh .directive-row .build-order-dossier-head>button{flex:none;padding:3px 5px;border:1px solid var(--line-strong);border-radius:3px;background:transparent;color:var(--accent-bright);font:700 .55rem ui-monospace,monospace;cursor:pointer}
+.home-refresh .directive-row .build-order-dossier-text{flex:1;min-height:0;overflow:auto;scrollbar-width:thin;padding:7px 2px 2px;font:400 .72rem/1.4 system-ui,sans-serif}
+.home-refresh .directive-row .build-order-dossier-text p{margin:0 0 9px;color:var(--text)}
+.home-refresh .directive-row .build-order-dossier-text strong{color:var(--accent-bright);font:750 .63rem ui-monospace,monospace}
+.home-refresh .directive-row .build-order-tool{align-self:flex-end;flex:none;display:inline-flex;align-items:center;padding:3px 7px;border:1px solid var(--accent-bright);border-radius:3px;color:var(--accent-bright);text-decoration:none;font:800 italic .59rem ui-monospace,monospace}
+.home-refresh .directive-row .build-order-tool:hover{background:color-mix(in srgb,var(--accent-bright) 18%,var(--panel-solid))}
+.home-refresh .directive-row .build-orders-footer>a.command-screen-link{display:inline-flex;align-items:center;justify-content:center;flex:none;box-sizing:border-box;border:1px solid var(--accent-bright);border-radius:3px;background:linear-gradient(180deg,#ffffff12,#00000032);color:var(--accent-bright);padding:3px 7px;text-decoration:none;font:800 italic .60rem/1.15 ui-monospace,monospace;white-space:nowrap;min-height:21px}
+.home-refresh .directive-row .build-orders-footer>a.command-screen-link::before{content:"\261E";font-style:normal}
+.home-refresh .directive-row .build-orders-footer>a.command-screen-link:hover{box-shadow:0 0 9px color-mix(in srgb,var(--accent-bright) 40%,transparent)}
+@media(max-width:900px){.home-refresh .directive-row .build-order-grid{grid-template-columns:1fr;overflow:auto}.home-refresh .directive-row .build-order-card{min-height:160px}}

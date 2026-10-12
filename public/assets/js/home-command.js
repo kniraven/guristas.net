@@ -77,32 +77,57 @@
             catch(_ignored){}
             host.replaceChildren();
             for(let i=0;i<3;i++){
-                const c=report.orders[i];const card=document.createElement('article');card.className='build-order-card';
-                const tag=document.createElement('span');tag.className='build-order-label';
-                tag.textContent=String(i+1).padStart(2,'0')+' // '+['MANUFACTURE','MINE','PLANETARY'][i]+' // '+(c.state==='market_lead'?'PRICE VERIFIED':c.state==='market_context'?'MARKET CONTEXT':c.state==='supply_objective'?'SUPPLY OBJECTIVE':'NO VERIFIED LEAD');
-                const head=document.createElement('strong');head.textContent=c.title||'INTELLIGENCE PENDING';
-                const desc=document.createElement('p');desc.className='build-order-info';
-                let nextAction=c.action;
-                if(skills){
-                    if(c.activity==='manufacture'&&Number(skills['3380']||0)===0)nextAction='TRAIN INDUSTRY // '+c.action;
-                    if(c.activity==='mine'&&Number(skills['3386']||0)===0)nextAction='TRAIN MINING // '+c.action;
-                    if(c.activity==='pi'&&Number(skills['13279']||0)===0)nextAction='TRAIN REMOTE SENSING // '+c.action;
-                }
-                desc.textContent=nextAction+' · '+c.detail;
-                card.append(tag,head,desc);
-                if(Number.isFinite(Number(c.metric_isk))&&c.state==='market_lead'){
-                    const profit=document.createElement('span');profit.className='build-order-spread';
-                    profit.textContent='BEFORE JOB/HAUL // +'+buildISK(c.metric_isk)+' ISK';card.appendChild(profit);
-                }
-                const explanation=document.createElement('button');explanation.type='button';explanation.className='build-order-intel command-screen-link';
+                const c=report.orders[i];
+                const card=document.createElement('article');card.className='build-order-card';
+                card.dataset.buildStatus=c.state||'unavailable';
+                const type=['MANUFACTURE','MINE','PLANETARY'][i];
+                const evidenceLabel=c.state==='market_lead'?'COST-BACKED LEAD':c.state==='market_context'?'PRICE CONTEXT':c.state==='supply_objective'?'SUPPLY OBJECTIVE':'NO VERIFIED LEAD';
+                const heading=document.createElement('div');heading.className='build-order-heading';
+                const tag=document.createElement('span');tag.className='build-order-label';tag.textContent=String(i+1).padStart(2,'0')+' // '+type;
+                const explanation=document.createElement('button');explanation.type='button';explanation.className='build-order-intel';
                 explanation.textContent='☞ VIEW INTEL';explanation.setAttribute('aria-expanded','false');
-                const dossier=document.createElement('div');dossier.className='build-order-dossier';dossier.hidden=true;
-                const evidence=document.createElement('p');evidence.textContent=c.reason||'No evidence explanation available.';dossier.appendChild(evidence);
-                const personal=buildNextStep(c,skills);
-                if(personal){const line=document.createElement('p');line.textContent=personal;dossier.appendChild(line);}
-                const goto=document.createElement('a');goto.className='command-screen-link';goto.href=c.url||'/industry/';goto.textContent='☞ INDUSTRY TOOL ↗';
-                explanation.addEventListener('click',()=>{dossier.hidden=!dossier.hidden;explanation.setAttribute('aria-expanded',String(!dossier.hidden));});
-                card.append(explanation,goto,dossier);host.appendChild(card);
+                explanation.setAttribute('aria-label','View evidence for '+(c.title||type));
+                heading.append(tag,explanation);
+                const title=document.createElement('strong');title.className='build-order-title';title.textContent=c.title||'INTELLIGENCE PENDING';
+                const action=document.createElement('div');action.className='build-order-action';
+                let nextAction=String(c.action||'REVIEW INTELLIGENCE');
+                if(skills){
+                    if(c.activity==='manufacture'&&Number(skills['3380']||0)===0)nextAction='TRAIN INDUSTRY FIRST';
+                    if(c.activity==='mine'&&Number(skills['3386']||0)===0)nextAction='TRAIN MINING FIRST';
+                    if(c.activity==='pi'&&Number(skills['13279']||0)===0)nextAction='TRAIN REMOTE SENSING FIRST';
+                }
+                const key=document.createElement('span');key.textContent='NEXT ACTION';
+                const value=document.createElement('strong');value.textContent=nextAction;value.title=nextAction;
+                action.append(key,value);
+                const detail=document.createElement('p');detail.className='build-order-detail';detail.textContent=c.detail||'More information in INTEL';detail.title=detail.textContent;
+                const metric=document.createElement('div');metric.className='build-order-metric';
+                const metricLabel=document.createElement('strong');
+                if(c.state==='market_lead'&&Number.isFinite(Number(c.metric_isk))){
+                    metricLabel.textContent='EST. MARGIN / +'+buildISK(c.metric_isk)+' ISK';
+                    metric.title='Estimated margin before manufacturing job, hauling and other unverified costs.';
+                }else metricLabel.textContent=evidenceLabel;
+                const metricNote=document.createElement('small');
+                metricNote.textContent=c.state==='market_lead'?'BEFORE JOB / HAUL':c.state==='market_context'?'NOT MINING / PI PROFIT':'PROFIT NOT VERIFIED';
+                metric.append(metricLabel,metricNote);
+                const dossier=document.createElement('section');dossier.className='build-order-dossier';dossier.hidden=true;
+                const dossierHead=document.createElement('div');dossierHead.className='build-order-dossier-head';
+                const dossierTitle=document.createElement('strong');dossierTitle.textContent='INTEL // '+type;
+                const dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent='RETURN ↩';
+                dossierHead.append(dossierTitle,dismiss);
+                const dossierContent=document.createElement('div');dossierContent.className='build-order-dossier-text';
+                const addLine=(label,message)=>{const p=document.createElement('p');const h=document.createElement('strong');h.textContent=label+' // ';p.append(h,document.createTextNode(message));dossierContent.append(p);};
+                addLine('OBJECTIVE',String(c.action||'Review the opportunity')+'. '+String(c.detail||''));
+                addLine('EVIDENCE',String(c.reason||'No evidence explanation available.'));
+                addLine('CONFIDENCE',c.state==='market_lead'?'Input cost and buyer quote observed. Actual job/haul costs and access remain unverified.':c.state==='market_context'?'Real item price, but no confirmed extraction yield, site or net production profit.':'Verified supply relationship only; no confirmed market profit.');
+                const personal=buildNextStep(c,skills);if(personal)addLine('PILOT',personal);
+                const goto=document.createElement('a');goto.className='command-screen-link build-order-tool';goto.href=c.url||'/industry/';goto.textContent='OPEN INDUSTRY TOOL ↗';
+                dossier.append(dossierHead,dossierContent,goto);
+                const setOpen=open=>{dossier.hidden=!open;explanation.setAttribute('aria-expanded',String(open));};
+                explanation.addEventListener('click',()=>setOpen(dossier.hidden));
+                dismiss.addEventListener('click',()=>{setOpen(false);explanation.focus();});
+                card.addEventListener('keydown',event=>{if(event.key==='Escape'&&!dossier.hidden){setOpen(false);explanation.focus();}});
+                card.append(heading,title,action,detail,metric,dossier);
+                host.append(card);
             }
             const stamp=Date.parse(report.as_of||'');
             text('[data-build-freshness]',`CCP SDE + ESI // ${Number.isFinite(stamp)?new Date(stamp).toISOString().slice(5,16).replace('T',' ')+' EVE':'NO VERIFIED TIME'} · MARKET LEAD / CONTEXT / SUPPLY OBJECTIVE · COSTS VARY`);
