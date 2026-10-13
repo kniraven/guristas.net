@@ -292,13 +292,22 @@ final class GuristasBuildIntelligence {
      *  Jita input asks and a physically deliverable destination bid.
      *  The result is a cash margin BEFORE customs, hauling and colony costs.
      */
+    /** Rank comparable PI cycles by modeled contribution per factory-hour,
+     *  not an arbitrary single cycle's nominal cash surplus. Taxes and
+     *  transport beyond the assumed sales tax remain explicitly excluded.
+     */
+    public static function piHourlyScore(float $margin,int $seconds):?float {
+        return $margin>0 && $seconds>0 ? $margin*3600.0/$seconds : null;
+    }
     private function importedPiLead(?array $jita,?array $venal,?array $fulcrum):?array {
         if(!self::fresh($jita)||empty($this->ref['pi_schematics']))return null;
-        $best=null;
+        $best=null;$evaluated=0;$qualified=0;$rejectedMissingPrices=0;$rejectedNoBuyer=0;
         foreach($this->ref['pi_schematics'] as $schematicId=>$recipe){
             $product=(int)($recipe['output']['typeID']??0);
             $qty=(int)($recipe['output']['quantity']??0);
-            if($product<1||$qty<1||empty($recipe['inputs']))continue;
+            $cycle=(int)($recipe['cycle_seconds']??0);
+            if($product<1||$qty<1||$cycle<1||empty($recipe['inputs']))continue;
+            $evaluated++;
             $inputCost=0.0;$inputs=[];$fullyPriced=true;
             foreach($recipe['inputs'] as $ingredient){
                 $inputId=(int)($ingredient['typeID']??0);
@@ -309,39 +318,51 @@ final class GuristasBuildIntelligence {
                 $inputCost+=$quote['value'];
                 $inputs[]=['type_id'=>$inputId,'name'=>$this->name($inputId),'quantity'=>$count,'cost_isk'=>$quote['value'],'order_ids'=>$quote['ids']];
             }
-            if(!$fullyPriced)continue;
-            foreach([10000015=>[$venal,'Venal',0],10001000=>[$fulcrum,'The Fulcrum',0],10000002=>[$jita,'Jita',60003760]] as $destination){
+            if(!$fullyPriced){$rejectedMissingPrices++;continue;}
+            $foundBuyer=false;
+            // Fulcrum and Venal buyers are evaluated first, but economic ranking
+            // still requires a qualified bid. Jita remains a benchmark/export.
+            foreach([10001000=>[$fulcrum,'The Fulcrum',0],10000015=>[$venal,'Venal',0],10000002=>[$jita,'Jita',60003760]] as $destination){
                 [$market,$place,$station]=$destination;
                 if(!self::fresh($market))continue;
                 foreach(self::orderRows($market,$product,true,$station) as $buyer){
                     if((int)$buyer['v']<$qty||(int)($buyer['m']??1)>$qty)continue;
+                    $foundBuyer=true;
                     $gross=$qty*(float)$buyer['p'];
                     $margin=.925*$gross-$inputCost;
-                    if($margin<=0||($best!==null&&$margin<=$best['margin']))continue;
-                    $best=['margin'=>$margin,'schematic_id'=>(int)$schematicId,'recipe'=>$recipe,
+                    $hourly=self::piHourlyScore($margin,$cycle);
+                    if($hourly===null)continue;
+                    $qualified++;
+                    if($best!==null && $hourly<=$best['hourly'])continue;
+                    $best=['margin'=>$margin,'hourly'=>$hourly,'cycle'=>$cycle,
+                        'schematic_id'=>(int)$schematicId,'recipe'=>$recipe,
                         'inputs'=>$inputs,'input_cost'=>$inputCost,'gross'=>$gross,
                         'product_id'=>$product,'qty'=>$qty,'buyer'=>$buyer,'destination'=>$place];
                 }
             }
+            if(!$foundBuyer)$rejectedNoBuyer++;
         }
         if($best===null)return null;
         $inputWords=[];
         foreach($best['inputs'] as $input)$inputWords[]=number_format($input['quantity']).' '.$input['name'];
-        $steps=['Establish or use a Venal colony with a suitable advanced or basic industry factory; check the schematic is available in that factory.',
-            'Obtain '.implode(' + ',$inputWords).' (the quoted acquisition benchmark is Jita).',
-            'Route the inputs into the factory, run the '.(int)$best['schematic_id'].' schematic and collect '.number_format($best['qty']).' '.$this->name($best['product_id']).'.',
-            'Check customs tax, colony access, transport, and actual profit before producing additional cycles.',
-            'If positive after those costs, deliver to buyer order #'.(int)$best['buyer']['i'].' at station ID '.(int)$best['buyer']['l'].'.'];
+        $steps=['Establish or use a Venal colony with a suitable factory for this schematic; confirm the chosen planet is accessible.',
+            'Obtain '.implode(' + ',$inputWords).' (Jita input ask benchmark).',
+            'Route inputs into the factory, run schematic #'.$best['schematic_id'].' for '.number_format($best['cycle']/60,1).' minutes, and collect '.number_format($best['qty']).' '.$this->name($best['product_id']).'.',
+            'Calculate import/export customs, factory/colony costs, hauling and taxes before repeating.',
+            'Verify destination buyer #'.(int)$best['buyer']['i'].' at station ID '.(int)$best['buyer']['l'].' before delivery.'];
         return self::card('pi','market_context','Produce '.$this->name($best['product_id']),
-            'PRODUCE ON VENAL PLANET → SELL TO '.$best['destination'].' BUYER IF AVAILABLE',
-            'BUYER: '.number_format((float)$best['buyer']['p'],2).' ISK/unit · '.number_format($best['qty']).' output/cycle · PI costs excluded',
-            'IMPORTED SDE SCHEMATIC #'.$best['schematic_id'].'. Input cost '.number_format($best['input_cost']).' ISK from posted Jita asks, existing buyer revenue '.number_format($best['gross']).' ISK. Estimated margin '.number_format($best['margin']).' ISK includes modeled 7.5% sale tax, but EXCLUDES customs, colony, hauling, installation, and other operational costs. The destination buyer is not proof of future demand or a local Venal extraction source. NEXT STEPS: '.implode(' ',$steps),
-            ['why_selected'=>'Highest positive modeled per-cycle cash margin among imported PI schematics with fully quoted Jita inputs and an existing buyer. Not net PI profit and not a claim that Venal planets yield these inputs.',
+            'PRODUCE ON VENAL PLANET → '.($best['destination']==='Jita'?'BENCHMARK JITA BUYER':'SUPPLY '.$best['destination'].' BUYER'),
+            'BUYER: '.number_format((float)$best['buyer']['p'],2).' ISK/unit · '.number_format($best['qty']).' units per '.number_format($best['cycle']/60,1).'-minute cycle',
+            'SDE schematic #'.$best['schematic_id'].'. Quoted input cost '.number_format($best['input_cost']).' ISK at Jita; quoted gross revenue '.number_format($best['gross']).' ISK. Modeled pre-PI-cost margin '.number_format($best['margin']).' ISK/cycle, equivalent to '.number_format($best['hourly']).' ISK/factory-hour at continuous production. EXCLUDES customs, colony, hauling, installations, and practical downtime. A buyer order does not verify local planet extraction or recurring sales. NEXT STEPS: '.implode(' ',$steps),
+            ['why_selected'=>'Highest positive modeled margin per factory-hour among SDE PI schematics with complete Jita input quotes and sufficient single-station buyer depth; compared '.number_format($evaluated).' recipes, '.number_format($qualified).' qualified buyer/recipe combinations. Not net ISK/hour.',
                 'requires_skills'=>[], 'metric_isk'=>$best['margin'], 'metric_label'=>'BEFORE PI + HAUL COSTS',
                 'evidence'=>['schematic_id'=>$best['schematic_id'],'input_cost_isk'=>$best['input_cost'],'inputs'=>$best['inputs'],
-                    'output_type_id'=>$best['product_id'],'output_qty'=>$best['qty'],'cycle_seconds'=>(int)($best['recipe']['cycle_seconds']??0),
+                    'output_type_id'=>$best['product_id'],'output_qty'=>$best['qty'],'cycle_seconds'=>$best['cycle'],
                     'buyer_order_id'=>(int)$best['buyer']['i'],'buyer_station_id'=>(int)$best['buyer']['l'],'buyer_region'=>$best['destination'],'buyer_unit_isk'=>(float)$best['buyer']['p'],
-                    'modeled_margin_before_pi_and_haul'=>$best['margin'],'total_imported_schematics'=>count($this->ref['pi_schematics'])],
+                    'modeled_margin_before_pi_and_haul'=>$best['margin'],'modeled_margin_per_factory_hour_before_pi_costs'=>$best['hourly'],
+                    'pi_recipes_evaluated'=>$evaluated,'pi_buyer_candidates_qualified'=>$qualified,
+                    'pi_missing_input_quote_rejections'=>$rejectedMissingPrices,'pi_no_buyer_rejections'=>$rejectedNoBuyer,
+                    'total_imported_schematics'=>count($this->ref['pi_schematics'])],
                 'steps'=>$steps,'url'=>'/industry/']);
     }
     /** Verified Synthetic Synapses P3 schematic: 10 Supertensile Plastics + 10 Test Cultures -> 3 units / hour.
