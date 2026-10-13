@@ -437,6 +437,9 @@ final class GuristasTradeOrders {
                 if($region===10001000 && (int)$station===(int)$this->ref['hubs']['fulcrum']['station_id'])$destBuy['FULCRUM'][$t][$station]=$list;
                 if($region===10000015)$destBuy['VENAL'][$t][$station]=$list;
             }
+            // Release decoded region snapshots and grouping maps between regions.
+            // The normalized books retained in allSell/allBuy remain authoritative.
+            unset($s,$buys,$sells);
         }
         $this->marketStationRegions=$stationRegions;
         $offers=$this->intel->read('lp-offers');

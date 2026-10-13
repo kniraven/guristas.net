@@ -74,6 +74,7 @@ try{
             $log[]=['shadow_audit'=>'failed; recommendations still published'];
         }
         $log[]=['published'=>count($report['orders']),'candidates'=>$report['coverage']['candidate_items']??0];
+        $log[]=['publisher_peak_memory_mib'=>round(memory_get_peak_usage(true)/1048576,1)];
     }
     echo json_encode(['ok'=>true,'steps'=>$log],JSON_THROW_ON_ERROR|JSON_PRETTY_PRINT)."\n";
 }catch(Throwable $error){fwrite(STDERR,"Collection failed: ".$error->getMessage()."\n");exit(1);}finally{flock($lock,LOCK_UN);fclose($lock);}

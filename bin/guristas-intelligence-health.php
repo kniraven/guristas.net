@@ -18,6 +18,12 @@ $reference=guri_industry_reference();
 printf("SDE reference: build=%s; source=%s; daily check=%s; last status=%s\n",
     (string)($reference['sde_build']??'unknown'),is_file($syncSource)?'auto-synchronized':'deployed baseline',
     (string)($syncStatus['checked_at']??'never'),(string)($syncStatus['status']??'not configured'));
+$fullCatalog=dirname(__DIR__).'/storage/cache/economic-intelligence/manufacturing-full.sqlite';
+$fullInfo=$syncStatus['full_catalog']??null;
+printf("Full manufacturing index: %s; imported recipes=%s; source build=%s\n",
+    is_file($fullCatalog)?'PRESENT':'MISSING',
+    is_array($fullInfo)?(string)($fullInfo['manufacturing_recipes']??'unknown'):'not confirmed',
+    is_array($fullInfo)?(string)($fullInfo['sde_build']??'unknown'):'unknown');
 foreach($regions as $rid=>$label){
     $snapshot=$intel->read('region-'.$rid);
     $ts=strtotime((string)($snapshot['fetched_at']??''))?:0;
@@ -46,6 +52,12 @@ foreach(['trade-orders','build-orders','raid'] as $key){
     }
     printf("%s: %d cards\n",$key,count($data['orders']??[]));
     if($key==='trade-orders'){
+        $publishedAt=strtotime((string)($r['collected_at']??''))?:0;
+        $publishedAge=$publishedAt?max(0,$now-$publishedAt):PHP_INT_MAX;
+        $apiReady=$publishedAge<=1800;
+        printf("  TRADE public API freshness: %s; publication age=%s; API limit=1800s\n",
+            $apiReady?'READY':'EXPIRED/UNAVAILABLE', $publishedAt?$publishedAge.'s':'missing');
+
         $coverage=$data['coverage']??[];$audit=$coverage['selection_audit']??[];
         printf("  Five strategic goals met: %s; LP cards: %d; unrestricted ranking gap: %s%%\n",
             !empty($coverage['selection_requirements_met'])?'YES':'NO',

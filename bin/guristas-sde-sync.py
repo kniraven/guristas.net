@@ -92,7 +92,7 @@ def sync(force=False):
         current = json.loads(source.read_text(encoding='utf-8'))
         previous = str(current.get('sde_build', ''))
         newest = latest_build(fetch_metadata())
-        if previous == str(newest) and not force:
+        if previous == str(newest) and (runtime / 'manufacturing-full.sqlite').exists() and not force:
             emit({'ok': True, 'status': 'unchanged', 'build': newest})
             return 0
         # Keep any failed download/import completely separate from active reference.
@@ -111,6 +111,14 @@ def sync(force=False):
                     if length > 210 * 1024 * 1024:
                         raise RuntimeError('SDE archive unexpectedly large')
                     target.write(chunk)
+            # Build the COMPLETE manufacturing catalog as an indexed, separately
+            # accessed reference. Do not load it into the homepage PHP memory.
+            from importlib.machinery import SourceFileLoader
+            full_importer = SourceFileLoader('full_bp', str(ROOT / 'tools/build-full-blueprint-db.py')).load_module()
+            full_stage = temp / 'manufacturing-full.sqlite'
+            full_counts = full_importer.build(archive, full_stage)
+            if full_counts['sde_build'] != newest:
+                raise RuntimeError('Full catalog build does not match official SDE')
             # Preserve runtime's currently refreshed LP offers, not a stale Git snapshot.
             offers_cache = runtime / 'lp-offers.json'
             offers = json.loads(offers_cache.read_text(encoding='utf-8')) if offers_cache.exists() else current.get('offers_snapshot', [])
@@ -130,8 +138,12 @@ def sync(force=False):
             # Same filesystem, atomic replacement. Any previous reference survives
             # failures until after all validation finishes.
             os.chmod(stage, 0o640)
+            # Install complete catalog first; the compact active reference is
+            # switched last. Both are validated before touching active data.
+            os.chmod(full_stage, 0o640)
+            os.replace(full_stage, runtime / 'manufacturing-full.sqlite')
             os.replace(stage, active)
-        emit({'ok': True, 'status': 'activated', 'previous_build': previous, 'build': newest, 'counts': counts, 'activated_at': dt.datetime.now(dt.timezone.utc).isoformat()})
+        emit({'ok': True, 'status': 'activated', 'previous_build': previous, 'build': newest, 'counts': counts, 'full_catalog': full_counts, 'activated_at': dt.datetime.now(dt.timezone.utc).isoformat()})
         return 0
 
 
