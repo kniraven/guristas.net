@@ -4,7 +4,7 @@ $path=dirname(__DIR__).'/app/services/BuildIntelligence.php';
 $text=file_get_contents($path);
 $checks=[
  'manufacture instruction'=>"'Manufacture '",
- 'mining qualification'=>"'Survey '",
+ 'mining qualification'=>"'Mine '",
  'PI instruction'=>"'Produce '",
  'Fulcrum location'=>"'manufacturing_location'=>'The Fulcrum (planned; job quote unverified)'",
  'Fulcrum 6% ME scenario'=>"'material_reduction_pct'=>".'$eligible?6:0',
@@ -15,7 +15,8 @@ $checks=[
  'planet feasibility disclosure'=>"planet-type inventory",
 ];
 foreach($checks as $name=>$needle){if(strpos($text,$needle)===false){fwrite(STDERR,"FAIL v40 $name\n");exit(1);}echo "PASS v40 $name\n";}
-echo "PASS v40 source contracts (not a simulation of production market ranking)\n";
+if(strpos($text, "'Survey '")!==false){fwrite(STDERR,"FAIL v40 obsolete survey title still present\n");exit(1);}
+echo "PASS v40 source contracts (updated for direct mining order; not a simulation of production ranking)\n";
 require_once $path;
 $intel=(new ReflectionClass(GuristasMarketIntelligence::class))->newInstanceWithoutConstructor();
 $reference=['types'=>['17930'=>['name'=>'Worm'],'34'=>['name'=>'Tritanium'],'999'=>['name'=>'Unrelated Module']],'blueprints'=>[]];

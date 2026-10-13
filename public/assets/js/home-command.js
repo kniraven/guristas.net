@@ -112,7 +112,11 @@
                 const key=document.createElement('span');key.textContent='NEXT ACTION';
                 const value=document.createElement('strong');value.textContent=nextAction;value.title=nextAction;
                 action.append(key,value);
-                const detail=document.createElement('p');detail.className='build-order-detail';detail.textContent=c.detail||'More information in INTEL';detail.title=detail.textContent;
+                const detail=document.createElement('p');detail.className='build-order-detail';
+                const evPrice=c.evidence||{};
+                const price=Number(evPrice.buyer_unit_isk);
+                const priceLabel=Number.isFinite(price)&&price>0?'QUOTED BUYER / '+price.toLocaleString('en-US',{maximumFractionDigits:2})+' ISK/unit':'NO EXECUTABLE UNIT QUOTE';
+                detail.textContent=priceLabel+' · '+(c.detail||'See INTEL for costs and conditions');detail.title=detail.textContent;
                 const metric=document.createElement('div');metric.className='build-order-metric';
                 const metricLabel=document.createElement('strong');
                 if(c.state==='market_lead'&&Number.isFinite(Number(c.metric_isk))){
@@ -121,6 +125,10 @@
                 }else if(c.activity==='pi'&&c.state==='market_context'&&Number.isFinite(Number(c.metric_isk))){
                     metricLabel.textContent='INPUT-OUTPUT GAP / +'+buildISK(c.metric_isk)+' ISK';
                     metric.title='Only PI materials, quoted buyer revenue and modeled sales tax. Planetary customs, hauling and operating costs are not included.';
+                }else if(c.activity==='mine'&&Number.isFinite(Number(c.evidence?.gross_isk_per_m3))&&Number(c.evidence.gross_isk_per_m3)>0){
+                    metricLabel.textContent='BUYER VALUE / '+buildISK(c.evidence.gross_isk_per_m3)+' ISK/m³';
+                }else if(c.activity==='pi'&&Number.isFinite(Number(c.evidence?.buyer_unit_isk))&&Number(c.evidence.buyer_unit_isk)>0){
+                    metricLabel.textContent='BUYER QUOTE / '+buildISK(c.evidence.buyer_unit_isk)+' ISK/unit';
                 }else metricLabel.textContent=evidenceLabel;
                 const metricNote=document.createElement('small');
                 metricNote.textContent=c.activity==='mine'?'DEPOSIT UNVERIFIED':c.activity==='pi'?'CUSTOMS, HAUL EXCLUDED':c.state==='market_lead'?'JOB, HAUL EXCLUDED':c.state==='market_context'?'BUYER PRICE ONLY':c.state==='supply_objective'?'GURISTAS INPUT NEEDED':'DATA UNAVAILABLE';

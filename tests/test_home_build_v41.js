@@ -1,0 +1,1 @@
+const fs=require('node:fs');const s=fs.readFileSync('public/assets/js/home-command.js','utf8');for(const x of ['QUOTED BUYER / ','ISK/unit','BUYER VALUE / ','BUYER QUOTE / ']){if(!s.includes(x))throw new Error('Missing '+x)}console.log('PASS v41 homepage price display source contracts');
