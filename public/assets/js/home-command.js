@@ -214,6 +214,12 @@
                     if(Number.isFinite(Number(order.unit_count))&&Number(order.unit_count)>0)line('REWARD QUANTITY',Number(order.unit_count).toLocaleString('en-US')+' units per recommended redemption lot');
                     if(Number.isFinite(Number(order.lp_cash_isk_per_lp)))line('CASH RETURN PER LP',Number(order.lp_cash_isk_per_lp).toLocaleString('en-US',{maximumFractionDigits:2})+' ISK/LP after modeled cash costs and fees; LP opportunity value not deducted');
                     if(Number.isFinite(Number(order.lp_cash_return_isk)))line('CASH RETURN',isk(order.lp_cash_return_isk)+' before transport, market movement, or uncertain sell-order fills');
+                    if(Number.isFinite(Number(order.lp_lot_share_of_regional_volume_pct)) && order.lp_lot_share_of_regional_volume_pct!==null){
+                        line('MARKET LIQUIDITY','Proposed batch is '+Number(order.lp_lot_share_of_regional_volume_pct).toLocaleString('en-US',{maximumFractionDigits:2})+'% of the last 14 days of REGIONAL volume; '+Number(order.lp_recent_active_days||0)+' active days. This is not a station sell-through forecast.');
+                    }
+                    if(Number.isFinite(Number(order.lp_price_vs_regional_vwap_pct)) && order.lp_price_vs_regional_vwap_pct!==null){
+                        line('ASK VS TRADED PRICE',Number(order.lp_price_vs_regional_vwap_pct).toLocaleString('en-US',{maximumFractionDigits:1})+'% of regional 14-day volume-weighted executed price; proposed order might not fill.');
+                    }
                     line('LP BENCHMARK','1,000 ISK/LP is an optional comparison value, not the price paid to redeem and not a guaranteed return.');
                 }
                 if(buyOrder){line('SOURCE ASK',isk(order.source_lowest_ask)+' per unit, '+Number(order.source_ask_units||0).toLocaleString('en-US')+' units at that price. This is NOT an agreed sale.');line('OUR LIMIT','A competitive bid may never fill, even if sellers have inventory. No station-specific fill time is verified.');}

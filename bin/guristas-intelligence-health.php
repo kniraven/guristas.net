@@ -32,6 +32,10 @@ foreach(['trade-orders','build-orders','raid'] as $key){
         $campaigns=$data['campaigns']??[];
         $target=$data['server_recommendation']??null;
         printf("raid: %d campaigns; recommendation: %s\n",count($campaigns),is_array($target)?(string)($target['title']??'UNKNOWN'):'NO PUBLISHED RECOMMENDATION');
+        $momentum=$intel->read('raid-momentum');
+        $samples=$momentum['samples']??[];
+        printf("  RAID historical samples: %d (7-day bounded, >=30-minute spacing; observational only)\n",count($samples));
+
         continue;
     }
     printf("%s: %d cards\n",$key,count($data['orders']??[]));

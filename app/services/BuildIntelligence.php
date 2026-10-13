@@ -19,7 +19,9 @@ final class GuristasBuildIntelligence {
         foreach($s['orders'] as $o){
             if((int)($o['t']??0)!==$type || (bool)($o['b']??false)!==$buy || (int)($o['v']??0)<1 || (float)($o['p']??0)<=0 || (int)($o['i']??0)<=0)continue;
             if($station && (int)($o['l']??0)!==$station)continue;
-            if($buy && ((string)($o['r']??'')!=='station' || (int)($o['m']??1)>1))continue;
+            // A regional-range buy order can still be fulfilled at its listed
+            // station. Do not presume it is fillable from other stations.
+            // Check the order's minimum quantity at the actual fill site.
             $out[]=$o;
         }
         usort($out,static fn($a,$b)=>$buy?((float)$b['p']<=>(float)$a['p']):((float)$a['p']<=>(float)$b['p']));
@@ -27,7 +29,7 @@ final class GuristasBuildIntelligence {
     }
     private static function fills(array $rows,int $qty):?array {
         $rem=$qty;$sum=0.0;$ids=[];
-        foreach($rows as $o){$n=min($rem,(int)$o['v']);$sum+=$n*(float)$o['p'];$rem-=$n;$ids[]=(int)$o['i'];if($rem===0)break;}
+        foreach($rows as $o){$n=min($rem,(int)$o['v']);if($n<(int)($o['m']??1))continue;$sum+=$n*(float)$o['p'];$rem-=$n;$ids[]=(int)$o['i'];if($rem===0)break;}
         return $rem===0?['value'=>$sum,'ids'=>$ids]:null;
     }
     private function name(int $id):string {return (string)($this->ref['types'][(string)$id]['name']??('Item '.$id));}
@@ -65,7 +67,7 @@ final class GuristasBuildIntelligence {
                 if(empty($markets[$region]))continue;
                 $destination=$region===10000002?60003760:0;
                 foreach(self::orderRows($markets[$region],$product,true,$destination) as $bid){
-                    if((int)$bid['v']<$yield)continue;
+                    if((int)$bid['v']<$yield || (int)($bid['m']??1)>$yield)continue;
                     $revenue=$yield*(float)$bid['p'];$margin=.925*$revenue-$input['cost']-$offer['cost'];
                     if($margin<2000000 || ($best && $margin<=$best['margin']))continue;
                     $best=['margin'=>$margin,'blueprint_id'=>(int)$bpId,'product_type_id'=>$product,'yield'=>$yield,'cost'=>$input['cost'],'offer'=>$offer,'inputs'=>$input['inputs'],'bid_order_id'=>(int)$bid['i'],'bid_station_id'=>(int)$bid['l'],'region'=>$name,'revenue'=>$revenue];
@@ -96,10 +98,34 @@ final class GuristasBuildIntelligence {
                 if(!self::fresh($market))continue;
                 $rows=self::orderRows($market,$id,true,$region===10000002?60003760:0);
                 if(!$rows)continue;
-                $bid=$rows[0];$qty=(int)$bid['v'];
-                if($qty<(int)$resource['minimum'])continue;
-                $gross=(float)$bid['p'];$perM3=$gross/$resource['m3'];
-                $leads[]=['type_id'=>$id,'type'=>$resource,'place'=>$place,'bid'=>$bid,'quantity'=>$qty,'gross_per_m3'=>$perM3,'unit_value'=>$gross,'score'=>$perM3*($place==='Venal'?1.05:1)];
+                // Compare the proceeds of a useful 1,000 m³ reference lot,
+                // not a one-unit top bid that disappears before a haul arrives.
+                $target=max(1,(int)floor(1000.0/(float)$resource['m3']));
+                $remaining=$target;$priced=0;$proceeds=0.0;$quotes=[];
+                $deliveryStation=0;
+                foreach($rows as $row){
+                    if($deliveryStation===0)$deliveryStation=(int)$row['l'];
+                    // A lot must be delivered to one station. Combining bids
+                    // from different stations would manufacture executable depth.
+                    if((int)$row['l']!==$deliveryStation)continue;
+                    $min=(int)($row['m']??1);
+                    $take=min($remaining,(int)$row['v']);
+                    if($take<max(1,$min))continue;
+                    $proceeds+=$take*(float)$row['p'];
+                    $remaining-=$take;$priced+=$take;
+                    $quotes[]=['id'=>(int)$row['i'],'units'=>$take,'unit_price'=>(float)$row['p']];
+                    if($remaining===0)break;
+                }
+                if($priced<(int)$resource['minimum'])continue;
+                $gross=$proceeds/$priced;
+                $perM3=$gross/$resource['m3'];
+                // The strategic region preference only breaks reasonably close
+                // valuations; it is never a claim about regional ore deposits.
+                $leads[]=['type_id'=>$id,'type'=>$resource,'place'=>$place,
+                    'bid'=>$rows[0],'quantity'=>$priced,'gross_per_m3'=>$perM3,'reference_target_units'=>$target,
+                    'unit_value'=>$gross,'batch_proceeds'=>$proceeds,
+                    'bid_station_id'=>$deliveryStation,'bid_fills'=>$quotes,
+                    'score'=>$perM3*min(1.0,$priced/$target)*($place==='Venal'?1.05:1)];
             }
         }
         usort($leads,static fn($a,$b)=>$b['score']<=>$a['score']);
@@ -115,23 +141,23 @@ final class GuristasBuildIntelligence {
             $referenceVolumeM3=1000.0;
             $referenceUnits=max(1,(int)floor($referenceVolumeM3/$resource['m3']));
             $batch=min($lead['quantity'],$referenceUnits);
-            $location=$lead['place'];$order=(int)$lead['bid']['i'];
+            $location=$lead['place'];$order=(int)$lead['bid_fills'][0]['id'];
             $out[]=self::card('mine','market_context','Mine '.$name.' in Venal',
                 'MINE '.$name.' → SELL '.strtoupper($location),
-                'Reference lot: '.$batch.' '.$name.' (up to '.number_format($batch*$resource['m3'],1).' m³) · '.$location.' buyer #'.$order,
+                'Reference lot: '.$batch.' '.$name.' (up to '.number_format($batch*$resource['m3'],1).' m³) · '.$location.' buyer starting #'.$order,
                 'RESOURCE: '.$name.' ('.$category.'), '.number_format($resource['m3'],2).' m³/unit. CONFIRMED: buyer order #'.$order.' for up to '.number_format($lead['quantity']).' units at '. $location .'; posted price '.number_format($lead['unit_value'],2).' ISK/unit. EXAMPLE gross proceeds for a reference lot of '.$batch.' units ('.number_format($batch*$resource['m3'],1).' m³): '.number_format($batch*$lead['unit_value']).' ISK before taxes and transport. START: Check the in-game map Specific Ores / nearby Ore Anomalies, or ice anomalies as appropriate. Then inspect the site and confirm '.$name.' is actually present. TARGET: '.$resource['site'].'. This is not verified ISK/hour, current yield, or local resource availability. Compared by quoted gross ISK per m³, not net mining profit.',
-                ['why_selected'=>'Highest quoted gross ISK per m³ among the eligible ore/ice types checked, favoring Venal buyers in near ties. Deposit availability and mining profit remain unverified.','resource_category'=>$category,'requires_skills'=>[(string)$resource['min_skill']=>1],'evidence'=>['item_type_id'=>$lead['type_id'],'item_category'=>$category,'unit_m3'=>$resource['m3'],'bid_station_id'=>(int)$lead['bid']['l'],'bid_order_id'=>$order,'bid_units'=>$lead['quantity'],'gross_isk_per_m3'=>$lead['gross_per_m3'],'reference_lot_units'=>$batch,'reference_lot_m3'=>$batch*$resource['m3'],'reference_lot_gross_isk'=>$batch*$lead['unit_value'],'snapshot_market'=>$location,'live_deposit_verified'=>false],
-                  'steps'=>['Open EVE map: Specific Ores / Ore Anomalies (or ice anomaly list) to check Venal resource availability.','Confirm an actual '.$name.' deposit in the selected system. Never treat a market order as proof of a local spawn.','Plan up to '.$batch.' units ('.number_format($batch*$resource['m3'],1).' m³) as a price-comparison reference; adjust for your actual ship and deposit.','Verify buyer order #'.$order.' at station ID '.(int)$lead['bid']['l'].' and compare direct sale versus refining, hauling and risk.'],'url'=>'/industry/']);
+                ['why_selected'=>'Highest depth-adjusted gross ISK per m³ among the checked ore/ice types, with a modest preference for Venal buyers. Partial bid-depth coverage reduces the ranking score. Lot value uses bids at one destination station. Deposit availability and mining profit remain unverified.','resource_category'=>$category,'requires_skills'=>[(string)$resource['min_skill']=>1],'evidence'=>['item_type_id'=>$lead['type_id'],'item_category'=>$category,'unit_m3'=>$resource['m3'],'bid_station_id'=>(int)$lead['bid_station_id'],'bid_order_id'=>$order,'bid_fills'=>$lead['bid_fills'],'bid_units'=>$lead['quantity'],'gross_isk_per_m3'=>$lead['gross_per_m3'],'reference_lot_units'=>$batch,'reference_lot_m3'=>$batch*$resource['m3'],'reference_lot_gross_isk'=>$batch*$lead['unit_value'],'target_lot_units'=>$lead['reference_target_units'],'reference_lot_depth_coverage_pct'=>round(100*$batch/$lead['reference_target_units'],2),'snapshot_market'=>$location,'live_deposit_verified'=>false],
+                  'steps'=>['Open EVE map: Specific Ores / Ore Anomalies (or ice anomaly list) to check Venal resource availability.','Confirm an actual '.$name.' deposit in the selected system. Never treat a market order as proof of a local spawn.','Plan up to '.$batch.' units ('.number_format($batch*$resource['m3'],1).' m³) as a price-comparison reference; adjust for your actual ship and deposit.','Verify all quoted buyer orders at station ID '.(int)$lead['bid_station_id'].'; they are a snapshot, not guaranteed fills. Compare direct sale versus refining, hauling and risk.'],'url'=>'/industry/']);
         }
         return $out;
     }
     private function mineralLead(?array $jita,?array $venal=null):array {
         $leads=$this->resourceLeads($jita,$venal);
         if($leads){$best=$leads[0];$best['alternatives']=array_slice($leads,1,4);return $best;}
-        return self::card('mine','supply_objective','Mine Pyroxeres (if found)','FIND PYROXERES → CHECK BUYERS',
+        return self::card('mine','supply_objective','Ore availability not verified','CHECK PYROXERES AVAILABILITY → CHECK BUYERS',
             'Ore ID 1224 · use EVE map Specific Ores / Ore Anomalies',
             'Pyroxeres is a mineable ore used for minerals in conventional ship production. No qualified destination buyer or live site has been verified. Confirm Pyroxeres is present in-game before mining; compare direct sale versus processing with your actual refining rate. Ice alternative: survey ice anomalies for Gelidus; do not assume a mapped ice belt contains that specific ice. Gas harvesting in Venal is NOT recommended by name until its local spawn evidence is independently verified.',
-            ['why_selected'=>'A known mineable ore that can supply basic ship-building minerals; no acceptable posted buyer was found, so this is only an objective to investigate.','resource_category'=>'ore','requires_skills'=>['3386'=>1],'evidence'=>['ore_type_id'=>1224,'live_deposit_verified'=>false], 'steps'=>['Find a Venal belt/anomaly that actually contains Pyroxeres using the EVE map and on-grid inspection.','Confirm a visible ore deposit before fitting and deploying a mining ship.','Compare actual ore buyer prices and net refining returns before hauling.'],'url'=>'/industry/']);
+            ['why_selected'=>'No depth-qualified resource buyer or documented local deposit is available; this card is a research objective, not an instruction to mine unverified ore.','resource_category'=>'ore','requires_skills'=>['3386'=>1],'evidence'=>['ore_type_id'=>1224,'live_deposit_verified'=>false], 'steps'=>['Find a Venal belt/anomaly that actually contains Pyroxeres using the EVE map and on-grid inspection.','Confirm a visible ore deposit before fitting and deploying a mining ship.','Compare actual ore buyer prices and net refining returns before hauling.'],'url'=>'/industry/']);
     }
     /** Verified Synthetic Synapses P3 schematic: 10 Supertensile Plastics + 10 Test Cultures -> 3 units / hour.
      * Schematic data is stable reference; price estimates still exclude colony operating costs. */
@@ -150,7 +176,7 @@ final class GuristasBuildIntelligence {
             [$name,$market,$station]=$row;
             if(!self::fresh($market))continue;
             foreach(self::orderRows($market,$output,true,$station) as $bid){
-                if((int)$bid['v']<3)continue;
+                if((int)$bid['v']<3 || (int)($bid['m']??1)>3)continue;
                 $gross=3*(float)$bid['p'];$surplus=.925*$gross-$unitCost;
                 if($complete && $surplus>0 && (!$best||$surplus>$best['surplus']))$best=['surplus'=>$surplus,'name'=>$name,'bid'=>$bid,'gross'=>$gross];
             }

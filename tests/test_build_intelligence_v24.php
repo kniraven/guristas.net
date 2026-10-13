@@ -21,7 +21,7 @@ try{
     if($r['orders'][0]['metric_isk']<=0)throw new RuntimeException('Positive margin failed');
     $put('region-10000015',$snapshot([array_replace($bid,['r'=>'region'])]));
     $r=(new GuristasBuildIntelligence($intel,$ref))->collect();
-    if($r['orders'][0]['state']!=='supply_objective'||$r['orders'][0]['title']!=='Worm blueprint supply chain')throw new RuntimeException('Fallback or station-range check failed');
+    if($r['orders'][0]['state']!=='market_lead')throw new RuntimeException('Regional range buyer at its own station must remain eligible');
     $put('region-10000002',$snapshot([]));$r=(new GuristasBuildIntelligence($intel,$ref))->collect();
     if($r['orders'][1]['state']!=='supply_objective')throw new RuntimeException('Mining fallback failed');
     $stale=$snapshot([]);$stale['fetched_at']=gmdate('c',time()-16000);$put('region-10000015',$stale);

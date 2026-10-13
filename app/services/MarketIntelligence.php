@@ -68,6 +68,18 @@ final class GuristasMarketIntelligence {
                 }
             }
         }
+        // When the SDE reference is expanded, retain quotes for every imported
+        // manufacturing output and input even without an existing local buyer.
+        // This makes the external market collector useful for the wider BUILD
+        // search instead of anchoring valuations to current Venal liquidity.
+        foreach(($reference['blueprints']??[]) as $bp){
+            $product=(int)($bp['product']['typeID']??0);
+            if($product>0)$types[$product]=true;
+            foreach(($bp['materials']??[]) as $material){
+                $id=(int)($material['typeID']??0);
+                if($id>0)$types[$id]=true;
+            }
+        }
         // Venal economic development must not require an existing local buy order.
         // Collect these explicit industry benchmark items from mature trade hubs
         // even when nobody has yet placed an order in Venal or The Fulcrum.
@@ -304,11 +316,37 @@ final class GuristasMarketIntelligence {
         require_once __DIR__.'/RaidPriority.php';
         return GuristasRaidPriority::recommend($data);
     }
+    /** Bounded observational history. Never influences a live RAID target until
+     * independent replay tests show that a trend-based selector is better. */
+    public static function raidHistoryAppend(?array $history,array $data,int $now):array {
+        $samples=is_array($history['samples']??null)?$history['samples']:[];
+        $samples=array_values(array_filter($samples,static fn($row)=>is_array($row)&&
+            (int)($row['at']??0)>=$now-7*86400 && (int)($row['at']??0)<=$now+60));
+        if($samples && $now-(int)end($samples)['at']<1800)return ['samples'=>$samples,'retention_days'=>7];
+        $systems=[];
+        foreach(($data['systems']??[]) as $row){
+            if(!is_array($row)||(int)($row['id']??0)<=0)continue;
+            $systems[(string)(int)$row['id']]=[
+                'c'=>(int)($row['corruption_stage']??0),
+                'cp'=>is_numeric($row['corruption_percent']??null)?round((float)$row['corruption_percent'],2):null,
+                's'=>is_int($row['suppression_stage']??null)?$row['suppression_stage']:null,
+                'sp'=>is_numeric($row['suppression_percent']??null)?round((float)$row['suppression_percent'],2):null,
+            ];
+        }
+        if($systems)$samples[]=['at'=>$now,'campaign'=>(string)($data['campaigns'][0]['id']??''),'systems'=>$systems];
+        return ['samples'=>array_slice($samples,-400),'retention_days'=>7];
+    }
     public function refreshRaid(): array {
         require_once __DIR__.'/DataServices.php';
         $r=(new GuristasDataServices())->frontlines()->guristasOverlay();
         if(!is_array($r['data']??null)||!is_array($r['meta']??null))throw new RuntimeException('Invalid insurgency report');
         $r['data']['server_recommendation']=$this->raidTarget($r['data']);
+        try {
+            $history=self::raidHistoryAppend($this->read('raid-momentum'),$r['data'],time());
+            $this->publish('raid-momentum',$history);
+        } catch (\Throwable $e) {
+            error_log('RAID observational trend record failed: '.$e->getMessage());
+        }
         $this->publish('raid',['data'=>$r['data'],'meta'=>$r['meta'],'sources'=>$r['sources']??[],'collected_at'=>gmdate('c')]);
         return ['campaigns'=>count($r['data']['campaigns']??[])];
     }
