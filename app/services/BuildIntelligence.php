@@ -47,16 +47,62 @@ final class GuristasBuildIntelligence {
         }
         return ['cost'=>$total,'inputs'=>$inputs];
     }
-    private function bestManufacture(array $markets,array $offers):?array {
+    /** Enrich compact recipes with matching LP blueprints from the full SDE index.
+     * Only redeemable blueprints may produce priced manufacturing leads: the
+     * complete index does not prove a blueprint can actually be acquired.
+     */
+    private function manufacturingReference(array $offers):array {
+        $result=['status'=>'not_checked','catalog_recipes'=>null,'matched'=>0,'eligible_lp_blueprints'=>0];
+        $ids=[];
+        foreach($offers as $offer){
+            if((int)($offer['lp_cost']??0)<1 || (int)($offer['ak_cost']??0)!==0 || !empty($offer['required_items']))continue;
+            $id=(int)($offer['type_id']??0);
+            if($id>0)$ids[$id]=true;
+        }
+        $result['eligible_lp_blueprints']=count($ids);
+        $build=(int)($this->ref['sde_build']??0);
+        if(!$ids || $build<1000000)return [$this->ref['blueprints'],$result];
+        $script=dirname(__DIR__,2).'/bin/guristas-build-catalog.py';
+        if(!is_file($script)||!function_exists('proc_open')){
+            $result['status']='reader_unavailable';return [$this->ref['blueprints'],$result];
+        }
+        $pipes=[];
+        try {
+            $process=@proc_open(['/usr/bin/python3',$script],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,dirname(__DIR__,2));
+            if(!is_resource($process))throw new RuntimeException('Catalog reader unavailable');
+            fwrite($pipes[0],json_encode(['blueprint_ids'=>array_keys($ids),'sde_build'=>$build],JSON_THROW_ON_ERROR));
+            fclose($pipes[0]);
+            $output=stream_get_contents($pipes[1],8388608);fclose($pipes[1]);
+            $error=stream_get_contents($pipes[2],4096);fclose($pipes[2]);
+            $code=proc_close($process);
+            $decoded=json_decode($output,true);
+            if($code!==0||!is_array($decoded))throw new RuntimeException('Catalog reader failed: '.substr($error,0,200));
+            $result['status']=(string)($decoded['status']??'error');
+            $result['catalog_recipes']=$decoded['catalog_recipes']??null;
+            $result['matched']=(int)($decoded['matched']??0);
+            if($result['status']!=='ready')return [$this->ref['blueprints'],$result];
+            // Full SDE is authoritative for recipe quantities when the builds match.
+            $recipes=$this->ref['blueprints'];
+            foreach(($decoded['recipes']??[]) as $id=>$recipe){
+                $recipes[(string)$id]=array_replace($recipes[(string)$id]??[],$recipe);
+            }
+            return [$recipes,$result];
+        }catch(Throwable $e){
+            foreach($pipes as $pipe)if(is_resource($pipe))fclose($pipe);
+            $result['status']='reader_error';
+            return [$this->ref['blueprints'],$result];
+        }
+    }
+    private function bestManufacture(array $markets,array $offers,array $recipes):?array {
         $bpOffers=[];
         foreach($offers as $o){
             $bpId=(int)($o['type_id']??0);
-            if(!isset($this->ref['blueprints'][(string)$bpId]) || (int)($o['lp_cost']??0)<1 || (int)($o['ak_cost']??0)!==0 || !empty($o['required_items']))continue;
+            if(!isset($recipes[(string)$bpId]) || (int)($o['lp_cost']??0)<1 || (int)($o['ak_cost']??0)!==0 || !empty($o['required_items']))continue;
             $cost=(float)($o['isk_cost']??0)+1000.0*(int)$o['lp_cost'];
             if(!isset($bpOffers[$bpId]) || $cost<$bpOffers[$bpId]['cost'])$bpOffers[$bpId]=['cost'=>$cost,'lp'=>(int)$o['lp_cost'],'isk'=>(float)($o['isk_cost']??0)];
         }
         $best=null;
-        foreach($this->ref['blueprints'] as $bpId=>$bp){
+        foreach($recipes as $bpId=>$bp){
             $offer=$bpOffers[(int)$bpId]??null;
             if(!$offer)continue;
             $input=$this->blueprintCosts($markets[10000002],$bp);
@@ -86,7 +132,7 @@ final class GuristasBuildIntelligence {
         return self::card('manufacture','market_lead',$this->name($best['product_type_id']),($best['region']==='Jita export'?'BUILD IN VENAL → SELL JITA':'BUILD IN VENAL → SELL '.$best['region']),
             '1 run: '.number_format($best['yield']).' unit(s) · buyer order #'.$best['bid_order_id'],
             'BUY-VERSUS-BUILD: '.($best['jita_finished_ask_total_isk']===null?'No fully executable Jita ask quote for finished items.':'Jita finished item purchase quote '.number_format($best['jita_finished_ask_total_isk']).' ISK; modeled blueprint plus materials '.number_format($best['modeled_build_acquisition_isk']).' ISK; modeled build acquisition advantage '.number_format($best['build_versus_finished_purchase_isk']).' ISK, before facility and hauling.').' NEXT STEPS: redeem the blueprint for '.number_format($best['offer']['lp']).' LP plus '.number_format($best['offer']['isk']).' ISK; buy the required materials at Jita 4-4; confirm a manufacturing-capable Venal facility and job quote; run the blueprint once; sell '.number_format($best['yield']).' output unit(s) into buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'. Modeled sales tax 7.5% and LP 1,000 ISK/LP. Material estimates use actual asks. Before starting, verify blueprint runs and material efficiency, facility/job fees, hauling cost, buyer availability and safe transport. Margin is not net profit.',
-            ['requires_skills'=>['3380'=>1],'metric_isk'=>$best['margin'],'metric_label'=>'MARGIN BEFORE JOB/HAUL','why_selected'=>'Highest positive pre-job margin among '.count($this->ref['blueprints']).' referenced blueprints with an eligible LP offer, quoted materials and an existing buyer; fees, logistics and real job quote not yet priced.','evidence'=>$best,'steps'=>['Redeem blueprint: '.number_format($best['offer']['lp']).' Commando Guri LP + '.number_format($best['offer']['isk']).' ISK.','Buy blueprint materials at Jita 4-4; confirm the actual blueprint run count and skills.','Confirm a manufacturing-capable facility and quote in Venal BEFORE hauling.','Build '.number_format($best['yield']).' unit(s); verify then fulfill buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'.'],'url'=>'/industry/?view=build&bp='.$best['blueprint_id']]);
+            ['requires_skills'=>['3380'=>1],'metric_isk'=>$best['margin'],'metric_label'=>'MARGIN BEFORE JOB/HAUL','why_selected'=>'Highest positive pre-job margin among LP-redeemable blueprints with complete SDE recipes, quoted materials and an existing buyer; fees, logistics and real job quote not yet priced.','evidence'=>$best,'steps'=>['Redeem blueprint: '.number_format($best['offer']['lp']).' Commando Guri LP + '.number_format($best['offer']['isk']).' ISK.','Buy blueprint materials at Jita 4-4; confirm the actual blueprint run count and skills.','Confirm a manufacturing-capable facility and quote in Venal BEFORE hauling.','Build '.number_format($best['yield']).' unit(s); verify then fulfill buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'.'],'url'=>'/industry/?view=build&bp='.$best['blueprint_id']]);
     }
     /** Reprocessing reference value at an explicitly assumed 50% yield.
      *  This is a scenario, NOT a claim about the logged-in character's skills,
@@ -305,7 +351,8 @@ final class GuristasBuildIntelligence {
         $snap=[];foreach([10000002,10000015,10001000] as $rid){$s=$this->intel->read('region-'.$rid);$snap[$rid]=self::fresh($s)?$s:null;}
         $o=$this->intel->read('lp-offers');$ts=strtotime((string)($o['fetched_at']??''));
         $offers=$o && is_array($o['offers']??null) && $ts!==false && time()-$ts<=172800?$o['offers']:[];
-        $manufacture=$snap[10000002]&&$offers?$this->bestManufacture($snap,$offers):null;
+        [$recipes,$catalogCoverage]=$this->manufacturingReference($offers);
+        $manufacture=$snap[10000002]&&$offers?$this->bestManufacture($snap,$offers,$recipes):null;
         $pi=$this->importedPiLead($snap[10000002],$snap[10000015],$snap[10001000]) ?? $this->piLead($snap[10000002],$snap[10000015],$snap[10001000]);
         $catalog=$this->intel->read('build-venal-planets');
         if(!empty($catalog['planets']) && is_array($catalog['planets'])) {
@@ -324,7 +371,7 @@ final class GuristasBuildIntelligence {
             $pi['evidence']['planet_catalog_complete']=!empty($catalog['complete']);
         }
         $cards=[$manufacture??$this->fallbackManufacture(),$this->mineralLead($snap[10000002],$snap[10000015]),$pi];
-        return ['as_of'=>gmdate('c'),'status'=>'ready','orders'=>$cards,'coverage'=>['activity_count'=>3,'manufacturing_recipes'=>count($this->ref['blueprints']),'imported_pi_schematics'=>count($this->ref['pi_schematics']??[]),'reprocessing_references'=>count($this->ref['reprocessing']??[]),'market_snapshot_regions'=>array_keys(array_filter($snap)), 'qualifying_manufacturing_opportunity'=>$manufacture!==null, 'fallback_count'=>count(array_filter($cards,static fn($c)=>$c['state']==='supply_objective')),'resource_alternatives'=>count($cards[1]['alternatives']??[]),'resource_benchmark_types'=>[1224,1228,16268,16269],'pi_benchmark_types'=>[2312,2319,2346],'venal_planets_surveyed'=>count($catalog['planets']??[])],
+        return ['as_of'=>gmdate('c'),'status'=>'ready','orders'=>$cards,'coverage'=>['activity_count'=>3,'manufacturing_recipes'=>count($recipes),'manufacturing_catalog'=>$catalogCoverage,'imported_pi_schematics'=>count($this->ref['pi_schematics']??[]),'reprocessing_references'=>count($this->ref['reprocessing']??[]),'market_snapshot_regions'=>array_keys(array_filter($snap)), 'qualifying_manufacturing_opportunity'=>$manufacture!==null, 'fallback_count'=>count(array_filter($cards,static fn($c)=>$c['state']==='supply_objective')),'resource_alternatives'=>count($cards[1]['alternatives']??[]),'resource_benchmark_types'=>[1224,1228,16268,16269],'pi_benchmark_types'=>[2312,2319,2346],'venal_planets_surveyed'=>count($catalog['planets']??[])],
             'note'=>'Only MARKET LEAD can display an estimated margin, before omitted costs. MARKET CONTEXT provides observed prices, not activity profit. SUPPLY OBJECTIVE is a verified input relationship without verified economics.','source'=>'CCP SDE site reference, current Commando Guri LP offers and collected ESI regional market orders.'];
     }
 }
