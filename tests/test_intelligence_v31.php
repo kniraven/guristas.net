@@ -16,7 +16,7 @@ v31check($yield($one)>$yield($two),'Synthetic fixture should favor the immediate
 v31check((int)$slots['GURISTAS_LP']['type']===10001,'Highest after-fee cash ISK/LP must win regardless of shadow-valued net');
 $root=dirname(__DIR__);
 $cli=file_get_contents($root.'/bin/guristas-intelligence.php');
-v31check(str_contains($cli,'64800') && str_contains($cli,"$".'intel->refreshOffers()'),'Normal collector publishes must refresh LP offers before 24h expiration');
+v31check(str_contains($cli,'86400') && str_contains($cli,"$".'intel->refreshOffers()'),'Normal collector publishes must refresh LP offers at its daily 24h threshold');
 $script=file_get_contents($root.'/public/assets/js/home-command.js');
 v31check(str_contains($script,'GURISTAS LP // REDEEM') && str_contains($script,'order.lp_cash_isk_per_lp') && str_contains($script,'order.unit_count'),'Homepage must show fixed LP category, financial return and reward units');
 $trade=file_get_contents($root.'/app/services/TradeOrders.php');

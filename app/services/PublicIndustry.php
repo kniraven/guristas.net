@@ -4,7 +4,13 @@ require_once __DIR__ . '/EsiCache.php';
 require_once __DIR__ . '/EsiClient.php';
 function guri_industry_reference(): array {
     static $data;
-    return $data ??= json_decode((string)file_get_contents(dirname(__DIR__) . '/data/industry-reference.json'), true, 64, JSON_THROW_ON_ERROR);
+    if ($data !== null) return $data;
+    $live = dirname(__DIR__, 2) . '/storage/cache/economic-intelligence/industry-reference-live.json';
+    $source = is_file($live) ? $live : dirname(__DIR__) . '/data/industry-reference.json';
+    $raw = file_get_contents($source);
+    if ($raw === false) throw new RuntimeException('Industry reference unavailable');
+    $data = json_decode($raw, true, 64, JSON_THROW_ON_ERROR);
+    return $data;
 }
 function guri_materials(array $blueprint, int $runs, float $me, float $facilityReduction): array {
     if ($runs < 1 || $runs > 10000 || !is_finite($me) || $me < 0 || $me > 10 || !is_finite($facilityReduction) || $facilityReduction < 0 || $facilityReduction > 90) throw new InvalidArgumentException('Invalid production inputs.');

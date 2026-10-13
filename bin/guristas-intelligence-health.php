@@ -10,8 +10,14 @@ echo "GURISTAS ECONOMIC INTELLIGENCE HEALTH (READ ONLY)\n";
 $offerSnapshot=$intel->read('lp-offers');
 $lpStamp=strtotime((string)($offerSnapshot['fetched_at']??''))?:0;
 $lpAge=$lpStamp?max(0,$now-$lpStamp):null;
-printf("LP offers: %d; age=%s; next scheduled refresh threshold=18h; eligibility limit=24h\n",
+printf("LP offers: %d; age=%s; next scheduled refresh threshold=24h; eligibility limit=24h\n",
     count($offerSnapshot['offers']??[]),$lpAge===null?'missing':$lpAge.'s');
+$syncStatus=$intel->read('sde-sync-status');
+$syncSource=dirname(__DIR__).'/storage/cache/economic-intelligence/industry-reference-live.json';
+$reference=guri_industry_reference();
+printf("SDE reference: build=%s; source=%s; daily check=%s; last status=%s\n",
+    (string)($reference['sde_build']??'unknown'),is_file($syncSource)?'auto-synchronized':'deployed baseline',
+    (string)($syncStatus['checked_at']??'never'),(string)($syncStatus['status']??'not configured'));
 foreach($regions as $rid=>$label){
     $snapshot=$intel->read('region-'.$rid);
     $ts=strtotime((string)($snapshot['fetched_at']??''))?:0;
