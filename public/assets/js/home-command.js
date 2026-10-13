@@ -93,6 +93,8 @@
                 card.title=c.state==='market_lead'?'Solid orange: cost-backed manufacturing margin; excludes actual job and hauling costs.':c.state==='market_context'?'Solid purple: verified market price, not verified mining or PI net profit.':c.state==='supply_objective'?'Dashed purple: a Guristas supply objective, profit unverified.':'No sufficient evidence.';
                 const type=['MANUFACTURE','MINE','PLANETARY'][i];
                 const evidenceLabel=c.state==='market_lead'?'COST-BACKED LEAD':c.state==='market_context'?'PRICE CONTEXT':c.state==='supply_objective'?'SUPPLY OBJECTIVE':'NO VERIFIED LEAD';
+                // Activity-specific qualification: a quoted buyer does not prove local extraction or net profit.
+                const qualification=c.activity==='mine'?'DEPOSIT UNVERIFIED':c.activity==='pi'?'CUSTOMS + HAUL UNPRICED':c.state==='market_lead'?'JOB + HAUL UNPRICED':evidenceLabel;
                 const heading=document.createElement('div');heading.className='build-order-heading';
                 const tag=document.createElement('span');tag.className='build-order-label';tag.textContent=String(i+1).padStart(2,'0')+' // '+type;
                 const explanation=document.createElement('button');explanation.type='button';explanation.className='build-order-intel';
@@ -102,6 +104,7 @@
                 skillIndicator.textContent=skills===null?'SKILLS: UNCHECKED':canAttempt(c)?(chosenAlternative?'SKILLS: MATCHED ALT':'SKILLS: BASIC CHECK'):'SKILLS: CHECK';
                 skillIndicator.title=skills===null?'No verified character skills were available; public recommendation shown.':canAttempt(c)?'Listed minimum skill levels checked. Other ship, facility, blueprint and colony requirements may apply.':'One or more listed minimum skills are missing. See INTEL.';
                 heading.append(tag,skillIndicator,explanation);
+                card.setAttribute('aria-label',type+': '+(c.title||'opportunity')+'. '+qualification);
                 const title=document.createElement('strong');title.className='build-order-title';title.textContent=c.title||'INTELLIGENCE PENDING';
                 const action=document.createElement('div');action.className='build-order-action';
                 let nextAction=String(c.action||'REVIEW INTELLIGENCE');
@@ -120,7 +123,7 @@
                     metric.title='Only PI materials, quoted buyer revenue and modeled sales tax. Planetary customs, hauling and operating costs are not included.';
                 }else metricLabel.textContent=evidenceLabel;
                 const metricNote=document.createElement('small');
-                metricNote.textContent=c.state==='market_lead'?'JOB, HAUL EXCLUDED':c.activity==='pi'&&c.state==='market_context'&&Number.isFinite(Number(c.metric_isk))?'CUSTOMS, HAUL EXCLUDED':c.state==='market_context'?'BUYER PRICE ONLY':c.state==='supply_objective'?'GURISTAS INPUT NEEDED':'DATA UNAVAILABLE';
+                metricNote.textContent=c.activity==='mine'?'DEPOSIT UNVERIFIED':c.activity==='pi'?'CUSTOMS, HAUL EXCLUDED':c.state==='market_lead'?'JOB, HAUL EXCLUDED':c.state==='market_context'?'BUYER PRICE ONLY':c.state==='supply_objective'?'GURISTAS INPUT NEEDED':'DATA UNAVAILABLE';
                 metric.append(metricLabel,metricNote);
                 const dossier=document.createElement('section');dossier.className='build-order-dossier';dossier.hidden=true;
                 const dossierHead=document.createElement('div');dossierHead.className='build-order-dossier-head';
@@ -135,6 +138,8 @@
                 const ev=c.evidence||{};
                 if(c.activity==='manufacture'){
                     if(ev.blueprint_id)addLine('BLUEPRINT','Type '+ev.blueprint_id+' · LP and materials priced where available');
+                    if(Number.isFinite(Number(ev.manufacture_seconds))&&Number(ev.manufacture_seconds)>0)addLine('RECIPE TIME',Number(ev.manufacture_seconds).toLocaleString('en-US')+' seconds base recipe time; actual job depends on skills and facility');
+                    if(Number.isFinite(Number(ev.recipe_max_runs))&&Number(ev.recipe_max_runs)>0)addLine('BLUEPRINT LIMIT',Number(ev.recipe_max_runs).toLocaleString('en-US')+' maximum runs recorded in SDE; verify actual BPC runs');
                     if(ev.bid_order_id)addLine('BUYER','Order #'+ev.bid_order_id+' · station '+ev.bid_station_id+' · '+(ev.region||'destination'));
                     if(Array.isArray(ev.inputs))addLine('MATERIALS',ev.inputs.map(x=>x.quantity+' × '+x.name).join(' · '));
                     addLine('COST GAPS','Venal facility, actual job quote, blueprint efficiency, shipping and market changes');
@@ -286,9 +291,10 @@
                 profitLine.title=fullMargin;
                 const profitMatch=fullMargin.match(/([+-]\s*[\d,.]+\s*[KMB]?\s*ISK)\s*$/i);
                 const profitValue=profitMatch?profitMatch[1].replace(/\s+/g,' ').trim():'NOT VERIFIED';
-                profitLine.textContent=lpRedemption&&Number.isFinite(Number(order.lp_cash_isk_per_lp))?'LP YIELD / '+Number(order.lp_cash_isk_per_lp).toLocaleString('en-US',{maximumFractionDigits:0})+' ISK/LP':('EST. PROFIT / '+profitValue);
+                const conditionalReturn=buyOrder||listing||lpRedemption||order.status==='conditional';
+                profitLine.textContent=lpRedemption&&Number.isFinite(Number(order.lp_cash_isk_per_lp))?'CONDITIONAL LP / '+Number(order.lp_cash_isk_per_lp).toLocaleString('en-US',{maximumFractionDigits:0})+' ISK/LP':((conditionalReturn?'POTENTIAL / ':'EST. PROFIT / ')+profitValue);
                 const statsLine=document.createElement('span');statsLine.className='trade-stats-line';
-                statsLine.textContent=buyOrder?'BUY ORDER MUST FILL':order.listing?'SELL ORDER MUST FILL':'EXCLUDES HAULING COSTS';
+                statsLine.textContent=buyOrder?'SOURCE BID MUST FILL':order.listing||lpRedemption?'SALE NOT GUARANTEED':'EXCLUDES HAULING COSTS';
                 metrics.append(profitLine,statsLine);
                 card.appendChild(metrics);
                 card.appendChild(dossier);
@@ -405,8 +411,11 @@
     function renderRaidRecommendation(){
         const r=raidRecommendation(campaign,campaignMeta,campaignFailed);
         text('[data-gc-recommendation]',r.title);
-        text('[data-gc-recommendation-reason]',r.detail);
-        const order=$('.gc-recommendation');if(order)order.dataset.order= r.title.startsWith('DEPLOY TO')?'deploy':'standby';
+        const raidAction=r.title.startsWith('DEPLOY TO')?'ACTION: Contest eligible insurgency complexes in the named system; confirm the live site and eligibility in EVE.':'ACTION: Wait for a verified active objective; do not deploy on stale intelligence.';
+        const e=r.evidence;
+        const ranking=e&&Number.isFinite(Number(e.priority_score))?' RANKING: '+Number(e.candidate_systems||0)+' viable systems assessed; priority score '+Number(e.priority_score).toFixed(1)+' (relative priority, not a reward or success probability).':'';
+        text('[data-gc-recommendation-reason]',r.detail+' '+raidAction+ranking);
+        const order=$('.gc-recommendation');if(order){order.dataset.order=r.title.startsWith('DEPLOY TO')?'deploy':'standby';order.title=raidAction+ranking;}
     }
     const intelligenceSource = meta => meta?.source_mode==='everef_fallback'?'EVE Ref (mirror)':meta?.source_mode==='eve_online_frontlines'?'CCP Frontlines':'Source unconfirmed';
     const intelligenceStamp = (meta, current) => {
