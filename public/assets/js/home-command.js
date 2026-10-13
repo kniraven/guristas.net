@@ -115,8 +115,12 @@
                 const detail=document.createElement('p');detail.className='build-order-detail';
                 const evPrice=c.evidence||{};
                 const price=Number(evPrice.buyer_unit_isk);
-                const priceLabel=Number.isFinite(price)&&price>0?'QUOTED BUYER / '+price.toLocaleString('en-US',{maximumFractionDigits:2})+' ISK/unit':'NO EXECUTABLE UNIT QUOTE';
-                detail.textContent=priceLabel+' · '+(c.detail||'See INTEL for costs and conditions');detail.title=detail.textContent;
+                const priceLabel=Number.isFinite(price)&&price>0?'BUYER '+price.toLocaleString('en-US',{maximumFractionDigits:2})+' ISK/UNIT':'BUYER PRICE UNVERIFIED';
+                const unitCount=c.activity==='manufacture'?Number(evPrice.yield):c.activity==='pi'?Number(evPrice.output_qty):Number(evPrice.reference_lot_units);
+                const countLabel=Number.isFinite(unitCount)&&unitCount>0?(c.activity==='manufacture'?'OUTPUT ':c.activity==='pi'?'PER CYCLE ':'REF. LOT ')+Math.round(unitCount).toLocaleString('en-US')+' UNITS':'';
+                // Keep order IDs, long descriptions and assumptions in VIEW INTEL, not the narrow summary row.
+                detail.textContent=[priceLabel,countLabel].filter(Boolean).join(' · ');
+                detail.title=[detail.textContent,c.detail||''].filter(Boolean).join(' | ');
                 const metric=document.createElement('div');metric.className='build-order-metric';
                 const metricLabel=document.createElement('strong');
                 if(c.state==='market_lead'&&Number.isFinite(Number(c.metric_isk))){
