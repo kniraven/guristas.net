@@ -3,7 +3,9 @@ declare(strict_types=1);
 require_once dirname(__DIR__).'/app/services/BuildIntelligence.php';
 $intel=(new ReflectionClass(GuristasMarketIntelligence::class))->newInstanceWithoutConstructor();
 $dir=sys_get_temp_dir().'/guri-v26-'.bin2hex(random_bytes(5));mkdir($dir,0700,true);
-(new ReflectionProperty(GuristasMarketIntelligence::class,'dir'))->setValue($intel,$dir);
+$dirProperty=new ReflectionProperty(GuristasMarketIntelligence::class,'dir');
+$dirProperty->setAccessible(true); // Required by local PHP 8.0 reflection behavior.
+$dirProperty->setValue($intel,$dir);
 try{
   $ref=['types'=>['34'=>['name'=>'Tritanium']],'blueprints'=>['17931'=>['product'=>['typeID'=>17930,'quantity'=>1],'materials'=>[['typeID'=>34,'quantity'=>9]]]]];
   $r=(new GuristasBuildIntelligence($intel,$ref))->collect();
