@@ -57,6 +57,10 @@ final class GuristasRaidPriority {
         if($w['corruption_stage']===4&&is_numeric($w['corruption_percent']??null)&&(float)$w['corruption_percent']>=80) $reason='FINISH THE JOB: Corruption 5 is close; secure the objective before diverting pilots.';
         return ['title'=>'DEPLOY TO '.($w['name']??'SYSTEM '.$id).' // '.($turn?'TURN THE TIDE':'RAISE CORRUPTION'),
             'detail'=>'Corruption Stage '.$w['corruption_stage'].'/5'.$pct.'.'.$supp.' '.$reason.' '.$near.'.',
-            'strategy'=>$turn?'turn_the_tide':'secure_corruption','system_id'=>$id];
+            'strategy'=>$turn?'turn_the_tide':'secure_corruption','system_id'=>$id,
+            'evidence'=>['priority_score'=>$a['score'],'candidate_systems'=>count($eligible),
+                'highsec_distance_jumps'=>$distance,'corruption_stage'=>(int)$w['corruption_stage'],
+                'suppression_stage'=>$w['suppression_stage']??null,
+                'suppression_known'=>$a['suppression_known']]];
     }
 }

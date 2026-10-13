@@ -52,7 +52,7 @@ final class GuristasBuildIntelligence {
      * complete index does not prove a blueprint can actually be acquired.
      */
     private function manufacturingReference(array $offers):array {
-        $result=['status'=>'not_checked','catalog_recipes'=>null,'matched'=>0,'eligible_lp_blueprints'=>0];
+        $result=['status'=>'not_checked','catalog_recipes'=>null,'matched'=>0,'eligible_lp_blueprints'=>0,'unmatched_lp_blueprints'=>0,'catalog_match_rate_pct'=>null,'full_catalog_only_matches'=>0];
         $ids=[];
         foreach($offers as $offer){
             if((int)($offer['lp_cost']??0)<1 || (int)($offer['ak_cost']??0)!==0 || !empty($offer['required_items']))continue;
@@ -80,6 +80,9 @@ final class GuristasBuildIntelligence {
             $result['status']=(string)($decoded['status']??'error');
             $result['catalog_recipes']=$decoded['catalog_recipes']??null;
             $result['matched']=(int)($decoded['matched']??0);
+            $result['unmatched_lp_blueprints']=max(0,count($ids)-$result['matched']);
+            $result['catalog_match_rate_pct']=round(100*$result['matched']/count($ids),2);
+            $result['full_catalog_only_matches']=count(array_diff(array_keys($decoded['recipes']??[]),array_keys($this->ref['blueprints'])));
             if($result['status']!=='ready')return [$this->ref['blueprints'],$result];
             // Full SDE is authoritative for recipe quantities when the builds match.
             $recipes=$this->ref['blueprints'];
@@ -105,6 +108,9 @@ final class GuristasBuildIntelligence {
         foreach($recipes as $bpId=>$bp){
             $offer=$bpOffers[(int)$bpId]??null;
             if(!$offer)continue;
+            // Never recommend a job requiring more runs than the verified blueprint allows.
+            if(isset($bp['max_runs']) && (int)$bp['max_runs']<1)continue;
+            if(isset($bp['manufacture_seconds']) && (int)$bp['manufacture_seconds']<1)continue;
             $input=$this->blueprintCosts($markets[10000002],$bp);
             if(!$input)continue;
             $product=(int)($bp['product']['typeID']??0);$yield=(int)($bp['product']['quantity']??0);
@@ -116,7 +122,7 @@ final class GuristasBuildIntelligence {
                     if((int)$bid['v']<$yield || (int)($bid['m']??1)>$yield)continue;
                     $revenue=$yield*(float)$bid['p'];$margin=.925*$revenue-$input['cost']-$offer['cost'];
                     if($margin<2000000 || ($best && $margin<=$best['margin']))continue;
-                    $best=['margin'=>$margin,'blueprint_id'=>(int)$bpId,'product_type_id'=>$product,'yield'=>$yield,'cost'=>$input['cost'],'offer'=>$offer,'inputs'=>$input['inputs'],'bid_order_id'=>(int)$bid['i'],'bid_station_id'=>(int)$bid['l'],'region'=>$name,'revenue'=>$revenue];
+                    $best=['margin'=>$margin,'blueprint_id'=>(int)$bpId,'product_type_id'=>$product,'yield'=>$yield,'recipe_max_runs'=>$bp['max_runs']??null,'manufacture_seconds'=>$bp['manufacture_seconds']??null,'cost'=>$input['cost'],'offer'=>$offer,'inputs'=>$input['inputs'],'bid_order_id'=>(int)$bid['i'],'bid_station_id'=>(int)$bid['l'],'region'=>$name,'revenue'=>$revenue];
                 }
             }
         }
@@ -130,7 +136,7 @@ final class GuristasBuildIntelligence {
         $best['build_versus_finished_purchase_isk']=$finished===null?null:
             $finished['value']-$best['modeled_build_acquisition_isk'];
         return self::card('manufacture','market_lead',$this->name($best['product_type_id']),($best['region']==='Jita export'?'BUILD IN VENAL → SELL JITA':'BUILD IN VENAL → SELL '.$best['region']),
-            '1 run: '.number_format($best['yield']).' unit(s) · buyer order #'.$best['bid_order_id'],
+            '1 run: '.number_format($best['yield']).' unit(s) · buyer order #'.$best['bid_order_id'].' · job fees/hauling excluded',
             'BUY-VERSUS-BUILD: '.($best['jita_finished_ask_total_isk']===null?'No fully executable Jita ask quote for finished items.':'Jita finished item purchase quote '.number_format($best['jita_finished_ask_total_isk']).' ISK; modeled blueprint plus materials '.number_format($best['modeled_build_acquisition_isk']).' ISK; modeled build acquisition advantage '.number_format($best['build_versus_finished_purchase_isk']).' ISK, before facility and hauling.').' NEXT STEPS: redeem the blueprint for '.number_format($best['offer']['lp']).' LP plus '.number_format($best['offer']['isk']).' ISK; buy the required materials at Jita 4-4; confirm a manufacturing-capable Venal facility and job quote; run the blueprint once; sell '.number_format($best['yield']).' output unit(s) into buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'. Modeled sales tax 7.5% and LP 1,000 ISK/LP. Material estimates use actual asks. Before starting, verify blueprint runs and material efficiency, facility/job fees, hauling cost, buyer availability and safe transport. Margin is not net profit.',
             ['requires_skills'=>['3380'=>1],'metric_isk'=>$best['margin'],'metric_label'=>'MARGIN BEFORE JOB/HAUL','why_selected'=>'Highest positive pre-job margin among LP-redeemable blueprints with complete SDE recipes, quoted materials and an existing buyer; fees, logistics and real job quote not yet priced.','evidence'=>$best,'steps'=>['Redeem blueprint: '.number_format($best['offer']['lp']).' Commando Guri LP + '.number_format($best['offer']['isk']).' ISK.','Buy blueprint materials at Jita 4-4; confirm the actual blueprint run count and skills.','Confirm a manufacturing-capable facility and quote in Venal BEFORE hauling.','Build '.number_format($best['yield']).' unit(s); verify then fulfill buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'.'],'url'=>'/industry/?view=build&bp='.$best['blueprint_id']]);
     }
