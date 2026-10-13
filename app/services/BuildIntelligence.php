@@ -75,10 +75,18 @@ final class GuristasBuildIntelligence {
             }
         }
         if(!$best)return null;
+        // Benchmark buying completed output instead of manufacturing it. Buying
+        // at posted Jita asks is a comparison, not guaranteed delivery in Venal.
+        $finished=self::fills(self::orderRows($markets[10000002],$best['product_type_id'],false,60003760),$best['yield']);
+        $best['jita_finished_ask_total_isk']=$finished['value']??null;
+        $best['jita_finished_ask_orders']=$finished['ids']??[];
+        $best['modeled_build_acquisition_isk']=$best['cost']+$best['offer']['cost'];
+        $best['build_versus_finished_purchase_isk']=$finished===null?null:
+            $finished['value']-$best['modeled_build_acquisition_isk'];
         return self::card('manufacture','market_lead',$this->name($best['product_type_id']),($best['region']==='Jita export'?'BUILD IN VENAL → SELL JITA':'BUILD IN VENAL → SELL '.$best['region']),
             '1 run: '.number_format($best['yield']).' unit(s) · buyer order #'.$best['bid_order_id'],
-            'NEXT STEPS: redeem the blueprint for '.number_format($best['offer']['lp']).' LP plus '.number_format($best['offer']['isk']).' ISK; buy the required materials at Jita 4-4; confirm a manufacturing-capable Venal facility and job quote; run the blueprint once; sell '.number_format($best['yield']).' output unit(s) into buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'. Modeled sales tax 7.5% and LP 1,000 ISK/LP. Material estimates use actual asks. Before starting, verify blueprint runs and material efficiency, facility/job fees, hauling cost, buyer availability and safe transport. Margin is not net profit.',
-            ['requires_skills'=>['3380'=>1],'metric_isk'=>$best['margin'],'metric_label'=>'MARGIN BEFORE JOB/HAUL','why_selected'=>'Highest positive margin among the 28 evaluated Guristas LP blueprints with quoted Jita materials and an existing destination buyer; manufacturing and logistics not yet priced.','evidence'=>$best,'steps'=>['Redeem blueprint: '.number_format($best['offer']['lp']).' Commando Guri LP + '.number_format($best['offer']['isk']).' ISK.','Buy blueprint materials at Jita 4-4; confirm the actual blueprint run count and skills.','Confirm a manufacturing-capable facility and quote in Venal BEFORE hauling.','Build '.number_format($best['yield']).' unit(s); verify then fulfill buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'.'],'url'=>'/industry/?view=build&bp='.$best['blueprint_id']]);
+            'BUY-VERSUS-BUILD: '.($best['jita_finished_ask_total_isk']===null?'No fully executable Jita ask quote for finished items.':'Jita finished item purchase quote '.number_format($best['jita_finished_ask_total_isk']).' ISK; modeled blueprint plus materials '.number_format($best['modeled_build_acquisition_isk']).' ISK; modeled build acquisition advantage '.number_format($best['build_versus_finished_purchase_isk']).' ISK, before facility and hauling.').' NEXT STEPS: redeem the blueprint for '.number_format($best['offer']['lp']).' LP plus '.number_format($best['offer']['isk']).' ISK; buy the required materials at Jita 4-4; confirm a manufacturing-capable Venal facility and job quote; run the blueprint once; sell '.number_format($best['yield']).' output unit(s) into buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'. Modeled sales tax 7.5% and LP 1,000 ISK/LP. Material estimates use actual asks. Before starting, verify blueprint runs and material efficiency, facility/job fees, hauling cost, buyer availability and safe transport. Margin is not net profit.',
+            ['requires_skills'=>['3380'=>1],'metric_isk'=>$best['margin'],'metric_label'=>'MARGIN BEFORE JOB/HAUL','why_selected'=>'Highest positive pre-job margin among '.count($this->ref['blueprints']).' referenced blueprints with an eligible LP offer, quoted materials and an existing buyer; fees, logistics and real job quote not yet priced.','evidence'=>$best,'steps'=>['Redeem blueprint: '.number_format($best['offer']['lp']).' Commando Guri LP + '.number_format($best['offer']['isk']).' ISK.','Buy blueprint materials at Jita 4-4; confirm the actual blueprint run count and skills.','Confirm a manufacturing-capable facility and quote in Venal BEFORE hauling.','Build '.number_format($best['yield']).' unit(s); verify then fulfill buyer order #'.$best['bid_order_id'].' at station ID '.$best['bid_station_id'].'.'],'url'=>'/industry/?view=build&bp='.$best['blueprint_id']]);
     }
     /** Market-quoted resource choices: ore and ice. CCP's ESI does not expose live deposit inventories.
      * Candidate lists describe types suitable to check in nullsec, not confirmed live sites.
@@ -101,21 +109,32 @@ final class GuristasBuildIntelligence {
                 // Compare the proceeds of a useful 1,000 m³ reference lot,
                 // not a one-unit top bid that disappears before a haul arrives.
                 $target=max(1,(int)floor(1000.0/(float)$resource['m3']));
-                $remaining=$target;$priced=0;$proceeds=0.0;$quotes=[];
-                $deliveryStation=0;
-                foreach($rows as $row){
-                    if($deliveryStation===0)$deliveryStation=(int)$row['l'];
-                    // A lot must be delivered to one station. Combining bids
-                    // from different stations would manufacture executable depth.
-                    if((int)$row['l']!==$deliveryStation)continue;
-                    $min=(int)($row['m']??1);
-                    $take=min($remaining,(int)$row['v']);
-                    if($take<max(1,$min))continue;
-                    $proceeds+=$take*(float)$row['p'];
-                    $remaining-=$take;$priced+=$take;
-                    $quotes[]=['id'=>(int)$row['i'],'units'=>$take,'unit_price'=>(float)$row['p']];
-                    if($remaining===0)break;
+                // Price each station as a separate executable sale. The highest
+                // single bid may be a one-unit outlier at a poor destination.
+                $byStation=[];
+                foreach($rows as $row)$byStation[(int)$row['l']][]=$row;
+                $bestStation=null;
+                foreach($byStation as $station=>$stationRows){
+                    $remaining=$target;$priced=0;$proceeds=0.0;$quotes=[];
+                    foreach($stationRows as $row){
+                        $take=min($remaining,(int)$row['v']);
+                        if($take<max(1,(int)($row['m']??1)))continue;
+                        $proceeds+=$take*(float)$row['p'];
+                        $priced+=$take;$remaining-=$take;
+                        $quotes[]=['id'=>(int)$row['i'],'units'=>$take,'unit_price'=>(float)$row['p']];
+                        if(!$remaining)break;
+                    }
+                    if($priced<(int)$resource['minimum'])continue;
+                    // Maximize modeled proceeds for the same reference lot,
+                    // without mixing order fills across delivery stations.
+                    if($bestStation===null||$proceeds>$bestStation['proceeds']
+                        ||($proceeds===$bestStation['proceeds']&&$priced>$bestStation['priced'])){
+                        $bestStation=['proceeds'=>$proceeds,'priced'=>$priced,'quotes'=>$quotes,'station'=>$station];
+                    }
                 }
+                if($bestStation===null)continue;
+                $proceeds=$bestStation['proceeds'];$priced=$bestStation['priced'];
+                $quotes=$bestStation['quotes'];$deliveryStation=$bestStation['station'];
                 if($priced<(int)$resource['minimum'])continue;
                 $gross=$proceeds/$priced;
                 $perM3=$gross/$resource['m3'];
@@ -142,11 +161,11 @@ final class GuristasBuildIntelligence {
             $referenceUnits=max(1,(int)floor($referenceVolumeM3/$resource['m3']));
             $batch=min($lead['quantity'],$referenceUnits);
             $location=$lead['place'];$order=(int)$lead['bid_fills'][0]['id'];
-            $out[]=self::card('mine','market_context','Mine '.$name.' in Venal',
-                'MINE '.$name.' → SELL '.strtoupper($location),
+            $out[]=self::card('mine','market_context','Price '.$name.' for Venal mining',
+                'VERIFY '.$name.' IN VENAL → SELL '.strtoupper($location),
                 'Reference lot: '.$batch.' '.$name.' (up to '.number_format($batch*$resource['m3'],1).' m³) · '.$location.' buyer starting #'.$order,
                 'RESOURCE: '.$name.' ('.$category.'), '.number_format($resource['m3'],2).' m³/unit. CONFIRMED: buyer order #'.$order.' for up to '.number_format($lead['quantity']).' units at '. $location .'; posted price '.number_format($lead['unit_value'],2).' ISK/unit. EXAMPLE gross proceeds for a reference lot of '.$batch.' units ('.number_format($batch*$resource['m3'],1).' m³): '.number_format($batch*$lead['unit_value']).' ISK before taxes and transport. START: Check the in-game map Specific Ores / nearby Ore Anomalies, or ice anomalies as appropriate. Then inspect the site and confirm '.$name.' is actually present. TARGET: '.$resource['site'].'. This is not verified ISK/hour, current yield, or local resource availability. Compared by quoted gross ISK per m³, not net mining profit.',
-                ['why_selected'=>'Highest depth-adjusted gross ISK per m³ among the checked ore/ice types, with a modest preference for Venal buyers. Partial bid-depth coverage reduces the ranking score. Lot value uses bids at one destination station. Deposit availability and mining profit remain unverified.','resource_category'=>$category,'requires_skills'=>[(string)$resource['min_skill']=>1],'evidence'=>['item_type_id'=>$lead['type_id'],'item_category'=>$category,'unit_m3'=>$resource['m3'],'bid_station_id'=>(int)$lead['bid_station_id'],'bid_order_id'=>$order,'bid_fills'=>$lead['bid_fills'],'bid_units'=>$lead['quantity'],'gross_isk_per_m3'=>$lead['gross_per_m3'],'reference_lot_units'=>$batch,'reference_lot_m3'=>$batch*$resource['m3'],'reference_lot_gross_isk'=>$batch*$lead['unit_value'],'target_lot_units'=>$lead['reference_target_units'],'reference_lot_depth_coverage_pct'=>round(100*$batch/$lead['reference_target_units'],2),'snapshot_market'=>$location,'live_deposit_verified'=>false],
+                ['why_selected'=>'Highest quoted station-specific depth-adjusted gross ISK per m³ among the checked ore/ice types, with a modest preference for Venal buyers. Partial bid-depth coverage reduces the ranking score. Lot value uses bids at one destination station. Deposit availability and mining profit remain unverified.','resource_category'=>$category,'requires_skills'=>[(string)$resource['min_skill']=>1],'evidence'=>['item_type_id'=>$lead['type_id'],'item_category'=>$category,'unit_m3'=>$resource['m3'],'bid_station_id'=>(int)$lead['bid_station_id'],'bid_order_id'=>$order,'bid_fills'=>$lead['bid_fills'],'bid_units'=>$lead['quantity'],'gross_isk_per_m3'=>$lead['gross_per_m3'],'reference_lot_units'=>$batch,'reference_lot_m3'=>$batch*$resource['m3'],'reference_lot_gross_isk'=>$batch*$lead['unit_value'],'target_lot_units'=>$lead['reference_target_units'],'reference_lot_depth_coverage_pct'=>round(100*$batch/$lead['reference_target_units'],2),'snapshot_market'=>$location,'live_deposit_verified'=>false],
                   'steps'=>['Open EVE map: Specific Ores / Ore Anomalies (or ice anomaly list) to check Venal resource availability.','Confirm an actual '.$name.' deposit in the selected system. Never treat a market order as proof of a local spawn.','Plan up to '.$batch.' units ('.number_format($batch*$resource['m3'],1).' m³) as a price-comparison reference; adjust for your actual ship and deposit.','Verify all quoted buyer orders at station ID '.(int)$lead['bid_station_id'].'; they are a snapshot, not guaranteed fills. Compare direct sale versus refining, hauling and risk.'],'url'=>'/industry/']);
         }
         return $out;
@@ -188,10 +207,11 @@ final class GuristasBuildIntelligence {
                 'NEXT STEPS: obtain 10 Supertensile Plastics and 10 Test Cultures (priced at Jita asks); supply a Venal Advanced Industry Facility on a suitable colony; run one hourly schematic cycle to produce 3 Synthetic Synapses; compare customs taxes, imports, exports and hauling; then sell to buyer order #'.(int)$best['bid']['i'].'. The estimate of '.number_format($best['surplus'],0).' ISK is after modeled 7.5% sales tax, BEFORE all colony taxes, facility/cargo costs, hauling and installation. Not verified net profit or planet extraction yield.',
                 ['requires_skills'=>[],'why_selected'=>'Synthetic Synapses is an input to a Guristas blueprint chain. A one-hour P3 schematic is documented, but the present market data cannot prove positive colony profit.','evidence'=>['item_type_id'=>$output,'inputs'=>$inputs,'output_qty'=>3,'cycle_hours'=>1,'buyer_order_id'=>(int)$best['bid']['i'],'buyer_station_id'=>(int)$best['bid']['l'],'buyer_region'=>$best['name'],'estimated_surplus_before_pi_costs'=>$best['surplus']],'metric_isk'=>$best['surplus'],'steps'=>['Establish or use a Venal colony with an Advanced Industry Facility; confirm you can access the planet.' , 'Buy or produce 10 Supertensile Plastics and 10 Test Cultures.','Confirm a Venal colony with an Advanced Industry Facility; set schematic 92 (1 hour).','Route both inputs into the factory and select Synthetic Synapses; collect 3 units after one hour; calculate customs/transport.','If still profitable, verify buyer order #'.(int)$best['bid']['i'].' at station ID '.(int)$best['bid']['l'].' before hauling.'],'url'=>'/industry/']);
         }
+        $breakEven=$complete?round($unitCost/(3.0*(1.0-0.075)),2):null;
         return self::card('pi','supply_objective','PI: Synthetic Synapses','SET UP P3 FACTORY IN VENAL',
             '10 Supertensile Plastics + 10 Test Cultures → 3 Synthetic Synapses / hour',
-            'NEXT STEPS: select a suitable Venal planet and confirm its Advanced Industry Facility and colony access; import or produce 10 Supertensile Plastics plus 10 Test Cultures; produce 3 Synthetic Synapses in a one-hour cycle. This is a verified P3 schematic and Guristas blueprint ingredient, NOT a verified profitable colony. No reliable buyer/input quote combination survived the cost check. Check customs fees, extraction and transport before starting.',
-            ['requires_skills'=>[],'why_selected'=>'Synthetic Synapses is an input to a Guristas blueprint chain. A one-hour P3 schematic is documented, but the present market data cannot prove positive colony profit.','evidence'=>['item_type_id'=>$output,'input_names'=>$ingredientNames,'input_quantities'=>[10,10],'output_qty'=>3,'cycle_hours'=>1],'steps'=>['Choose an accessible planet in Venal; establish a colony with a command center and an Advanced Industry Facility (or use an existing one).','Import or produce 10 Supertensile Plastics and 10 Test Cultures.','Route both inputs into the Advanced Industry Facility, select Synthetic Synapses and run one one-hour cycle for 3 units.','Check current input/output prices, customs charges and hauling before repeating.'],'url'=>'/industry/']);
+            'NEXT STEPS: select a suitable Venal planet and confirm its Advanced Industry Facility and colony access; import or produce 10 Supertensile Plastics plus 10 Test Cultures; produce 3 Synthetic Synapses in a one-hour cycle. This is a verified P3 schematic and Guristas blueprint ingredient, NOT a verified profitable colony. No reliable buyer/input quote combination survived the cost check. '.($breakEven===null?'Input pricing incomplete.':'Minimum modeled sale price '.number_format($breakEven,2).' ISK per output unit covers purchased inputs and modeled 7.5% sale tax only, NOT colony charges or hauling.').' Check customs fees, extraction and transport before starting.',
+            ['requires_skills'=>[],'why_selected'=>'Synthetic Synapses is an input to a Guristas blueprint chain. A one-hour P3 schematic is documented, but the present market data cannot prove positive colony profit.','evidence'=>['item_type_id'=>$output,'input_names'=>$ingredientNames,'input_quantities'=>[10,10],'output_qty'=>3,'cycle_hours'=>1,'priced_inputs_isk'=>$complete?$unitCost:null,'break_even_sale_unit_isk_before_pi_costs'=>$breakEven],'steps'=>['Choose an accessible planet in Venal; establish a colony with a command center and an Advanced Industry Facility (or use an existing one).','Import or produce 10 Supertensile Plastics and 10 Test Cultures.','Route both inputs into the Advanced Industry Facility, select Synthetic Synapses and run one one-hour cycle for 3 units.','Check current input/output prices, customs charges and hauling before repeating.'],'url'=>'/industry/']);
     }
     private function fallbackManufacture():array {
         $worm=$this->ref['blueprints']['17931']??null;

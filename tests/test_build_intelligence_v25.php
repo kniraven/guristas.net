@@ -14,7 +14,7 @@ $put('region-10000015',$mk([]));$put('region-10001000',$mk([]));
 $r=(new GuristasBuildIntelligence($intel,['types'=>[],'blueprints'=>[]]))->collect();
 if(count($r['orders'])!==3)throw new RuntimeException('Three activity slots absent');
 $m=$r['orders'][1];
-if($m['title']!=='Mine Gelidus in Venal'||($m['resource_category']??'')!=='ice')throw new RuntimeException('Ice candidate failed');
+if($m['title']!=='Price Gelidus for Venal mining'||($m['resource_category']??'')!=='ice')throw new RuntimeException('Ice candidate failed');
 if(($m['evidence']['bid_order_id']??0)!==11||!empty($m['evidence']['live_deposit_verified']))throw new RuntimeException('Ice quote provenance invalid');
 if(empty($m['alternatives'])||($m['alternatives'][0]['resource_category']??'')!=='ore')throw new RuntimeException('Qualified ore alternative absent');
 if(($m['requires_skills']['16281']??0)!==1||($m['alternatives'][0]['requires_skills']['3386']??0)!==1)throw new RuntimeException('Skill filtering metadata invalid');

@@ -35,7 +35,7 @@ try{
     // A real bid for mineable Scordite must outrank an unsupported mineral-only suggestion.
     $put('region-10000015',$snapshot([['t'=>1228,'l'=>60009999,'p'=>500,'v'=>1000,'m'=>1,'r'=>'station','b'=>true,'i'=>9007]]));
     $ore=(new GuristasBuildIntelligence($intel,$ref))->collect();
-    if(($ore['orders'][1]['title']??'')!=='Mine Scordite in Venal')throw new RuntimeException('Ore type selection failed');
+    if(($ore['orders'][1]['title']??'')!=='Price Scordite for Venal mining')throw new RuntimeException('Ore type selection failed');
     // Verify exact 1-hour Synthetic Synapses batch quote with ESI IDs.
     $syntheticBid=['t'=>2346,'l'=>60003760,'p'=>8000,'v'=>10,'m'=>1,'r'=>'station','b'=>true,'i'=>91234];
     $plasticsAsk=['t'=>2312,'l'=>60003760,'p'=>200,'v'=>30,'b'=>false,'i'=>91235];
