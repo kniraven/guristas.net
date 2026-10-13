@@ -69,6 +69,9 @@ foreach(['trade-orders','build-orders','raid'] as $key){
         echo "  NOTE: Ranking score gap is NOT an ISK profit difference.\n";
     }
     if($key==='build-orders'){
+        $coverage=$data['coverage']??[];
+        printf("  SDE reference: %d blueprints, %d PI schematics, %d reprocessing types\n",
+            (int)($coverage['manufacturing_recipes']??0),(int)($coverage['imported_pi_schematics']??0),(int)($coverage['reprocessing_references']??0));
         $counts=[];
         foreach($data['orders']??[] as $o){$label=(string)($o['activity']??'unknown').'/'.(string)($o['state']??'unknown');$counts[$label]=($counts[$label]??0)+1;}
         foreach($counts as $k=>$v)echo "  $k: $v\n";

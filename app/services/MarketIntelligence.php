@@ -80,6 +80,25 @@ final class GuristasMarketIntelligence {
                 if($id>0)$types[$id]=true;
             }
         }
+        // Keep PI schematic inputs/outputs and reprocessing products from the
+        // imported official SDE even when nobody currently trades them locally.
+        foreach(($reference['pi_schematics']??[]) as $schematic){
+            $out=(int)($schematic['output']['typeID']??0);
+            if($out>0)$types[$out]=true;
+            foreach($schematic['inputs']??[] as $input){
+                $id=(int)($input['typeID']??0);
+                if($id>0)$types[$id]=true;
+            }
+        }
+        foreach(($reference['reprocessing']??[]) as $typeId=>$recipe){
+            // Collect only relevant reprocessing inputs already selected by the
+            // industrial reference; avoid importing every mineralized item order.
+            if(!isset($types[(int)$typeId])&&!in_array((int)$typeId,[1224,1228,16268,16269],true))continue;
+            foreach($recipe['materials']??[] as $ingredient){
+                $id=(int)($ingredient['materialTypeID']??0);
+                if($id>0)$types[$id]=true;
+            }
+        }
         // Venal economic development must not require an existing local buy order.
         // Collect these explicit industry benchmark items from mature trade hubs
         // even when nobody has yet placed an order in Venal or The Fulcrum.
