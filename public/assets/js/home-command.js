@@ -414,8 +414,17 @@
         const raidAction=r.title.startsWith('DEPLOY TO')?'ACTION: Contest eligible insurgency complexes in the named system; confirm the live site and eligibility in EVE.':'ACTION: Wait for a verified active objective; do not deploy on stale intelligence.';
         const e=r.evidence;
         const ranking=e&&Number.isFinite(Number(e.priority_score))?' RANKING: '+Number(e.candidate_systems||0)+' viable systems assessed; priority score '+Number(e.priority_score).toFixed(1)+' (relative priority, not a reward or success probability).':'';
-        text('[data-gc-recommendation-reason]',r.detail+' '+raidAction+ranking);
-        const order=$('.gc-recommendation');if(order){order.dataset.order=r.title.startsWith('DEPLOY TO')?'deploy':'standby';order.title=raidAction+ranking;}
+        // Keep the hardware panel scan-friendly. Detailed reasoning belongs in INTEL/hover,
+        // not in the fixed-height console alongside campaign instruments.
+        const raidSummary=r.title.startsWith('DEPLOY TO')
+            ? 'STAGE '+(Number.isFinite(Number((r.evidence||{}).corruption_stage)) ? Number(r.evidence.corruption_stage)+'/5' : 'ACTIVE')
+                +' · CONTEST ELIGIBLE COMPLEXES · VERIFY IN EVE'
+            : String(r.detail||'Await verified objectives.').split('.')[0].slice(0,110);
+        text('[data-gc-recommendation-reason]',raidSummary);
+        const order=$('.gc-recommendation');if(order){
+            order.dataset.order=r.title.startsWith('DEPLOY TO')?'deploy':'standby';
+            order.title=[r.detail,raidAction.trim(),ranking.trim()].filter(Boolean).join(' ');
+        }
     }
     const intelligenceSource = meta => meta?.source_mode==='everef_fallback'?'EVE Ref (mirror)':meta?.source_mode==='eve_online_frontlines'?'CCP Frontlines':'Source unconfirmed';
     const intelligenceStamp = (meta, current) => {

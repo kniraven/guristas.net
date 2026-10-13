@@ -1,0 +1,11 @@
+'use strict';
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const js=fs.readFileSync('public/assets/js/home-command.js','utf8');
+const render=js.slice(js.indexOf('function renderRaidRecommendation(){'),js.indexOf('const intelligenceSource',js.indexOf('function renderRaidRecommendation(){')));
+assert.ok(render.includes("text('[data-gc-recommendation-reason]',raidSummary)"),'compact summary is rendered');
+assert.ok(render.includes('CONTEST ELIGIBLE COMPLEXES'),'action is present');
+assert.ok(render.includes('order.title=[r.detail,raidAction.trim(),ranking.trim()]'),'details preserved as hover information');
+assert.ok(!render.includes("text('[data-gc-recommendation-reason]',r.detail+"),'long detail must not render in the console');
+assert.ok(!render.includes("text('[data-gc-recommendation-reason]',r.detail)"),'long detail must not render in the console');
+console.log('PASS v39.1: RAID compact summary and full hover evidence');
