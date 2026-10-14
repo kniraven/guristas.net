@@ -1,0 +1,18 @@
+const fs=require('node:fs');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+const src=fs.readFileSync('public/assets/js/mining-admin.js','utf8');
+const fn=src.match(/function availableToAdd\(items,existing,query=''\)\{[\s\S]*?\n\}/);
+assert(fn,'Missing reusable Add-selector exclusion logic');
+const pick=vm.runInNewContext(`${fn[0]};availableToAdd`);
+const items=[{type_id:1,name:'Arkonor'},{type_id:2,name:'Bistot'},{type_id:3,name:'Gelidus'},{type_id:4,name:'Viridian Mykoserocin'}];
+const existing=[{type_id:1,status:'eligible'},{type_id:2,status:'disabled'},{type_id:3,status:'disputed'}];
+assert.deepEqual(Array.from(pick(items,existing)).map(x=>x.type_id),[4],'Existing resources of any status excluded');
+assert.deepEqual(Array.from(pick(items,existing,'viridian')).map(x=>x.type_id),[4],'Search filters unadded resources');
+assert.deepEqual(Array.from(pick(items,existing,'arkonor')).map(x=>x.type_id),[],'Search cannot re-offer an existing entry');
+assert.deepEqual(Array.from(pick(items,existing.slice(1))).map(x=>x.type_id),[1,4],'Removed item reappears');
+assert.deepEqual(Array.from(pick(items,items)).map(x=>x.type_id),[],'All added state');
+assert(src.includes('const rows=availableToAdd(allowed,entries,q)'));
+assert(src.includes('All available resources have been added'));
+assert(src.includes('reset(true);render();message('),'Successful mutation must refresh picker via reset');
+console.log('PASS v53: Add selector excludes all existing statuses, filters instantly, restores removed items');

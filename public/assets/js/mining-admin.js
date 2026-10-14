@@ -18,10 +18,15 @@ const body=$('resource-rows');body.replaceChildren();for(const r of rows){const 
 }
 function oreFamily(name){return name.replace(/\s+(?:I|II|III|IV|V)-Grade$/i,'');}
 function resourceGroup(row){return row.category==='ore'?`ORE / ${oreFamily(row.name)}`:row.category==='gas'?'GAS / Harvestable clouds':'ICE / Ice resources';}
+// A resource already in Venal (including disputed/disabled) must be edited, not re-added.
+function availableToAdd(items,existing,query=''){
+ const ids=new Set(existing.map(row=>Number(row.type_id)));
+ return items.filter(row=>!ids.has(Number(row.type_id))&&row.name.toLowerCase().includes(query));
+}
 function listItems(){
  const q=$('find').value.trim().toLowerCase(),picker=$('item-picker'),old=picker.value;
- const rows=allowed.filter(r=>r.name.toLowerCase().includes(q));
- picker.replaceChildren(new Option('Select ore, gas, or ice',''));
+ const rows=availableToAdd(allowed,entries,q);
+ picker.replaceChildren(new Option(rows.length?'Select ore, gas, or ice':'No unadded resources match',''));
  const groups=new Map();
  for(const r of rows){const label=resourceGroup(r);if(!groups.has(label))groups.set(label,[]);groups.get(label).push(r);}
  // Keep categories together, then sort families and item variants alphabetically.
@@ -33,7 +38,7 @@ function listItems(){
    picker.append(group);
  }
  if(rows.some(r=>String(r.type_id)===old))picker.value=old;
- $('search-status').textContent=`${rows.length} resources · ore grades grouped by family`;
+ $('search-status').textContent=rows.length?`${rows.length} available to add · ore grades grouped by family`:(q?'No unadded resources match your search':'All available resources have been added');
 }
 function setItem(id){const record=allowed.find(r=>r.type_id===Number(id));if(!record)return;$('find').value='';listItems();$('item-picker').value=String(id);$('type_id').value=String(id);$('category').value=record.category;populateSites(record.category);showHarvestSkill(record.category,record.name);}
 function renderSystems(){const q=$('system-filter').value.toLowerCase(),list=$('system-list');list.replaceChildren();for(const name of systems){if(!name.toLowerCase().includes(q))continue;const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=sightings.has(name);check.addEventListener('change',()=>{if(check.checked)sightings.add(name);else sightings.delete(name);syncSystems();markDirty();});label.append(check,document.createTextNode(' '+name));list.append(label);}syncSystems();}
