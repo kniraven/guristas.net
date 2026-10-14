@@ -10,3 +10,6 @@
 .mining-admin button#delete:not(:disabled){color:#ffb6a8;border-color:#be6a62}
 .mining-admin select optgroup{font-weight:700}
 .mining-admin select option{font-weight:400}
+
+/* v50: shared Admin link style takes precedence over legacy button/link rules. */
+.mining-admin .mine-back{color:var(--accent,#ff9a35)!important;text-decoration:underline;text-underline-offset:3px}

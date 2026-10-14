@@ -21,7 +21,8 @@ $systemsData=json_decode((string)@file_get_contents($root.'/app/data/venal-syste
 $venalSystems=[];
 foreach(($systemsData['systems']??[]) as $row)if(isset($row['name']))$venalSystems[]=(string)$row['name'];
 sort($venalSystems,SORT_STRING);
-$siteOptions=['Asteroid belt','Ore anomaly','Ice anomaly','Gas cosmic signature','Other documented natural site'];
+$siteOptionsByCategory=['ore'=>['Asteroid belt','Ore anomaly'],'ice'=>['Ice anomaly'],'gas'=>['Gas cosmic signature']];
+$siteOptions=array_merge(...array_values($siteOptionsByCategory));
 $skillOptions=[0=>'Not specified',3386=>'Mining',16281=>'Ice Harvesting',25544=>'Gas Cloud Harvesting',11395=>'Deep Core Mining',12189=>'Mercoxit Processing'];
 
 function vm_read(string $live,string $seed):array{
@@ -79,7 +80,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             $confirmed=array_values(array_unique(array_map('strval',$systemInput)));
             foreach($confirmed as $system)if(!in_array($system,$venalSystems,true))throw new InvalidArgumentException('Only Venal systems may be selected.');
             if(!isset($skillOptions[$skill])||$level===false||$level<0||$level>5||($skill===0&&$level!==0))throw new InvalidArgumentException('Choose a supported mining skill and level.');
-            if(!in_array($site,$siteOptions,true))throw new InvalidArgumentException('Choose an allowed mining site type.');
+            if(!in_array($site,$siteOptionsByCategory[$category]??[],true))throw new InvalidArgumentException('Site type is incompatible with the selected resource category.');
             if($skill===false||$skill<0||strlen($site)>180||strlen($source)>400||strlen($basis)>800||$site===''||$basis===''||!filter_var($source,FILTER_VALIDATE_URL)||parse_url($source,PHP_URL_SCHEME)!=='https')throw new InvalidArgumentException('Provide a site, HTTPS evidence URL, explanation, and valid skill ID.');
             $entry=['type_id'=>$id,'name'=>(string)$reference['name'],'category'=>$category,'site'=>$site,'status'=>$status,'source'=>$source,'basis'=>$basis,'skill_id'=>$skill,'skill_level'=>$level,'confirmed_systems'=>$confirmed];
             if($found===null)$resources[]=$entry;else $resources[$found]=$entry;

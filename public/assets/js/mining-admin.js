@@ -3,6 +3,9 @@ const $=id=>document.getElementById(id),form=$('catalog-form'),msg=$('form-messa
 const initial=JSON.parse($('initial-catalog').textContent);let entries=initial.resources,revision=initial.revision,selected=null,dirty=false,busy=false,sightings=new Set();
 const allowed=initial.allowed.slice().sort((a,b)=>a.name.localeCompare(b.name)), systems=initial.systems;
 const fields=['site','source','basis','skill_id','skill_level','status'];
+const siteTypes={ore:['Asteroid belt','Ore anomaly'],ice:['Ice anomaly'],gas:['Gas cosmic signature']};
+function populateSites(category,preferred=''){const el=$('site'),previous=preferred||el.value,options=siteTypes[category]||[];el.replaceChildren(new Option('Select site type',''));for(const name of options)el.add(new Option(name,name));if(options.includes(previous))el.value=previous;return options.includes(previous);}
+
 function message(t,error=false){msg.textContent=t;msg.classList.toggle('mine-error',error);}
 function markDirty(){dirty=true;}
 function guard(){return !dirty||confirm('Discard unsaved changes?');}
@@ -30,14 +33,14 @@ function listItems(){
  if(rows.some(r=>String(r.type_id)===old))picker.value=old;
  $('search-status').textContent=`${rows.length} resources · ore grades grouped by family`;
 }
-function setItem(id){const record=allowed.find(r=>r.type_id===Number(id));if(!record)return;$('find').value='';listItems();$('item-picker').value=String(id);$('type_id').value=String(id);$('category').value=record.category;}
+function setItem(id){const record=allowed.find(r=>r.type_id===Number(id));if(!record)return;$('find').value='';listItems();$('item-picker').value=String(id);$('type_id').value=String(id);$('category').value=record.category;populateSites(record.category);}
 function renderSystems(){const q=$('system-filter').value.toLowerCase(),list=$('system-list');list.replaceChildren();for(const name of systems){if(!name.toLowerCase().includes(q))continue;const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=sightings.has(name);check.addEventListener('change',()=>{if(check.checked)sightings.add(name);else sightings.delete(name);syncSystems();markDirty();});label.append(check,document.createTextNode(' '+name));list.append(label);}syncSystems();}
 function syncSystems(){$('confirmed_systems').value=JSON.stringify([...sightings].sort());$('system-count').textContent=`${sightings.size} confirmed systems selected`}
-function edit(r){if(!guard())return;selected=r.type_id;setItem(r.type_id);for(const key of fields){let value=r[key]??(key==='skill_level'?0:'');const el=$(key);if(key==='site'&&value&&![...el.options].some(x=>x.value===value)){value=r.category==='gas'?'Gas cosmic signature':r.category==='ice'?'Ice anomaly':'Ore anomaly';}el.value=value;}sightings=new Set(r.confirmed_systems||[]);renderSystems();$('delete').disabled=false;dirty=false;message(`Editing ${r.name}`);$('editor').scrollIntoView({behavior:'smooth',block:'start'});}
-function reset(force=false){if(!force&&!guard())return;selected=null;dirty=false;form.reset();$('find').value='';$('type_id').value='';$('category').value='';$('delete').disabled=true;sightings.clear();renderSystems();listItems();message('');}
+function edit(r){if(!guard())return;selected=r.type_id;setItem(r.type_id);for(const key of fields){let value=r[key]??(key==='skill_level'?0:'');const el=$(key);if(key==='site'){const compatible=populateSites(r.category,value);if(!compatible&&value){message('Saved site description is outdated. Select a compatible site type before saving.',true);}continue;}el.value=value;}sightings=new Set(r.confirmed_systems||[]);renderSystems();$('delete').disabled=false;dirty=false;message(`Editing ${r.name}`);$('editor').scrollIntoView({behavior:'smooth',block:'start'});}
+function reset(force=false){if(!force&&!guard())return;selected=null;dirty=false;form.reset();$('find').value='';$('type_id').value='';$('category').value='';populateSites('');$('delete').disabled=true;sightings.clear();renderSystems();listItems();message('');}
 async function reload(){if(!guard())return;const response=await fetch('?api=catalog',{credentials:'same-origin',cache:'no-store'});if(!response.ok)throw Error('Catalog reload failed');const data=await response.json();entries=data.resources;revision=data.revision;$('revision').value=revision;reset(true);render();message('Catalog refreshed');}
 for(const id of ['resource-filter','category-filter','status-filter','sort'])$(id).addEventListener(id==='resource-filter'?'input':'change',render);
-$('find').addEventListener('input',listItems);$('system-filter').addEventListener('input',renderSystems);$('item-picker').addEventListener('change',()=>{const opt=$('item-picker').selectedOptions[0];$('type_id').value=opt.value;$('category').value=opt.dataset.category||'';markDirty();});
+$('find').addEventListener('input',listItems);$('system-filter').addEventListener('input',renderSystems);$('item-picker').addEventListener('change',()=>{const opt=$('item-picker').selectedOptions[0];$('type_id').value=opt.value;$('category').value=opt.dataset.category||'';populateSites($('category').value);markDirty();});
 $('add-new').addEventListener('click',()=>{if(!guard())return;reset(true);$('editor').scrollIntoView({behavior:'smooth'});});$('cancel').addEventListener('click',()=>reset());$('reload-catalog').addEventListener('click',()=>reload().catch(e=>message(e.message,true)));
 for(const id of fields)$(id).addEventListener('change',markDirty);for(const id of ['site','source','basis'])$(id).addEventListener('input',markDirty);
 async function mutate(action){if(busy)return;if(action==='save'&&(!form.reportValidity()||!$('type_id').value)){message('Select a resource and complete its required fields.',true);return;}
@@ -45,5 +48,5 @@ const data=new FormData(form);data.set('action',action);data.set('revision',revi
 busy=true;$('save').disabled=true;$('delete').disabled=true;message('Saving…');try{const resp=await fetch(location.pathname,{method:'POST',credentials:'same-origin',body:data,headers:{Accept:'application/json'}});const result=await resp.json();if(!resp.ok||!result.ok)throw Error(result.error||'Save failed');entries=result.resources;revision=result.revision;$('revision').value=revision;reset(true);render();message(result.message||'Saved.');}catch(err){message(err.message,true);}finally{busy=false;$('save').disabled=false;$('delete').disabled=!$('type_id').value||!entries.some(r=>String(r.type_id)===$('type_id').value);}}
 form.addEventListener('submit',e=>{e.preventDefault();mutate('save');});$('delete').addEventListener('click',()=>mutate('delete'));
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
-listItems();renderSystems();render();
+populateSites('');listItems();renderSystems();render();
 })();
