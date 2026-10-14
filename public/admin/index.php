@@ -80,6 +80,12 @@ function escape(string $value): string
             </div>
         </section>
 
+        <section class="ticket-panel" aria-labelledby="operations-heading">
+            <h2 id="operations-heading">Intelligence Operations</h2>
+            <p>Monitor RAID, TRADE and BUILD jobs, review errors and performance, and manage schedules and manual runs.</p>
+            <div class="ticket-toolbar"><a class="button" href="/admin/operations/">Open Intelligence Operations</a></div>
+        </section>
+
         <section class="ticket-panel" aria-labelledby="mining-heading">
             <h2 id="mining-heading">Venal mining catalog</h2>
             <p>Manage which ores, gases and ice can be recommended in Venal, with eligibility evidence.</p>
