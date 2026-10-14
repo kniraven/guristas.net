@@ -250,96 +250,98 @@ final class GuristasBuildIntelligence {
         foreach($all as $entry){$counts[$entry['status']]++;if($entry['status']==='eligible')$counts['by_category'][$entry['category']]++;}
         return $counts;
     }
-    private function resourceLeads(?array $jita,?array $venal):array {
-        $resources=array_filter(self::venalMiningCatalog(null,$this->ref['types']??[]),
-            static fn(array $entry):bool=>$entry['status']==='eligible');
-        $leads=[];
-        foreach($resources as $id=>$resource){
-            foreach([10000015=>[$venal,'Venal'],10000002=>[$jita,'Jita']] as $region=>$dest){
-                [$market,$place]=$dest;
-                if(!self::fresh($market))continue;
-                $rows=self::orderRows($market,$id,true,$region===10000002?60003760:0);
+    /** A listing target, not an immediately executable bid. Require observable,
+     * non-dust buy and sell depth; keep Fulcrum as the sole sale destination. */
+    public static function fulcrumMiningPrice(int $type,float $m3,array $markets):?array {
+        if($m3<=0)return null;
+        $target=max(1,(int)floor(1000/$m3));
+        $bids=[];$asks=[];$sources=[];
+        foreach($markets as $region=>$market){
+            if(!self::fresh($market))continue;
+            // Jita 4-4 and Dodixie IX-20; Fulcrum/Venal orders can be in any NPC station.
+            $station=($region===10000002?60003760:($region===10000032?60011866:0));
+            foreach([true,false] as $buy){
+                $rows=self::orderRows($market,$type,$buy,$station);
                 if(!$rows)continue;
-                // Compare the proceeds of a useful 1,000 m³ reference lot,
-                // not a one-unit top bid that disappears before a haul arrives.
-                $target=max(1,(int)floor(1000.0/(float)$resource['m3']));
-                // Price each station as a separate executable sale. The highest
-                // single bid may be a one-unit outlier at a poor destination.
                 $byStation=[];
                 foreach($rows as $row)$byStation[(int)$row['l']][]=$row;
-                $bestStation=null;
-                foreach($byStation as $station=>$stationRows){
-                    $remaining=$target;$priced=0;$proceeds=0.0;$quotes=[];
+                foreach($byStation as $stationRows){
+                    $quantity=0;$value=0.0;
                     foreach($stationRows as $row){
-                        $take=min($remaining,(int)$row['v']);
+                        $take=min($target-$quantity,(int)$row['v']);
                         if($take<max(1,(int)($row['m']??1)))continue;
-                        $proceeds+=$take*(float)$row['p'];
-                        $priced+=$take;$remaining-=$take;
-                        $quotes[]=['id'=>(int)$row['i'],'units'=>$take,'unit_price'=>(float)$row['p']];
-                        if(!$remaining)break;
+                        $quantity+=$take;$value+=$take*(float)$row['p'];
+                        if($quantity===$target)break;
                     }
-                    if($priced<(int)$resource['minimum'])continue;
-                    // Maximize modeled proceeds for the same reference lot,
-                    // without mixing order fills across delivery stations.
-                    if($bestStation===null||$proceeds>$bestStation['proceeds']
-                        ||($proceeds===$bestStation['proceeds']&&$priced>$bestStation['priced'])){
-                        $bestStation=['proceeds'=>$proceeds,'priced'=>$priced,'quotes'=>$quotes,'station'=>$station];
-                    }
+                    // Reject dust quotes: minimum 20% reference lot or one ice unit.
+                    if($quantity<max(1,(int)ceil($target*0.20)))continue;
+                    $entry=['price'=>$value/$quantity,'quantity'=>$quantity,'region'=>(int)$region];
+                    if($buy)$bids[]=$entry;else $asks[]=$entry;
                 }
-                if($bestStation===null)continue;
-                $proceeds=$bestStation['proceeds'];$priced=$bestStation['priced'];
-                $quotes=$bestStation['quotes'];$deliveryStation=$bestStation['station'];
-                if($priced<(int)$resource['minimum'])continue;
-                $gross=$proceeds/$priced;
-                $perM3=$gross/$resource['m3'];
-                // The strategic region preference only breaks reasonably close
-                // valuations; it is never a claim about regional ore deposits.
-                $leads[]=['type_id'=>$id,'type'=>$resource,'place'=>$place,
-                    'bid'=>$rows[0],'quantity'=>$priced,'gross_per_m3'=>$perM3,'reference_target_units'=>$target,
-                    'unit_value'=>$gross,'batch_proceeds'=>$proceeds,
-                    'bid_station_id'=>$deliveryStation,'bid_fills'=>$quotes,
-                    'score'=>$perM3*min(1.0,$priced/$target)*($place==='Venal'?1.05:1)];
             }
         }
-        usort($leads,static fn($a,$b)=>$b['score']<=>$a['score']);
-        $out=[];$seen=[];
-        foreach($leads as $lead){
-            // Only one buyer per mineable resource; include independent alternative resources.
-            if(isset($seen[$lead['type_id']]))continue;
-            $seen[$lead['type_id']]=true;
-            $resource=$lead['type'];$name=$resource['name'];$category=$resource['category'];
-            // A quoted 1,000 m³ reference lot is more useful than an arbitrary
-            // 100 ore units; it is NOT a claim about any pilot's cargo hold.
-            // Ice remains a single 1,000 m³ unit. Never exceed posted bid depth.
-            $referenceVolumeM3=1000.0;
-            $referenceUnits=max(1,(int)floor($referenceVolumeM3/$resource['m3']));
-            $batch=min($lead['quantity'],$referenceUnits);
-            $location=$lead['place'];$order=(int)$lead['bid_fills'][0]['id'];
-            $reprocess=$this->reprocessingScenario($jita,(int)$lead['type_id'],$batch);
-            $refineNote=$reprocess===null?'':' ILLUSTRATIVE REPROCESSING: with a hypothetical 50% effective yield, output materials have gross Jita buyer value '.number_format($reprocess['gross_isk']).' ISK (before fees and hauling). Actual facility/skill efficiency varies; verify in-game.';
-            $out[]=self::card('mine','market_context','Mine '.$name.' in Venal',
-                'MINE '.$name.' IN VENAL → SUPPLY FULCRUM',
-                'BUYER: '.number_format($lead['unit_value'],2).' ISK/unit · '.number_format($lead['gross_per_m3'],2).' ISK/m³ · deposit unverified',
-                'RESOURCE: '.$name.' ('.$category.'), '.number_format($resource['m3'],2).' m³/unit. CONFIRMED: buyer order #'.$order.' for up to '.number_format($lead['quantity']).' units at '. $location .'; posted price '.number_format($lead['unit_value'],2).' ISK/unit. EXAMPLE gross proceeds for a reference lot of '.$batch.' units ('.number_format($batch*$resource['m3'],1).' m³): '.number_format($batch*$lead['unit_value']).' ISK before taxes and transport. AVAILABILITY: The backend has not independently established a current deposit; availability is not verified. TARGET: '.$resource['site'].'. This is not verified ISK/hour, current yield, or local resource availability. Compared by quoted gross ISK per m³, not net mining profit.'.$refineNote,
-                ['why_selected'=>'Highest quoted station-specific depth-adjusted gross ISK per m³ among catalog-eligible Venal ore, gas and ice, with a modest preference for Venal buyers. Partial bid-depth coverage reduces the ranking score. Lot value uses bids at one destination station. Deposit availability and mining profit remain unverified.','resource_category'=>$category,'requires_skills'=>[(string)$resource['min_skill']=>1],'evidence'=>['item_type_id'=>$lead['type_id'],'item_category'=>$category,'unit_m3'=>$resource['m3'],'bid_station_id'=>(int)$lead['bid_station_id'],'bid_order_id'=>$order,'eligibility_status'=>$resource['status'],'eligibility_source'=>$resource['source'],'eligibility_basis'=>$resource['basis'],'eligible_site'=>$resource['site'],'bid_fills'=>$lead['bid_fills'],'bid_units'=>$lead['quantity'],'buyer_unit_isk'=>$lead['unit_value'],'gross_isk_per_m3'=>$lead['gross_per_m3'],'reference_lot_units'=>$batch,'reference_lot_m3'=>$batch*$resource['m3'],'reference_lot_gross_isk'=>$batch*$lead['unit_value'],'target_lot_units'=>$lead['reference_target_units'],'reference_lot_depth_coverage_pct'=>round(100*$batch/$lead['reference_target_units'],2),'snapshot_market'=>$location,'live_deposit_verified'=>false,'reprocessing_scenario'=>$reprocess],
-                  'steps'=>['Mine the named resource only where a deposit is actually present; backend resource-location validation remains unavailable.','The market price is not evidence of a live Venal spawn. Resource availability remains unverified by our intelligence service.','Plan up to '.$batch.' units ('.number_format($batch*$resource['m3'],1).' m³) as a price-comparison reference; adjust for your actual ship and deposit.','Quoted buyer orders at station ID '.(int)$lead['bid_station_id'].'; they are a snapshot, not guaranteed fills. Compare direct sale versus refining, hauling and risk.'],'url'=>'/industry/']);
-        }
-        return $out;
+        if(!$bids&&!$asks)return null;
+        usort($bids,static fn($a,$b)=>$b['price']<=>$a['price']);
+        usort($asks,static fn($a,$b)=>$a['price']<=>$b['price']);
+        // If both sides exist, midpoint; if one is absent, use the only observable
+        // side as an explicitly lower-confidence reference, never invented liquidity.
+        $buy=$bids[0]??null;$sell=$asks[0]??null;
+        $price=($buy&&$sell)?($buy['price']+$sell['price'])/2:($buy['price']??$sell['price']);
+        if(!is_finite($price)||$price<=0)return null;
+        return ['listing_unit_isk'=>round($price,2),'mode'=>$buy&&$sell?'midpoint':'one_sided',
+            'bid_source'=>$buy,'ask_source'=>$sell,'target_units'=>$target,
+            'value_isk_per_m3'=>$price/$m3];
     }
-    private function mineralLead(?array $jita,?array $venal=null):array {
-        $leads=$this->resourceLeads($jita,$venal);
-        if($leads){$best=$leads[0];$best['alternatives']=array_slice($leads,1,4);return $best;}
+    private function resourceLeads(?array $jita,?array $venal,?array $fulcrum=null,?array $dodixie=null):array {
+        $eligible=array_filter(self::venalMiningCatalog(null,$this->ref['types']??[]),
+            static fn(array $r):bool=>$r['status']==='eligible');
+        $markets=[10000002=>$jita,10000032=>$dodixie,10000015=>$venal,10001000=>$fulcrum];
+        $leads=[];
+        foreach($eligible as $id=>$resource){
+            $price=self::fulcrumMiningPrice((int)$id,(float)$resource['m3'],$markets);
+            if(!$price)continue;
+            $unit=$price['listing_unit_isk'];$perM3=$unit/$resource['m3'];
+            $name=$resource['name'];$target=$price['target_units'];
+            $leads[]=self::card('mine','market_context','Mine '.$name.' in Venal',
+                'MINE '.strtoupper($name).' IN VENAL → LIST AT THE FULCRUM',
+                'SUGGESTED FULCRUM SELL ORDER '.number_format($unit,2).' ISK/unit',
+                'VENAL SPAWN EVIDENCE: '.$resource['basis'].'. SOURCE: '.$resource['source'].'. SITE: '.$resource['site'].'. Suggested listing price is based on current retained market buy/sell orders at monitored hubs and Fulcrum; it is NOT a guaranteed sale, buyer bid or net mining profit. Pricing method: '.$price['mode'].'.',
+                ['why_selected'=>'Highest modeled Fulcrum listing ISK/m³ among eligible Venal resources with retained market pricing; listings are not guaranteed sales.',
+                 'resource_category'=>$resource['category'],'requires_skills'=>[(string)$resource['min_skill']=>1],
+                 'metric_isk'=>$perM3,'metric_label'=>'SUGGESTED LIST VALUE / ISK/m³',
+                 'evidence'=>['item_type_id'=>$id,'item_category'=>$resource['category'],'unit_m3'=>$resource['m3'],
+                    'eligibility_status'=>'eligible','eligibility_source'=>$resource['source'],'eligibility_basis'=>$resource['basis'],
+                    'eligible_site'=>$resource['site'],'suggested_sell_unit_isk'=>$unit,
+                    'price_method'=>$price['mode'],'buy_reference'=>$price['bid_source'],'sell_reference'=>$price['ask_source'],
+                    'gross_isk_per_m3'=>$perM3,'reference_lot_units'=>$target,'listing_destination'=>'The Fulcrum',
+                    'live_deposit_verified'=>false],
+                 'steps'=>['Mine '.$name.' in Venal from '.$resource['site'].'.',
+                    'Create a sell order at The Fulcrum for approximately '.number_format($unit,2).' ISK per unit.',
+                    'The listed price is an estimated asking price, not a guaranteed immediate sale.'],
+                 'url'=>'/industry/']);
+        }
+        usort($leads,static fn($a,$b)=>($b['evidence']['gross_isk_per_m3']<=>$a['evidence']['gross_isk_per_m3'])
+            ?:($a['evidence']['item_type_id']<=>$b['evidence']['item_type_id']));
+        return $leads;
+    }
+    private function mineralLead(?array $jita,?array $venal=null,?array $fulcrum=null,?array $dodixie=null):array {
+        $leads=$this->resourceLeads($jita,$venal,$fulcrum,$dodixie);
+        if($leads){$best=$leads[0];$best['alternatives']=array_slice($leads,1);return $best;}
         $eligible=array_filter(self::venalMiningCatalog(null,$this->ref['types']??[]),static fn(array $r):bool=>$r['status']==='eligible');
         if(!$eligible)throw new RuntimeException('No eligible Venal mining resources in catalog');
         $resource=reset($eligible);
         return self::card('mine','supply_objective','Mine '.$resource['name'].' in Venal',
-            'MINE '.strtoupper($resource['name']).' IN VENAL → SUPPLY FULCRUM',
-            'NO QUALIFIED BUYER QUOTE · '.strtoupper($resource['category']).' · regional eligibility documented',
-            'ELIGIBILITY: '.$resource['basis'].'. Source: '.$resource['source'].'. Site: '.$resource['site'].'. No qualified buyer order exists in current retained market snapshots. This is a supply objective, not a proven profit opportunity.',
-            ['why_selected'=>'Deterministic first eligible catalog resource used only when no buyer-qualified leads exist; not an economic winner.',
+            'MINE '.strtoupper($resource['name']).' IN VENAL → LIST AT THE FULCRUM',
+            'NO DEFENSIBLE LIST PRICE · '.strtoupper($resource['category']),
+            'ELIGIBILITY: '.$resource['basis'].'. Source: '.$resource['source'].'. Site: '.$resource['site'].'. No usable market quotes currently exist to set a defensible Fulcrum asking price. This is a supply objective, not a proven best-value choice.',
+            ['why_selected'=>'First eligible catalog resource as transparent fallback only; economic winner unavailable.',
              'resource_category'=>$resource['category'],'requires_skills'=>[(string)$resource['min_skill']=>1],
-             'evidence'=>['item_type_id'=>$resource['type_id'],'eligibility_status'=>'eligible','eligibility_source'=>$resource['source'],'eligible_site'=>$resource['site'],'live_deposit_verified'=>false],
-             'steps'=>['Mine '.$resource['name'].' in Venal from '.$resource['site'].'.','There is currently no qualified buyer quote; no profit is claimed.'], 'url'=>'/industry/']);
+             'evidence'=>['item_type_id'=>$resource['type_id'],'eligibility_status'=>'eligible',
+                'eligibility_source'=>$resource['source'],'eligible_site'=>$resource['site'],
+                'live_deposit_verified'=>false],
+             'steps'=>['Mine '.$resource['name'].' in Venal from '.$resource['site'].'.',
+                'Supply The Fulcrum. The market evidence cannot currently support a specific suggested sale price.'],
+             'url'=>'/industry/']);
     }
     /** Evaluate imported official SDE planetary schematics using actual posted
      *  Jita input asks and a physically deliverable destination bid.
@@ -462,7 +464,7 @@ final class GuristasBuildIntelligence {
             ['requires_skills'=>['3380'=>1],'why_selected'=>'This blueprint has documented material requirements relevant to a Guristas ship, but its profit and local buyer are unverified.','steps'=>['Open the industry tool and verify the Worm blueprint and material requirements.','Check which components you can source or manufacture in Venal.','Confirm a usable manufacturing facility, LP redemption costs and a buyer before starting.'],'evidence'=>['blueprint_id'=>17931,'product_type_id'=>17930],'url'=>'/industry/?view=build&bp=17931']);
     }
     public function collect():array {
-        $snap=[];foreach([10000002,10000015,10001000] as $rid){$s=$this->intel->read('region-'.$rid);$snap[$rid]=self::fresh($s)?$s:null;}
+        $snap=[];foreach([10000002,10000015,10001000,10000032] as $rid){$s=$this->intel->read('region-'.$rid);$snap[$rid]=self::fresh($s)?$s:null;}
         $o=$this->intel->read('lp-offers');$ts=strtotime((string)($o['fetched_at']??''));
         $offers=$o && is_array($o['offers']??null) && $ts!==false && time()-$ts<=172800?$o['offers']:[];
         [$recipes,$catalogCoverage]=$this->manufacturingReference($offers);
@@ -484,7 +486,7 @@ final class GuristasBuildIntelligence {
             $pi['evidence']['venal_planets_surveyed']=$count;
             $pi['evidence']['planet_catalog_complete']=!empty($catalog['complete']);
         }
-        $cards=[$manufacture??$this->fallbackManufacture(),$this->mineralLead($snap[10000002],$snap[10000015]),$pi];
+        $cards=[$manufacture??$this->fallbackManufacture(),$this->mineralLead($snap[10000002],$snap[10000015],$snap[10001000],$snap[10000032]),$pi];
         return ['as_of'=>gmdate('c'),'status'=>'ready','orders'=>$cards,'coverage'=>['activity_count'=>3,'manufacturing_recipes'=>count($recipes),'manufacturing_catalog'=>$catalogCoverage,'imported_pi_schematics'=>count($this->ref['pi_schematics']??[]),'reprocessing_references'=>count($this->ref['reprocessing']??[]),'market_snapshot_regions'=>array_keys(array_filter($snap)),'fulcrum_location_mode'=>'manufacture_at_fulcrum;mine_in_venal_supply_fulcrum;pi_on_planet_supply_fulcrum','jita_sale_cards'=>count(array_filter($cards,static fn($c)=>strpos((string)($c['action']??''),'SELL JITA')!==false)), 'qualifying_manufacturing_opportunity'=>$manufacture!==null,'manufacturing_candidate_diagnostics'=>$this->manufacturingDiagnostics, 'fallback_count'=>count(array_filter($cards,static fn($c)=>$c['state']==='supply_objective')),'resource_alternatives'=>count($cards[1]['alternatives']??[]),'resource_benchmark_types'=>array_keys(array_filter(self::venalMiningCatalog(null,$this->ref['types']??[]),static fn(array $r):bool=>$r['status']==='eligible')),'venal_resource_catalog'=>$this->miningCatalogCoverage(),'pi_benchmark_types'=>[2312,2319,2346],'venal_planets_surveyed'=>count($catalog['planets']??[])],
             'note'=>'Only MARKET LEAD can display an estimated margin, before omitted costs. MARKET CONTEXT provides observed prices, not activity profit. SUPPLY OBJECTIVE is a verified input relationship without verified economics.','source'=>'CCP SDE site reference, current Commando Guri LP offers and collected ESI regional market orders.'];
     }

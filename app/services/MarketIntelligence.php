@@ -99,6 +99,14 @@ final class GuristasMarketIntelligence {
                 if($id>0)$types[$id]=true;
             }
         }
+        // Keep every eligible Venal mining resource in external price books,
+        // regardless of whether The Fulcrum has an existing market order.
+        $catalog=dirname(__DIR__,2).'/config/venal-mining-resources.json';
+        $catalogData=is_file($catalog)?json_decode((string)file_get_contents($catalog),true):null;
+        foreach(($catalogData['resources']??[]) as $resource){
+            if(($resource['status']??'')==='eligible'&&(int)($resource['type_id']??0)>0)
+                $types[(int)$resource['type_id']]=true;
+        }
         // Venal economic development must not require an existing local buy order.
         // Collect these explicit industry benchmark items from mature trade hubs
         // even when nobody has yet placed an order in Venal or The Fulcrum.

@@ -114,8 +114,8 @@
                 action.append(key,value);
                 const detail=document.createElement('p');detail.className='build-order-detail';
                 const evPrice=c.evidence||{};
-                const price=Number(evPrice.buyer_unit_isk);
-                const priceLabel=Number.isFinite(price)&&price>0?'BUYER '+price.toLocaleString('en-US',{maximumFractionDigits:2})+' ISK/UNIT':'BUYER PRICE UNVERIFIED';
+                const price=Number(c.activity==='mine'?evPrice.suggested_sell_unit_isk:evPrice.buyer_unit_isk);
+                const priceLabel=Number.isFinite(price)&&price>0?(c.activity==='mine'?'FULCRUM SELL ':'BUYER ')+price.toLocaleString('en-US',{maximumFractionDigits:2})+' ISK/UNIT':(c.activity==='mine'?'SELL PRICE UNAVAILABLE':'BUYER PRICE UNVERIFIED');
                 const unitCount=c.activity==='manufacture'?Number(evPrice.yield):c.activity==='pi'?Number(evPrice.output_qty):Number(evPrice.reference_lot_units);
                 const countLabel=Number.isFinite(unitCount)&&unitCount>0?(c.activity==='manufacture'?'OUTPUT ':c.activity==='pi'?'PER CYCLE ':'REF. LOT ')+Math.round(unitCount).toLocaleString('en-US')+' UNITS':'';
                 // Keep order IDs, long descriptions and assumptions in VIEW INTEL, not the narrow summary row.
@@ -130,7 +130,7 @@
                     metricLabel.textContent='INPUT-OUTPUT GAP / +'+buildISK(c.metric_isk)+' ISK';
                     metric.title='Only PI materials, quoted buyer revenue and modeled sales tax. Planetary customs, hauling and operating costs are not included.';
                 }else if(c.activity==='mine'&&Number.isFinite(Number(c.evidence?.gross_isk_per_m3))&&Number(c.evidence.gross_isk_per_m3)>0){
-                    metricLabel.textContent='BUYER VALUE / '+buildISK(c.evidence.gross_isk_per_m3)+' ISK/m³';
+                    metricLabel.textContent='LIST VALUE / '+buildISK(c.evidence.gross_isk_per_m3)+' ISK/m³';
                 }else if(c.activity==='pi'&&Number.isFinite(Number(c.evidence?.buyer_unit_isk))&&Number(c.evidence.buyer_unit_isk)>0){
                     metricLabel.textContent='BUYER QUOTE / '+buildISK(c.evidence.buyer_unit_isk)+' ISK/unit';
                 }else metricLabel.textContent=evidenceLabel;
@@ -157,9 +157,9 @@
                     addLine('COST GAPS','Venal facility, actual job quote, blueprint efficiency, shipping and market changes');
                 }else if(c.activity==='mine'){
                     if(ev.item_type_id)addLine('RESOURCE',(c.title||'Ore')+' · item #'+ev.item_type_id+' · '+(ev.unit_m3||'?')+' m³/unit');
-                    if(ev.bid_order_id)addLine('BUYER','Order #'+ev.bid_order_id+' · station '+ev.bid_station_id+' · '+(ev.snapshot_market||'market'));
+                    if(ev.suggested_sell_unit_isk)addLine('FULCRUM SELL ORDER','Suggested '+buildISK(ev.suggested_sell_unit_isk)+' ISK/unit; '+(ev.price_method==='midpoint'?'buy/sell midpoint':'one-sided reference')+'; not a guaranteed sale');
                     addLine('LOCATION','Venal deposit not verified; check an actual belt or anomaly before mining');
-                    addLine('VALUE','Buyer price is gross revenue, not mining profit or ISK/hour');
+                    addLine('VALUE','Suggested Fulcrum sell-order value, not guaranteed sale proceeds, net profit or ISK/hour');
                 }else if(c.activity==='pi'){
                     addLine('RECIPE','10 Supertensile Plastics + 10 Test Cultures → 3 Synthetic Synapses in one hour');
                     if(ev.buyer_order_id)addLine('BUYER','Order #'+ev.buyer_order_id+' · station '+ev.buyer_station_id);

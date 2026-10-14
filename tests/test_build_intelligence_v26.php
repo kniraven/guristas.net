@@ -13,7 +13,7 @@ try{
   $r=(new GuristasBuildIntelligence($intel,$ref))->collect();
   [$m,$ore,$pi]=$r['orders'];
   foreach([$m,$ore,$pi] as $item){if(empty($item['why_selected'])||empty($item['steps']))throw new RuntimeException('Missing rationale or action steps');}
-  if(!str_contains($ore['action'],'ARKONOR')||!str_contains($ore['reason'],'buyer'))throw new RuntimeException('Mining fallback lacks resource and selling check');
+  if(!str_contains($ore['action'],'ARKONOR')||!str_contains($ore['reason'],'market'))throw new RuntimeException('Mining fallback lacks resource and selling check');
   if(!str_contains($pi['action'],'P3 FACTORY')||!str_contains(implode(' ',$pi['steps']),'Advanced Industry Facility'))throw new RuntimeException('PI instructions not suitable for beginners');
   if(!empty($pi['requires_skills']))throw new RuntimeException('PI factory incorrectly requires Remote Sensing');
   echo "PASS BUILD v26: evidence rationale, specific mining destination check, beginner PI steps, skill assumptions\n";
