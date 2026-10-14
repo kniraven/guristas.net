@@ -80,6 +80,12 @@ function escape(string $value): string
             </div>
         </section>
 
+        <section class="ticket-panel" aria-labelledby="mining-heading">
+            <h2 id="mining-heading">Venal mining catalog</h2>
+            <p>Manage which ores, gases and ice can be recommended in Venal, with eligibility evidence.</p>
+            <a class="button" href="/admin/mining/">Edit mining resources</a>
+        </section>
+
         <section class="ticket-panel" aria-labelledby="stream-heading">
             <h2 id="stream-heading">Stream tools</h2>
             <p>Open the overlay for your broadcast or manage its notification messages.</p>

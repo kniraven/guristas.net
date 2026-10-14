@@ -3,8 +3,8 @@ declare(strict_types=1);
 if(PHP_SAPI!=='cli'){http_response_code(403);exit(1);}
 require_once dirname(__DIR__).'/app/services/MarketIntelligence.php';
 $command=$argv[1]??'';
-if(!in_array($command,['raid','priority','region','rotate','offers','publish','trade-cycle'],true)){
-    fwrite(STDERR,"Usage: php bin/guristas-intelligence.php raid|priority|region REGION_ID|rotate|offers|publish|trade-cycle\n");exit(2);
+if(!in_array($command,['raid','priority','region','rotate','offers','publish','trade-cycle','collect-region','collect-priority','collect-rotate'],true)){
+    fwrite(STDERR,"Usage: php bin/guristas-intelligence.php raid|priority|region REGION_ID|collect-region REGION_ID|collect-priority|collect-rotate|rotate|offers|publish|trade-cycle\n");exit(2);
 }
 $intel=new GuristasMarketIntelligence();
 $dir=$intel->dir();
@@ -15,11 +15,11 @@ if(!flock($lock,LOCK_EX|LOCK_NB)){fwrite(STDERR,"Collector already running.\n");
 try{
     $log=[];
     if($command==='raid')$log[]=$intel->refreshRaid();
-    if(in_array($command,['priority','trade-cycle'],true)){
+    if(in_array($command,['priority','trade-cycle','collect-priority'],true)){
         foreach([10001000,10000015] as $id){$log[]=$intel->collectRegion($id);}
     }
-    if($command==='region')$log[]=$intel->collectRegion((int)($argv[2]??0));
-    if(in_array($command,['rotate','trade-cycle'],true)){
+    if(in_array($command,['region','collect-region'],true))$log[]=$intel->collectRegion((int)($argv[2]??0));
+    if(in_array($command,['rotate','trade-cycle','collect-rotate'],true)){
         // Rotating worker: favor the five outside trade-hub regions when stale,
         // but preserve every other rotation for broader New Eden discovery.
         // Existing dedicated hub/priority cron tasks remain unchanged.

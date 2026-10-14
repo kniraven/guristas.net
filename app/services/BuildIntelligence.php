@@ -216,7 +216,7 @@ final class GuristasBuildIntelligence {
     }
     /** Shared regional eligibility catalog; never inferred from a market order. */
     public static function venalMiningCatalog(?string $path=null, ?array $types=null):array {
-        $path ??= dirname(__DIR__,2).'/config/venal-mining-resources.json';
+        $path ??= is_file(dirname(__DIR__,2).'/storage/venal-mining-resources.json') ? dirname(__DIR__,2).'/storage/venal-mining-resources.json' : dirname(__DIR__,2).'/config/venal-mining-resources.json';
         $json=@file_get_contents($path);
         $data=is_string($json)?json_decode($json,true):null;
         if(!is_array($data)||($data['region_id']??null)!==10000015||!is_array($data['resources']??null))

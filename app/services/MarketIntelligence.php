@@ -101,7 +101,7 @@ final class GuristasMarketIntelligence {
         }
         // Keep every eligible Venal mining resource in external price books,
         // regardless of whether The Fulcrum has an existing market order.
-        $catalog=dirname(__DIR__,2).'/config/venal-mining-resources.json';
+        $catalog=is_file(dirname(__DIR__,2).'/storage/venal-mining-resources.json') ? dirname(__DIR__,2).'/storage/venal-mining-resources.json' : dirname(__DIR__,2).'/config/venal-mining-resources.json';
         $catalogData=is_file($catalog)?json_decode((string)file_get_contents($catalog),true):null;
         foreach(($catalogData['resources']??[]) as $resource){
             if(($resource['status']??'')==='eligible'&&(int)($resource['type_id']??0)>0)
