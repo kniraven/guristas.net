@@ -23,7 +23,7 @@ foreach(($systemsData['systems']??[]) as $row)if(isset($row['name']))$venalSyste
 sort($venalSystems,SORT_STRING);
 $siteOptionsByCategory=['ore'=>['Asteroid belt','Ore anomaly'],'ice'=>['Ice anomaly'],'gas'=>['Gas cosmic signature']];
 $siteOptions=array_merge(...array_values($siteOptionsByCategory));
-$skillOptions=[0=>'Not specified',3386=>'Mining',16281=>'Ice Harvesting',25544=>'Gas Cloud Harvesting',11395=>'Deep Core Mining',12189=>'Mercoxit Processing'];
+require_once $root.'/app/services/BuildIntelligence.php';
 
 function vm_read(string $live,string $seed):array{
     $value=json_decode((string)file_get_contents(is_file($live)?$live:$seed),true);
@@ -73,15 +73,14 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             $status=(string)($_POST['status']??'');
             if(!in_array($status,['eligible','disputed','disabled'],true))throw new InvalidArgumentException('Invalid eligibility.');
             $site=trim((string)($_POST['site']??''));$source=trim((string)($_POST['source']??''));$basis=trim((string)($_POST['basis']??''));
-            $skill=filter_var($_POST['skill_id']??'0',FILTER_VALIDATE_INT);
-            $level=filter_var($_POST['skill_level']??'0',FILTER_VALIDATE_INT);
+            $harvest=GuristasBuildIntelligence::resourceHarvestSkill($category,(string)$reference['name']);
+            $skill=$harvest['id'];$level=$harvest['level'];
             $systemInput=json_decode((string)($_POST['confirmed_systems']??'[]'),true);
             if(!is_array($systemInput)||count($systemInput)>count($venalSystems))throw new InvalidArgumentException('Invalid system selections.');
             $confirmed=array_values(array_unique(array_map('strval',$systemInput)));
             foreach($confirmed as $system)if(!in_array($system,$venalSystems,true))throw new InvalidArgumentException('Only Venal systems may be selected.');
-            if(!isset($skillOptions[$skill])||$level===false||$level<0||$level>5||($skill===0&&$level!==0))throw new InvalidArgumentException('Choose a supported mining skill and level.');
             if(!in_array($site,$siteOptionsByCategory[$category]??[],true))throw new InvalidArgumentException('Site type is incompatible with the selected resource category.');
-            if($skill===false||$skill<0||strlen($site)>180||strlen($source)>400||strlen($basis)>800||$site===''||$basis===''||!filter_var($source,FILTER_VALIDATE_URL)||parse_url($source,PHP_URL_SCHEME)!=='https')throw new InvalidArgumentException('Provide a site, HTTPS evidence URL, explanation, and valid skill ID.');
+            if(strlen($site)>180||strlen($source)>400||strlen($basis)>800||$site===''||$basis===''||!filter_var($source,FILTER_VALIDATE_URL)||parse_url($source,PHP_URL_SCHEME)!=='https')throw new InvalidArgumentException('Provide a site, HTTPS evidence URL, explanation, and valid skill ID.');
             $entry=['type_id'=>$id,'name'=>(string)$reference['name'],'category'=>$category,'site'=>$site,'status'=>$status,'source'=>$source,'basis'=>$basis,'skill_id'=>$skill,'skill_level'=>$level,'confirmed_systems'=>$confirmed];
             if($found===null)$resources[]=$entry;else $resources[$found]=$entry;
         }else throw new InvalidArgumentException('Unknown action.');
@@ -117,7 +116,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 <label>Resource <input type="search" id="find" placeholder="Filter ore, gas, and ice (all shown by default)" autocomplete="off"><select id="item-picker" aria-label="Ore, gas, and ice resources"><option value="">Select a resource</option></select></label><p class="mine-hint" id="search-status"></p>
 <div class="mine-fields"><label>Category<input name="category" id="category" readonly required></label><label>Eligibility<select name="status" id="status"><option value="eligible">Eligible</option><option value="disputed">Disputed</option><option value="disabled">Disabled</option></select></label></div>
 <label>Site type<select name="site" id="site" required><option value="">Select site type</option><?php foreach($siteOptions as $option): ?><option value="<?=vm_h($option)?>"><?=vm_h($option)?></option><?php endforeach; ?></select></label>
-<div class="mine-fields"><label>Required skill<select name="skill_id" id="skill_id"><?php foreach($skillOptions as $id=>$name): ?><option value="<?=$id?>"><?=vm_h($name)?></option><?php endforeach; ?></select></label><label>Required skill level<select name="skill_level" id="skill_level"><option value="0">Not specified</option><?php foreach(range(1,5) as $level): ?><option value="<?=$level?>"><?=str_repeat('I',$level)?></option><?php endforeach; ?></select></label></div>
+<div class="mine-fields"><label>Minimum harvesting skill (automatically determined)<input id="harvest-skill" type="text" value="Choose a resource" readonly></label><p class="mine-skill-note">Baseline skill only. Ships, harvesting equipment and prerequisite skills may have additional requirements.</p></div>
 <fieldset class="mine-systems"><legend>Confirmed Venal systems <small>(optional; does not affect regional eligibility)</small></legend><label>Find system<input id="system-filter" type="search" placeholder="Filter Venal systems"></label><div id="system-list" class="mine-system-list" role="group" aria-label="Confirmed Venal systems"></div><p id="system-count" class="mine-hint"></p></fieldset>
 <label>Evidence URL (HTTPS)<input name="source" id="source" type="url" maxlength="400" required></label><label>Why it can spawn in Venal<textarea name="basis" id="basis" maxlength="800" rows="3" required></textarea></label>
 <div class="mine-actions"><button type="submit" id="save">Save resource</button><button type="button" id="delete" disabled>Remove selected resource</button><button type="button" id="cancel">Cancel edits</button></div></form></section></main>

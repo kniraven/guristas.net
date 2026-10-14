@@ -83,7 +83,7 @@ function escape(string $value): string
         <section class="ticket-panel" aria-labelledby="mining-heading">
             <h2 id="mining-heading">Venal mining catalog</h2>
             <p>Manage which ores, gases and ice can be recommended in Venal, with eligibility evidence.</p>
-            <a href="/admin/mining/">Edit mining resources</a>
+            <div class="ticket-toolbar"><a class="button" href="/admin/mining/">Edit mining resources</a></div>
         </section>
 
         <section class="ticket-panel" aria-labelledby="stream-heading">
@@ -100,8 +100,10 @@ function escape(string $value): string
             <section class="ticket-panel" aria-labelledby="staff-heading">
                 <h2 id="staff-heading">Staff access</h2>
                 <p>Manage who can access staff tools.</p>
-                <a class="button" href="/admin/tickets/?staff=1">Manage staff</a>
-                <a class="button" href="/admin/faction-preview/">Preview faction access</a>
+                <div class="ticket-toolbar">
+                    <a class="button" href="/admin/tickets/?staff=1">Manage staff</a>
+                    <a class="button" href="/admin/faction-preview/">Preview faction access</a>
+                </div>
             </section>
         <?php endif; ?>
     </main>

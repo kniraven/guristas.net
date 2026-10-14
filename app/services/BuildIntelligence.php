@@ -214,6 +214,15 @@ final class GuristasBuildIntelligence {
         }
         return $outputs?['assumed_yield'=>0.5,'portion_size'=>$portion,'batch_count'=>$batches,'gross_isk'=>$value,'outputs'=>$outputs]:null;
     }
+    /** Baseline harvesting skill, independent of staff-entered catalog metadata.
+     * This does not establish equipment, ship or complete prerequisite eligibility. */
+    public static function resourceHarvestSkill(string $category, string $name=''):array {
+        if($category==='gas')return ['id'=>25544,'level'=>1,'name'=>'Gas Cloud Harvesting'];
+        if($category==='ice')return ['id'=>16281,'level'=>1,'name'=>'Ice Harvesting'];
+        if($category==='ore' && stripos($name,'Mercoxit')!==false)return ['id'=>11395,'level'=>1,'name'=>'Deep Core Mining'];
+        if($category==='ore')return ['id'=>3386,'level'=>1,'name'=>'Mining'];
+        throw new InvalidArgumentException('Unknown mining resource category');
+    }
     /** Shared regional eligibility catalog; never inferred from a market order. */
     public static function venalMiningCatalog(?string $path=null, ?array $types=null):array {
         $path ??= is_file(dirname(__DIR__,2).'/storage/venal-mining-resources.json') ? dirname(__DIR__,2).'/storage/venal-mining-resources.json' : dirname(__DIR__,2).'/config/venal-mining-resources.json';
@@ -238,8 +247,9 @@ final class GuristasBuildIntelligence {
             if(isset($reference['name'])&&$reference['name']!==$entry['name'])
                 throw new RuntimeException('Venal catalog resource name differs from CCP SDE: '.$id);
             $entry['m3']=(float)$reference['volume'];
-            $entry['min_skill']=(int)($entry['skill_id']??0);
-            $entry['minimum']=1;
+            $harvest=self::resourceHarvestSkill($category,(string)($entry['name']??''));
+            $entry['min_skill']=$harvest['id'];
+            $entry['minimum']=$harvest['level'];
             $out[$id]=$entry;
         }
         return $out;
@@ -307,7 +317,7 @@ final class GuristasBuildIntelligence {
                 'SUGGESTED FULCRUM SELL ORDER '.number_format($unit,2).' ISK/unit',
                 'VENAL SPAWN EVIDENCE: '.$resource['basis'].'. SOURCE: '.$resource['source'].'. SITE: '.$resource['site'].'. Suggested listing price is based on current retained market buy/sell orders at monitored hubs and Fulcrum; it is NOT a guaranteed sale, buyer bid or net mining profit. Pricing method: '.$price['mode'].'.',
                 ['why_selected'=>'Highest modeled Fulcrum listing ISK/m³ among eligible Venal resources with retained market pricing; listings are not guaranteed sales.',
-                 'resource_category'=>$resource['category'],'requires_skills'=>[(string)$resource['min_skill']=>1],
+                 'resource_category'=>$resource['category'],'requires_skills'=>[(string)$resource['min_skill']=>$resource['minimum']],
                  'metric_isk'=>$perM3,'metric_label'=>'SUGGESTED LIST VALUE / ISK/m³',
                  'evidence'=>['item_type_id'=>$id,'item_category'=>$resource['category'],'unit_m3'=>$resource['m3'],
                     'eligibility_status'=>'eligible','eligibility_source'=>$resource['source'],'eligibility_basis'=>$resource['basis'],
@@ -335,7 +345,7 @@ final class GuristasBuildIntelligence {
             'NO DEFENSIBLE LIST PRICE · '.strtoupper($resource['category']),
             'ELIGIBILITY: '.$resource['basis'].'. Source: '.$resource['source'].'. Site: '.$resource['site'].'. No usable market quotes currently exist to set a defensible Fulcrum asking price. This is a supply objective, not a proven best-value choice.',
             ['why_selected'=>'First eligible catalog resource as transparent fallback only; economic winner unavailable.',
-             'resource_category'=>$resource['category'],'requires_skills'=>[(string)$resource['min_skill']=>1],
+             'resource_category'=>$resource['category'],'requires_skills'=>[(string)$resource['min_skill']=>$resource['minimum']],
              'evidence'=>['item_type_id'=>$resource['type_id'],'eligibility_status'=>'eligible',
                 'eligibility_source'=>$resource['source'],'eligible_site'=>$resource['site'],
                 'live_deposit_verified'=>false],
