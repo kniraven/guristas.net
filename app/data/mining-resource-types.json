@@ -1,0 +1,735 @@
+{
+  "source": "CCP SDE type names and IDs in industry-reference.json; locally curated allowed resource types",
+  "items": [
+    {
+      "type_id": 25268,
+      "name": "Amber Cytoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 28694,
+      "name": "Amber Mykoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 22,
+      "name": "Arkonor",
+      "category": "ore"
+    },
+    {
+      "type_id": 17425,
+      "name": "Arkonor II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17426,
+      "name": "Arkonor III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46678,
+      "name": "Arkonor IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 25279,
+      "name": "Azure Cytoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 28695,
+      "name": "Azure Mykoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 52316,
+      "name": "Bezdnacine",
+      "category": "ore"
+    },
+    {
+      "type_id": 56627,
+      "name": "Bezdnacine II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 56628,
+      "name": "Bezdnacine III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 1223,
+      "name": "Bistot",
+      "category": "ore"
+    },
+    {
+      "type_id": 17428,
+      "name": "Bistot II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17429,
+      "name": "Bistot III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46676,
+      "name": "Bistot IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 16264,
+      "name": "Blue Ice",
+      "category": "ice"
+    },
+    {
+      "type_id": 25275,
+      "name": "Celadon Cytoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 28696,
+      "name": "Celadon Mykoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 28630,
+      "name": "Chartreuse Cytoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 16262,
+      "name": "Clear Icicle",
+      "category": "ice"
+    },
+    {
+      "type_id": 1225,
+      "name": "Crokite",
+      "category": "ore"
+    },
+    {
+      "type_id": 17432,
+      "name": "Crokite II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17433,
+      "name": "Crokite III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46677,
+      "name": "Crokite IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 16267,
+      "name": "Dark Glitter",
+      "category": "ice"
+    },
+    {
+      "type_id": 1232,
+      "name": "Dark Ochre",
+      "category": "ore"
+    },
+    {
+      "type_id": 17436,
+      "name": "Dark Ochre II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17437,
+      "name": "Dark Ochre III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46675,
+      "name": "Dark Ochre IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74533,
+      "name": "Ducinium",
+      "category": "ore"
+    },
+    {
+      "type_id": 74534,
+      "name": "Ducinium II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74535,
+      "name": "Ducinium III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74536,
+      "name": "Ducinium IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74529,
+      "name": "Eifyrium",
+      "category": "ore"
+    },
+    {
+      "type_id": 74530,
+      "name": "Eifyrium II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74531,
+      "name": "Eifyrium III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74532,
+      "name": "Eifyrium IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 30375,
+      "name": "Fullerite-C28",
+      "category": "gas"
+    },
+    {
+      "type_id": 30376,
+      "name": "Fullerite-C32",
+      "category": "gas"
+    },
+    {
+      "type_id": 30377,
+      "name": "Fullerite-C320",
+      "category": "gas"
+    },
+    {
+      "type_id": 30370,
+      "name": "Fullerite-C50",
+      "category": "gas"
+    },
+    {
+      "type_id": 30378,
+      "name": "Fullerite-C540",
+      "category": "gas"
+    },
+    {
+      "type_id": 30371,
+      "name": "Fullerite-C60",
+      "category": "gas"
+    },
+    {
+      "type_id": 30372,
+      "name": "Fullerite-C70",
+      "category": "gas"
+    },
+    {
+      "type_id": 30373,
+      "name": "Fullerite-C72",
+      "category": "gas"
+    },
+    {
+      "type_id": 30374,
+      "name": "Fullerite-C84",
+      "category": "gas"
+    },
+    {
+      "type_id": 28629,
+      "name": "Gamboge Cytoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 16268,
+      "name": "Gelidus",
+      "category": "ice"
+    },
+    {
+      "type_id": 16263,
+      "name": "Glacial Mass",
+      "category": "ice"
+    },
+    {
+      "type_id": 16266,
+      "name": "Glare Crust",
+      "category": "ice"
+    },
+    {
+      "type_id": 1229,
+      "name": "Gneiss",
+      "category": "ore"
+    },
+    {
+      "type_id": 17865,
+      "name": "Gneiss II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17866,
+      "name": "Gneiss III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46679,
+      "name": "Gneiss IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 25273,
+      "name": "Golden Cytoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 28697,
+      "name": "Golden Mykoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 81975,
+      "name": "Griemeer",
+      "category": "ore"
+    },
+    {
+      "type_id": 81976,
+      "name": "Griemeer II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 81977,
+      "name": "Griemeer III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 81978,
+      "name": "Griemeer IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 21,
+      "name": "Hedbergite",
+      "category": "ore"
+    },
+    {
+      "type_id": 17440,
+      "name": "Hedbergite II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17441,
+      "name": "Hedbergite III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46680,
+      "name": "Hedbergite IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 1231,
+      "name": "Hemorphite",
+      "category": "ore"
+    },
+    {
+      "type_id": 17444,
+      "name": "Hemorphite II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17445,
+      "name": "Hemorphite III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46681,
+      "name": "Hemorphite IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 82163,
+      "name": "Hezorime",
+      "category": "ore"
+    },
+    {
+      "type_id": 82164,
+      "name": "Hezorime II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 82165,
+      "name": "Hezorime III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 82166,
+      "name": "Hezorime IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 1226,
+      "name": "Jaspet",
+      "category": "ore"
+    },
+    {
+      "type_id": 17448,
+      "name": "Jaspet II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17449,
+      "name": "Jaspet III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46682,
+      "name": "Jaspet IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 20,
+      "name": "Kernite",
+      "category": "ore"
+    },
+    {
+      "type_id": 17452,
+      "name": "Kernite II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17453,
+      "name": "Kernite III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46683,
+      "name": "Kernite IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 16269,
+      "name": "Krystallos",
+      "category": "ice"
+    },
+    {
+      "type_id": 81900,
+      "name": "Kylixium",
+      "category": "ore"
+    },
+    {
+      "type_id": 81901,
+      "name": "Kylixium II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 81902,
+      "name": "Kylixium III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 81903,
+      "name": "Kylixium IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 25277,
+      "name": "Lime Cytoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 28698,
+      "name": "Lime Mykoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 25276,
+      "name": "Malachite Cytoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 28699,
+      "name": "Malachite Mykoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 11396,
+      "name": "Mercoxit",
+      "category": "ore"
+    },
+    {
+      "type_id": 17869,
+      "name": "Mercoxit II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17870,
+      "name": "Mercoxit III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74521,
+      "name": "Mordunium",
+      "category": "ore"
+    },
+    {
+      "type_id": 74522,
+      "name": "Mordunium II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74523,
+      "name": "Mordunium III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74524,
+      "name": "Mordunium IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 82016,
+      "name": "Nocxite",
+      "category": "ore"
+    },
+    {
+      "type_id": 82017,
+      "name": "Nocxite II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 82018,
+      "name": "Nocxite III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 82019,
+      "name": "Nocxite IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 1227,
+      "name": "Omber",
+      "category": "ore"
+    },
+    {
+      "type_id": 17867,
+      "name": "Omber II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17868,
+      "name": "Omber III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46684,
+      "name": "Omber IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 18,
+      "name": "Plagioclase",
+      "category": "ore"
+    },
+    {
+      "type_id": 17455,
+      "name": "Plagioclase II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17456,
+      "name": "Plagioclase III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46685,
+      "name": "Plagioclase IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 1224,
+      "name": "Pyroxeres",
+      "category": "ore"
+    },
+    {
+      "type_id": 95395,
+      "name": "Pyroxeres 0-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17459,
+      "name": "Pyroxeres II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17460,
+      "name": "Pyroxeres III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46686,
+      "name": "Pyroxeres IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 52315,
+      "name": "Rakovene",
+      "category": "ore"
+    },
+    {
+      "type_id": 56629,
+      "name": "Rakovene II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 56630,
+      "name": "Rakovene III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 1228,
+      "name": "Scordite",
+      "category": "ore"
+    },
+    {
+      "type_id": 92373,
+      "name": "Scordite 0-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17463,
+      "name": "Scordite II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17464,
+      "name": "Scordite III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46687,
+      "name": "Scordite IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 19,
+      "name": "Spodumain",
+      "category": "ore"
+    },
+    {
+      "type_id": 17466,
+      "name": "Spodumain II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17467,
+      "name": "Spodumain III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46688,
+      "name": "Spodumain IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 52306,
+      "name": "Talassonite",
+      "category": "ore"
+    },
+    {
+      "type_id": 56625,
+      "name": "Talassonite II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 56626,
+      "name": "Talassonite III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 82205,
+      "name": "Ueganite",
+      "category": "ore"
+    },
+    {
+      "type_id": 82206,
+      "name": "Ueganite II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 82207,
+      "name": "Ueganite III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 82208,
+      "name": "Ueganite IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 1230,
+      "name": "Veldspar",
+      "category": "ore"
+    },
+    {
+      "type_id": 92371,
+      "name": "Veldspar 0-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17470,
+      "name": "Veldspar II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 17471,
+      "name": "Veldspar III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 46689,
+      "name": "Veldspar IV-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 25278,
+      "name": "Vermillion Cytoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 28700,
+      "name": "Vermillion Mykoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 25274,
+      "name": "Viridian Cytoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 28701,
+      "name": "Viridian Mykoserocin",
+      "category": "gas"
+    },
+    {
+      "type_id": 16265,
+      "name": "White Glaze",
+      "category": "ice"
+    },
+    {
+      "type_id": 74525,
+      "name": "Ytirium",
+      "category": "ore"
+    },
+    {
+      "type_id": 74526,
+      "name": "Ytirium II-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74527,
+      "name": "Ytirium III-Grade",
+      "category": "ore"
+    },
+    {
+      "type_id": 74528,
+      "name": "Ytirium IV-Grade",
+      "category": "ore"
+    }
+  ]
+}
