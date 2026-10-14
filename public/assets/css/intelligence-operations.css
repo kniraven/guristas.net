@@ -8,3 +8,7 @@
 .ops-actions button:disabled{opacity:.45;cursor:not-allowed;filter:none;}
 .ops-job .ops-help{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--accent,#df863b);border-radius:100%;color:var(--accent,#ff9b48);background:transparent;min-width:22px;height:22px;padding:0 4px;font-size:.8rem;vertical-align:middle;cursor:help;}
 .ops-disabled{color:#b5aeb9}.ops-running{color:#79caff}.ops-queued{color:#e7bd76}
+
+/* v57: distinguish unknown execution health from a verified failure. */
+.ops-unverified,.ops-skipped{color:#e7bd76}.ops-starting{color:#79caff}
+#ops-mode{font-weight:600;overflow-wrap:anywhere}
