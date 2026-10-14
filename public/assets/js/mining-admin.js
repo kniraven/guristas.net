@@ -11,7 +11,25 @@ const rows=entries.filter(r=>(!q||[r.name,r.site,r.basis].some(v=>String(v||'').
 rows.sort((a,b)=>sort==='reverse'?b.name.localeCompare(a.name):sort==='category'?a.category.localeCompare(b.category)||a.name.localeCompare(b.name):sort==='status'?a.status.localeCompare(b.status)||a.name.localeCompare(b.name):a.name.localeCompare(b.name));
 const body=$('resource-rows');body.replaceChildren();for(const r of rows){const tr=document.createElement('tr');for(const val of [r.name,r.category,r.status,String((r.confirmed_systems||[]).length)]){const td=document.createElement('td');td.textContent=val;tr.append(td);}const td=document.createElement('td'),btn=document.createElement('button');btn.type='button';btn.textContent='Edit';btn.addEventListener('click',()=>edit(r));td.append(btn);tr.append(td);body.append(tr);} $('catalog-count').textContent=`${rows.length} of ${entries.length} resources`;
 }
-function listItems(){const q=$('find').value.trim().toLowerCase(),old=$('item-picker').value;const rows=allowed.filter(r=>r.name.toLowerCase().includes(q)),picker=$('item-picker');picker.replaceChildren(new Option('Select ore, gas, or ice',''));for(const r of rows){const option=new Option(`${r.name} (${r.type_id})`,String(r.type_id));option.dataset.category=r.category;picker.add(option);} if(rows.some(r=>String(r.type_id)===old))picker.value=old;$('search-status').textContent=`${rows.length} resources available · alphabetical`;}
+function oreFamily(name){return name.replace(/\s+(?:I|II|III|IV|V)-Grade$/i,'');}
+function resourceGroup(row){return row.category==='ore'?`ORE / ${oreFamily(row.name)}`:row.category==='gas'?'GAS / Harvestable clouds':'ICE / Ice resources';}
+function listItems(){
+ const q=$('find').value.trim().toLowerCase(),picker=$('item-picker'),old=picker.value;
+ const rows=allowed.filter(r=>r.name.toLowerCase().includes(q));
+ picker.replaceChildren(new Option('Select ore, gas, or ice',''));
+ const groups=new Map();
+ for(const r of rows){const label=resourceGroup(r);if(!groups.has(label))groups.set(label,[]);groups.get(label).push(r);}
+ // Keep categories together, then sort families and item variants alphabetically.
+ const groupOrder=label=>label.startsWith('ORE /')?0:label.startsWith('GAS /')?1:2;
+ for(const [label,members] of [...groups].sort((a,b)=>groupOrder(a[0])-groupOrder(b[0])||a[0].localeCompare(b[0]))){
+   const group=document.createElement('optgroup');group.label=label;
+   members.sort((a,b)=>a.name.localeCompare(b.name));
+   for(const r of members){const opt=new Option(`${r.name} (${r.type_id})`,String(r.type_id));opt.dataset.category=r.category;group.append(opt);}
+   picker.append(group);
+ }
+ if(rows.some(r=>String(r.type_id)===old))picker.value=old;
+ $('search-status').textContent=`${rows.length} resources · ore grades grouped by family`;
+}
 function setItem(id){const record=allowed.find(r=>r.type_id===Number(id));if(!record)return;$('find').value='';listItems();$('item-picker').value=String(id);$('type_id').value=String(id);$('category').value=record.category;}
 function renderSystems(){const q=$('system-filter').value.toLowerCase(),list=$('system-list');list.replaceChildren();for(const name of systems){if(!name.toLowerCase().includes(q))continue;const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=sightings.has(name);check.addEventListener('change',()=>{if(check.checked)sightings.add(name);else sightings.delete(name);syncSystems();markDirty();});label.append(check,document.createTextNode(' '+name));list.append(label);}syncSystems();}
 function syncSystems(){$('confirmed_systems').value=JSON.stringify([...sightings].sort());$('system-count').textContent=`${sightings.size} confirmed systems selected`}
