@@ -56,16 +56,24 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         eve_require_csrf(is_string($_POST['csrf']??null)?$_POST['csrf']:null);
         if(!hash_equals($revision,(string)($_POST['revision']??'')))vm_response(['ok'=>false,'error'=>'The catalog changed since you opened it. Reload the catalog before saving.'],409);
         $action=(string)($_POST['action']??'');
+        $mode=(string)($_POST['mode']??'');
+        $originalId=filter_var($_POST['original_type_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
         $id=filter_var($_POST['type_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
         if(!$id||!isset($types[(string)$id])||!isset($allow[$id]))throw new InvalidArgumentException('Select an approved ore, gas, or ice resource.');
         $reference=$types[(string)$id];
         $resources=$catalog['resources'];$found=null;
         foreach($resources as $index=>$entry)if((int)$entry['type_id']===$id){$found=$index;break;}
         if($action==='delete'){
+            if($mode!=='edit'||$originalId!==$id)throw new InvalidArgumentException('Removal requires the original selected resource.');
             if($found===null)throw new InvalidArgumentException('Resource not found.');
             if((string)($_POST['confirm_name']??'')!==(string)$resources[$found]['name'])throw new InvalidArgumentException('Removal confirmation did not match.');
             array_splice($resources,$found,1);
         }elseif($action==='save'){
+            if($mode==='edit'){
+                if(!$originalId||$originalId!==$id||$found===null)throw new InvalidArgumentException('Resource identity cannot be changed while editing. Cancel and use Add resource.');
+            }elseif($mode==='add'){
+                if($originalId||$found!==null)throw new InvalidArgumentException('Resource already exists. Choose Edit instead.');
+            }else throw new InvalidArgumentException('Choose Add or Edit before saving.');
             $category=vm_classify($id,$reference);
             if($category===null)throw new InvalidArgumentException('CCP ESI cannot verify that this is a mineable ore, gas, or ice item. Nothing saved.');
             $claimed=(string)($_POST['category']??'');
@@ -112,8 +120,8 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 <div class="mine-toolbar"><label>Find resources<input type="search" id="resource-filter" placeholder="Name or site"></label><label>Category<select id="category-filter"><option value="">All types</option><option value="ore">Ore</option><option value="gas">Gas</option><option value="ice">Ice</option></select></label><label>Eligibility<select id="status-filter"><option value="">All</option><option value="eligible">Eligible</option><option value="disputed">Disputed</option><option value="disabled">Disabled</option></select></label><label>Sort<select id="sort"><option value="name">Name A–Z</option><option value="reverse">Name Z–A</option><option value="category">Category</option><option value="status">Eligibility</option></select></label></div>
 <div class="mine-table-wrap"><table><thead><tr><th>Resource</th><th>Type</th><th>Eligibility</th><th>Confirmed systems</th><th>Action</th></tr></thead><tbody id="resource-rows"></tbody></table></div><div class="mine-actions"><button type="button" id="add-new">Add resource</button><button type="button" id="reload-catalog">Reload catalog</button></div></section>
 <section class="ticket-panel mine-panel" aria-labelledby="editor-label" id="editor"><h2 id="editor-label">Add or edit resource</h2><p id="form-message" role="status" aria-live="polite"></p>
-<form id="catalog-form" novalidate><input type="hidden" name="csrf" value="<?=vm_h(eve_csrf())?>"><input type="hidden" name="revision" id="revision" value="<?=vm_h($revision)?>"><input type="hidden" name="action" value="save"><input type="hidden" name="type_id" id="type_id"><input type="hidden" name="confirmed_systems" id="confirmed_systems" value="[]">
-<label>Resource <input type="search" id="find" placeholder="Filter ore, gas, and ice (all shown by default)" autocomplete="off"><select id="item-picker" aria-label="Ore, gas, and ice resources"><option value="">Select a resource</option></select></label><p class="mine-hint" id="search-status"></p>
+<form id="catalog-form" novalidate><input type="hidden" name="csrf" value="<?=vm_h(eve_csrf())?>"><input type="hidden" name="revision" id="revision" value="<?=vm_h($revision)?>"><input type="hidden" name="action" value="save"><input type="hidden" name="type_id" id="type_id"><input type="hidden" name="mode" id="edit-mode" value="add"><input type="hidden" name="original_type_id" id="original_type_id" value=""><input type="hidden" name="confirmed_systems" id="confirmed_systems" value="[]">
+<p id="resource-locked" class="mine-hint" hidden></p><label id="resource-choice">Resource <input type="search" id="find" placeholder="Filter ore, gas, and ice (all shown by default)" autocomplete="off"><select id="item-picker" aria-label="Ore, gas, and ice resources"><option value="">Select a resource</option></select></label><p class="mine-hint" id="search-status"></p>
 <div class="mine-fields"><label>Category<input name="category" id="category" readonly required></label><label>Eligibility<select name="status" id="status"><option value="eligible">Eligible</option><option value="disputed">Disputed</option><option value="disabled">Disabled</option></select></label></div>
 <label>Site type<select name="site" id="site" required><option value="">Select site type</option><?php foreach($siteOptions as $option): ?><option value="<?=vm_h($option)?>"><?=vm_h($option)?></option><?php endforeach; ?></select></label>
 <div class="mine-fields"><label>Minimum harvesting skill (automatically determined)<input id="harvest-skill" type="text" value="Choose a resource" readonly></label><p class="mine-skill-note">Baseline skill only. Ships, harvesting equipment and prerequisite skills may have additional requirements.</p></div>
