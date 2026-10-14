@@ -5,7 +5,7 @@ $checks=[
  'Mining action'=>'Mine ',
  'Price field'=>'buyer_unit_isk',
  'PI sale destination'=>'PRODUCE ON VENAL PLANET',
- 'Conditional mining fallback'=>'MINE PYROXERES IN VENAL',
+ 'Catalog mining fallback'=>"'supply_objective','Mine '",
  'Mining value'=>'gross_isk_per_m3',
 ];
 foreach($checks as $label=>$needle){

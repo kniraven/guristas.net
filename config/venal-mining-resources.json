@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "region": "Venal",
+  "region_id": 10000015,
+  "note": "Community and CCP references are evidence of eligible natural regional spawns, not live deposits. Edit status eligible/disputed/disabled; only eligible enters ranking. Market data does not establish spawns.",
+  "resources": [
+    {
+      "type_id": 22,
+      "name": "Arkonor",
+      "category": "ore",
+      "site": "Nullsec ore anomaly (Arkonor/Bistot)",
+      "status": "eligible",
+      "source": "https://www.eveonline.com/news/view/resource-distribution-update",
+      "basis": "CCP nullsec ore anomaly update; natural anomalies, not sovereignty upgrades",
+      "skill_id": 3386
+    },
+    {
+      "type_id": 1223,
+      "name": "Bistot",
+      "category": "ore",
+      "site": "Nullsec ore anomaly (Arkonor/Bistot)",
+      "status": "eligible",
+      "source": "https://www.eveonline.com/news/view/resource-distribution-update",
+      "basis": "CCP nullsec ore anomaly update; natural anomalies, not sovereignty upgrades",
+      "skill_id": 3386
+    },
+    {
+      "type_id": 28701,
+      "name": "Viridian Mykoserocin",
+      "category": "gas",
+      "site": "Sparking Nebula / Bright Nebula gas signature",
+      "status": "eligible",
+      "source": "https://wiki.eveuniversity.org/Sparking_Nebula",
+      "basis": "Community-documented Venal spawn; not CCP-confirmed regional location",
+      "skill_id": 25544
+    },
+    {
+      "type_id": 28696,
+      "name": "Celadon Mykoserocin",
+      "category": "gas",
+      "site": "Calabash Nebula gas signature",
+      "status": "disputed",
+      "source": "https://wiki.eveuniversity.org/Calabash_Nebula",
+      "basis": "Community documentation has conflicting location descriptions; disabled pending review",
+      "skill_id": 25544
+    },
+    {
+      "type_id": 16268,
+      "name": "Gelidus",
+      "category": "ice",
+      "site": "Ice anomaly in an ice-eligible Venal system",
+      "status": "eligible",
+      "source": "https://wiki.eveuniversity.org/Ice_harvesting",
+      "basis": "Community ice distribution rule plus DOTLAN mapped Venal ice systems; type eligibility is regional inference, not direct spawn observation",
+      "skill_id": 16281
+    },
+    {
+      "type_id": 16267,
+      "name": "Dark Glitter",
+      "category": "ice",
+      "site": "Ice anomaly in an ice-eligible Venal system",
+      "status": "eligible",
+      "source": "https://wiki.eveuniversity.org/Ice_harvesting",
+      "basis": "Community nullsec ice distribution rule; type eligibility is regional inference",
+      "skill_id": 16281
+    },
+    {
+      "type_id": 16269,
+      "name": "Krystallos",
+      "category": "ice",
+      "site": "Ice anomaly in an ice-eligible Venal system",
+      "status": "disputed",
+      "source": "https://wiki.eveuniversity.org/Ice_harvesting",
+      "basis": "Venal eligibility not specifically established; excluded pending review",
+      "skill_id": 16281
+    }
+  ]
+}
