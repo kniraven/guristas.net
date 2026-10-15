@@ -68,9 +68,12 @@ final class GuristasOperations {
         });
     }
     public static function cronMode(string $text): array {
-        $managed=0;$legacy=0;$other=0;$seen=[];
+        $managed=0;$legacy=0;$other=0;$seen=[];$held=0;$holdStart=0;$holdEnd=0;
         foreach(preg_split('/\R/',$text) as $line){
-            $line=trim($line);if($line===''||$line[0]==='#')continue;
+            $line=trim($line);if($line==='# BEGIN GURISTAS.NET RAID VALIDATION V57R3'){$holdStart++;continue;}
+            if($line==='# END GURISTAS.NET RAID VALIDATION V57R3'){$holdEnd++;continue;}
+            if(str_starts_with($line,'# V57R3 HELD ')){$held++;continue;}
+            if($line===''||$line[0]==='#')continue;
             if(preg_match('/^(?:CRON_TZ|TZ)\s*=/', $line)){$other++;continue;}
             if(!str_contains($line,'guristas-'))continue;
             if(str_contains($line,'guristas-ops.php')){
@@ -87,6 +90,7 @@ final class GuristasOperations {
         }
         $completeLegacy=count($seen)===11&&max($seen)===1;
         $mode=$other||$managed>1||($managed&&$legacy)?'conflict':($managed===1?'managed':($legacy===11&&$completeLegacy?'legacy':($legacy?'partial_legacy':'unverified')));
+        if($holdStart||$holdEnd||$held){$mode=($holdStart===1&&$holdEnd===1&&$held===11&&$legacy===0&&$managed===0&&$other===0)?'raid_validation':'conflict';}
         return ['mode'=>$mode,'managed_entries'=>$managed,'legacy_entries'=>$legacy,'checked_at'=>time()];
     }
     public static function scheduler(): array {

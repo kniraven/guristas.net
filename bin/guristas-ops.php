@@ -191,7 +191,33 @@ if(realpath($_SERVER['SCRIPT_FILENAME']??'')!==__FILE__)return;
 $command=$argv[1]??'';
 try{
     if($command==='tick')exit(ops_tick());
-    if($command==='run'){if(GuristasOperations::scheduler()['mode']!=='managed')throw new RuntimeException('Managed scheduling is inactive; worker refused.');exit(ops_work($argv[2]??'',$argv[3]??''));}
+    if($command==='run'){
+        $mode=GuristasOperations::scheduler()['mode'];
+        if($mode!=='managed'&& !($mode==='raid_validation'&&($argv[2]??'')==='raid'))throw new RuntimeException('Managed scheduling is inactive; worker refused.');
+        exit(ops_work($argv[2]??'',$argv[3]??''));
+    }
+    if($command==='validate-raid'){
+        if(GuristasOperations::scheduler()['mode']!=='raid_validation')throw new RuntimeException('Requires isolated RAID validation cron mode.');
+        ops_reconcile();
+        $token=GuristasOperations::withLock(static function(){
+            $s=GuristasOperations::state();
+            foreach($s['runs']['raid']??[] as $r)if(($r['version']??0)===57&&GuristasOperations::active($r))throw new RuntimeException('Managed RAID already active');
+            $token=bin2hex(random_bytes(12));
+            if(!isset($s['runs']['raid']))$s['runs']['raid']=[];
+            array_unshift($s['runs']['raid'],['version'=>57,'token'=>$token,'status'=>'starting','trigger'=>'validation','actor'=>0,'requested'=>time(),'started'=>null,'ended'=>null,'heartbeat'=>time()]);
+            $s['runs']['raid']=array_slice($s['runs']['raid'],0,100);GuristasOperations::save($s);return $token;
+        });
+        $ack=ops_launch('raid',$token);echo 'RAID validation token: '.$token.' acknowledgement: '.($ack?'yes':'no')."\n";
+        if(!$ack)exit(1);
+        $deadline=microtime(true)+180;
+        do{
+            $state=GuristasOperations::state();foreach($state['runs']['raid']??[] as $r)if(($r['token']??'')===$token){
+                if(!GuristasOperations::active($r)){echo json_encode($r,JSON_PRETTY_PRINT|JSON_INVALID_UTF8_SUBSTITUTE)."\n";exit(($r['status']??'')==='success'?0:1);}
+            }
+            usleep(200000);
+        }while(microtime(true)<$deadline);
+        fwrite(STDERR,'RAID validation did not complete before monitoring deadline.' . "\n");exit(1);
+    }
     if($command==='inspect'){echo json_encode(GuristasOperations::view(),JSON_PRETTY_PRINT|JSON_INVALID_UTF8_SUBSTITUTE),"\n";exit(0);}
     if($command==='probe'){
         $token=$argv[2]??'';if(!preg_match('/^[a-f0-9]{24}$/',$token))exit(2);
