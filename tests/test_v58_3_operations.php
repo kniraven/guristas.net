@@ -1,0 +1,30 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__).'/app/services/IntelligenceOperations.php';
+function verify583(bool $v,string $message):void {if(!$v)throw new RuntimeException('FAIL: '.$message);echo 'PASS: '.$message."\n";}
+$base=['settings'=>[],'queue'=>[],'runs'=>[]];
+$run=static function(string $token,string $status):array{return ['token'=>$token,'status'=>$status,'ended'=>time(),'summary'=>'Test result','trigger'=>'schedule','exit_code'=>$status==='success'?0:3];};
+$s=$base;
+GuristasOperations::recordAlert($s,'raid',$run('f1','failed'));
+verify583(count($s['alerts']??[])===1&&$s['alerts'][0]['event']==='failure','first failure persisted');
+GuristasOperations::recordAlert($s,'raid',$run('f1','failed'));
+verify583(count($s['alerts'])===1,'same completion does not duplicate alert');
+GuristasOperations::recordAlert($s,'raid',$run('f2','skipped'));
+verify583(count($s['alerts'])===1,'repeated failures in open incident are suppressed');
+GuristasOperations::recordAlert($s,'raid',$run('ok','success'));
+verify583(count($s['alerts'])===2&&$s['alerts'][0]['event']==='recovery','success after incident generates recovery');
+GuristasOperations::recordAlert($s,'raid',$run('ok2','success'));
+verify583(count($s['alerts'])===2,'repeated successes do not generate recovery duplicates');
+$s=$base;$s['settings']['raid']=['notify'=>'failure'];
+GuristasOperations::recordAlert($s,'raid',$run('f3','failed'));
+GuristasOperations::recordAlert($s,'raid',$run('s3','success'));
+verify583(count($s['alerts']??[])===1,'failure-only policy suppresses recovery');
+$s=$base;$s['settings']['raid']=['notify'=>'none'];
+GuristasOperations::recordAlert($s,'raid',$run('f4','failed'));
+GuristasOperations::recordAlert($s,'raid',$run('s4','success'));
+verify583(empty($s['alerts']),'off policy creates no alerts');
+$s=$base;$s['settings']['raid']=['notify'=>'all'];
+for($i=0;$i<215;$i++)GuristasOperations::recordAlert($s,'raid',$run('test-'.$i,'success'));
+verify583(count($s['alerts'])===200,'retention capped at 200 entries');
+verify583($s['alerts'][0]['token']==='test-214','newest event appears first');
+echo "PASS v58.3 durable alert transition tests\n";

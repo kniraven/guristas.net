@@ -48,6 +48,7 @@ const rows=Object.keys(names).filter(key=>{
 }).map(key=>`<li><strong>${names[key]}:</strong> ${esc(text(before[key]))} → ${esc(text(after[key]))}</li>`);
 return rows.length?`<ul>${rows.join('')}</ul><details><summary>Technical before / after</summary><pre>${esc(JSON.stringify(details,null,2))}</pre></details>`:'<span>No effective settings difference (historical audit entry).</span>';
 }
+$('ops-alerts').innerHTML=(data.alerts||[]).length?(data.alerts||[]).map(a=>`<article><strong>${esc(a.event==='failure'?'Failure':a.event==='recovery'?'Recovered':'Completion')}</strong> · ${esc(a.name||a.job)} · ${esc(time(a.time))}<p>${esc(a.summary||a.status)} · ${esc(a.status)}${a.exit_code!=null?' · Exit '+esc(a.exit_code):''}</p></article>`).join(''):'No persistent operational alerts recorded yet.';
 $('ops-audit').innerHTML=(data.audit||[]).length?(data.audit||[]).map(a=>`<article><strong>${esc(a.action==='settings_changed'?'Settings changed':a.action==='manual_queued'?'Manual run queued':a.action)}</strong> · ${esc(a.job)} · ${esc(time(a.time))} · Pilot ${esc(a.actor)}${a.action==='settings_changed'?auditDiff(a.details):''}</article>`).join(''):'No audited administrative changes recorded yet.';
 initialized=true;render();return true;
 }catch(err){info(err.message,true);return false;}}

@@ -52,7 +52,7 @@ function ops_reconcile(): void {
         GuristasOperations::withLock(static function()use($id,$token,$fields){
             $s=GuristasOperations::state();
             foreach(array_keys($s['runs'][$id]??[]) as $i)if(($s['runs'][$id][$i]['token']??'')===$token&&GuristasOperations::active($s['runs'][$id][$i])){
-                $s['runs'][$id][$i]=array_replace($s['runs'][$id][$i],$fields);GuristasOperations::save($s);break;
+                $s['runs'][$id][$i]=array_replace($s['runs'][$id][$i],$fields);GuristasOperations::recordAlert($s,$id,$s['runs'][$id][$i]);GuristasOperations::save($s);break;
             }
         });
         foreach([$log,GuristasOperations::dir().'/stdout-'.$token.'.log',GuristasOperations::dir().'/stderr-'.$token.'.log'] as $file)if(is_file($file))unlink($file);

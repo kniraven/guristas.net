@@ -88,12 +88,34 @@ final class GuristasOperations {
     public static function active(array $run): bool {return in_array($run['status']??'', ['starting','running'],true);}
     public static function collector(string $id): bool {return in_array($id,['priority','rotate','forge','domain','sinq'],true);}
     // Always update the actual array, never a null-coalescing temporary expression.
+    // Server-side durable alert transitions, deduplicated under the operations state lock.
+    public static function recordAlert(array &$state,string $id,array $run): void {
+        if(!isset(self::jobs()[$id])||!in_array($run['status']??'', ['success','failed','timeout','crashed','skipped'],true))return;
+        if(empty($run['ended'])||empty($run['token']))return;
+        $status=$run['status'];$bad=$status!=='success';
+        $incidents=$state['alert_incidents']??[];
+        if(!is_array($incidents))throw new RuntimeException('Invalid alert incident state');
+        $open=!empty($incidents[$id]);$kind=null;
+        if($bad&&!$open){$incidents[$id]=true;$kind='failure';}
+        elseif(!$bad&&$open){$incidents[$id]=false;$kind='recovery';}
+        $state['alert_incidents']=$incidents;
+        $policy=self::settings($id,$state)['notify'];
+        $emit=($policy==='all')||($kind==='failure'&&in_array($policy,['failure','recovery'],true))||($kind==='recovery'&&$policy==='recovery');
+        if(!$emit)return;
+        $alerts=$state['alerts']??[];
+        if(!is_array($alerts))throw new RuntimeException('Invalid alert state');
+        foreach($alerts as $a)if(($a['token']??'')===$run['token'])return;
+        array_unshift($alerts,['time'=>(int)$run['ended'],'job'=>$id,'name'=>self::jobs()[$id]['name'],'token'=>$run['token'],'event'=>$kind??'completion','status'=>$status,'trigger'=>$run['trigger']??'schedule','summary'=>substr((string)($run['summary']??$status),0,500),'exit_code'=>$run['exit_code']??null]);
+        $state['alerts']=array_slice($alerts,0,200);
+    }
     public static function updateRun(string $id,string $token,array $fields): bool {
         return self::withLock(static function()use($id,$token,$fields){
             $state=self::state();
             foreach(array_keys($state['runs'][$id]??[]) as $i){
                 if(($state['runs'][$id][$i]['token']??'')!==$token)continue;
-                $state['runs'][$id][$i]=array_replace($state['runs'][$id][$i],$fields);
+                $oldRun=$state['runs'][$id][$i];
+                $state['runs'][$id][$i]=array_replace($oldRun,$fields);
+                if(!in_array($oldRun['status']??'', ['success','failed','timeout','crashed','skipped'],true))self::recordAlert($state,$id,$state['runs'][$id][$i]);
                 self::save($state);return true;
             }
             return false;
@@ -267,6 +289,6 @@ final class GuristasOperations {
             }
             $entries[]=['id'=>$id,'name'=>$job['name'],'group'=>$job['group'],'hint'=>$job['hint'],'source'=>$job['source'],'pulls'=>$job['pulls'],'purpose'=>$job['purpose'],'settings'=>$s,'last'=>$last,'average_seconds'=>$avg,'p95_seconds'=>$p95,'samples'=>count($dur),'next_scheduled_at'=>self::nextScheduledAt($s,$now),'queue'=>$queued,'health'=>$health,'history'=>array_slice($runs,0,20),'freshness'=>self::datasetFreshness($id,$now)];
         }
-        return ['jobs'=>$entries,'last_tick'=>$state['last_tick']??null,'last_tick_at'=>$state['last_tick_at']??null,'mode'=>$mode,'scheduler'=>$scheduler,'dispatcher_recent'=>$freshTick,'systemd'=>self::systemTimers(),'audit'=>array_slice(is_array($state['audit']??null)?$state['audit']:[],0,50)];
+        return ['jobs'=>$entries,'last_tick'=>$state['last_tick']??null,'last_tick_at'=>$state['last_tick_at']??null,'mode'=>$mode,'scheduler'=>$scheduler,'dispatcher_recent'=>$freshTick,'systemd'=>self::systemTimers(),'audit'=>array_slice(is_array($state['audit']??null)?$state['audit']:[],0,50),'alerts'=>array_slice(is_array($state['alerts']??null)?$state['alerts']:[],0,100)];
     }
 }
