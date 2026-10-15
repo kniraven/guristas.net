@@ -75,6 +75,24 @@ function ops_trade_retry(string $token): void {
         }
     });
 }
+// Domain's scheduled slot often intersects the long-running Jita collector.
+// Only retry a confirmed lock skip; never bypass the market collector lock.
+function ops_domain_retry(string $token): void {
+    GuristasOperations::withLock(static function() use ($token) {
+        $s=GuristasOperations::state();
+        foreach ($s['runs']['domain']??[] as $r) {
+            if (($r['token']??'')!==$token) continue;
+            if (($r['status']??'')!=='skipped'||($r['kind']??'')!=='overlap') return;
+            $attempt=(int)($r['retry_attempt']??0);
+            if ($attempt>=4) return;
+            foreach ($s['queue'] as $q) if (($q['job']??'')==='domain') return;
+            $s['queue'][]=['job'=>'domain','trigger'=>'retry','actor'=>0,'requested'=>time(),
+                'not_before'=>time()+90,'retry_attempt'=>$attempt+1,'retry_parent'=>$token];
+            GuristasOperations::save($s);
+            return;
+        }
+    });
+}
 function ops_due_requests(array $queue,int $now): array {
     $due=[];$future=[];
     foreach($queue as $request){
@@ -117,6 +135,7 @@ function ops_work(string $id,string $token): int {
             if(!$lock)throw new RuntimeException('Cannot open execution lock');
             if(!flock($lock,LOCK_EX|LOCK_NB)){
                 fclose($lock);ops_finish($id,$token,['status'=>'skipped','ended'=>time(),'duration'=>round(microtime(true)-$started,2),'exit_code'=>null,'summary'=>'Execution skipped because another job holds the execution lock.','cause'=>'Duplicate job or overlapping market collection. No refresh was performed.','kind'=>'overlap']);
+                if($id==='domain')ops_domain_retry($token);
                 $finished=true;return 0;
             }$locks[]=$lock;
         }
@@ -154,6 +173,7 @@ function ops_work(string $id,string $token): int {
             $s=GuristasOperations::state();$s['queue']=array_values(array_filter($s['queue'],static fn($q)=>!(($q['job']??'')==='trade'&&($q['trigger']??'')==='retry')));GuristasOperations::save($s);
         });
         if($id==='trade'&&$result==='skipped'&&$diag['kind']==='overlap')ops_trade_retry($token);
+        if($id==='domain'&&$result==='skipped'&&$diag['kind']==='overlap')ops_domain_retry($token);
         $finished=true;return in_array($result,['success','skipped'],true)?0:1;
     }catch(Throwable $e){
         if(is_resource($proc)){
