@@ -139,7 +139,7 @@ final class GuristasOperations {
     }
     public static function systemTimers(): array {
         $timers=[];
-        foreach(['guristas-venal-collect'=>'Venal collection','guristas-cache-cleanup'=>'Cache cleanup'] as $unit=>$name){
+        foreach(['guristas-venal-collector'=>'Venal collection','guristas-cache-cleanup'=>'Cache cleanup'] as $unit=>$name){
             $row=['name'=>$name,'unit'=>$unit.'.timer','control'=>'read-only','verified'=>false];
             if(PHP_OS_FAMILY!=='Windows'){
                 $t=self::inspectCommand(['/usr/bin/systemctl','show',$unit.'.timer','--no-pager','--property=LoadState,ActiveState,SubState,NextElapseUSecRealtime,LastTriggerUSec']);
@@ -150,6 +150,38 @@ final class GuristasOperations {
             $timers[]=$row;
         }
         return $timers;
+    }
+    /** Read published cache files only; do not trigger ESI requests or data publication. */
+    public static function datasetFreshness(string $id, ?int $now=null, ?string $cacheDir=null): array {
+        $now=$now??time();
+        $dir=$cacheDir??self::root().'/storage/cache/economic-intelligence';
+        $sources=[
+            'raid'=>['raid',600,'collected_at'],
+            'priority'=>['region-10000015',1800,'fetched_at'],
+            'rotate'=>['region-10001000',1800,'fetched_at'],
+            'forge'=>['region-10000002',10800,'fetched_at'],
+            'sinq'=>['region-10000032',10800,'fetched_at'],
+            'offers'=>['lp-offers',86400,'fetched_at'],
+            'trade'=>['trade-orders',1800,'collected_at'],
+            'build'=>['build-orders',1800,'collected_at'],
+        ];
+        if($id==='domain')return ['status'=>'unverified','reason'=>'Domain snapshot has not been independently checked by the production health diagnostic.'];
+        if($id==='planets')return ['status'=>'unverified','reason'=>'Planet reference availability does not establish that the hourly collection completed.'];
+        if($id==='sde')return ['status'=>'unverified','reason'=>'SDE check outcome must be assessed from its revision/status metadata, not snapshot age alone.'];
+        if(!isset($sources[$id]))return ['status'=>'unverified','reason'=>'No verified freshness signal configured.'];
+        [$key,$max,$field]=$sources[$id];$path=$dir.'/'.$key.'.json';
+        if(!is_file($path))return ['status'=>'missing','reason'=>'Expected dataset is missing: '.$key];
+        $data=json_decode((string)file_get_contents($path),true);
+        if(!is_array($data))return ['status'=>'unverified','reason'=>'Dataset is not valid JSON: '.$key];
+        $stamp=strtotime((string)($data[$field]??''));
+        if(!$stamp||$stamp>$now+120)return ['status'=>'unverified','reason'=>'Dataset timestamp missing, invalid, or in the future: '.$key];
+        $age=max(0,$now-$stamp);
+        // A timestamp is not proof of successful data collection. Validate key invariants.
+        if(str_starts_with($key,'region-')&&empty($data['complete']))return ['status'=>'unverified','reason'=>'Market snapshot is not marked complete: '.$key,'age_seconds'=>$age];
+        if($key==='lp-offers'&&!is_array($data['offers']??null))return ['status'=>'unverified','reason'=>'LP snapshot has no offers array.','age_seconds'=>$age];
+        if($key==='raid'&&!is_array(($data['data']??$data)['campaigns']??null))return ['status'=>'unverified','reason'=>'RAID campaign payload unavailable.','age_seconds'=>$age];
+        if(in_array($key,['build-orders','trade-orders'],true)&&!is_array(($data['data']??$data)['orders']??null))return ['status'=>'unverified','reason'=>'Published recommendation payload unavailable.','age_seconds'=>$age];
+        return ['status'=>$age<=$max?'fresh':'stale','age_seconds'=>$age,'limit_seconds'=>$max,'reason'=>$age<=$max?'Published dataset timestamp and structure are within the configured freshness threshold.':'Published dataset exceeds its configured freshness threshold.'];
     }
     public static function view(): array {
         $state=self::state();$now=time();$entries=[];$scheduler=self::scheduler();$mode=$scheduler['mode'];
@@ -169,7 +201,7 @@ final class GuristasOperations {
                 elseif(!$last)$health='awaiting_first_run';
                 else $health=match($last['status']??''){ 'success'=>'healthy','skipped'=>'skipped','failed','timeout'=>'failed','crashed'=>'crashed',default=>'unverified'};
             }
-            $entries[]=['id'=>$id,'name'=>$job['name'],'group'=>$job['group'],'hint'=>$job['hint'],'source'=>$job['source'],'pulls'=>$job['pulls'],'purpose'=>$job['purpose'],'settings'=>$s,'last'=>$last,'average_seconds'=>$avg,'p95_seconds'=>$p95,'samples'=>count($dur),'queue'=>$queued,'health'=>$health,'history'=>array_slice($runs,0,20),'freshness'=>['status'=>'unverified','reason'=>'Dataset freshness requires workload-specific evidence; a completed process alone does not verify it.']];
+            $entries[]=['id'=>$id,'name'=>$job['name'],'group'=>$job['group'],'hint'=>$job['hint'],'source'=>$job['source'],'pulls'=>$job['pulls'],'purpose'=>$job['purpose'],'settings'=>$s,'last'=>$last,'average_seconds'=>$avg,'p95_seconds'=>$p95,'samples'=>count($dur),'queue'=>$queued,'health'=>$health,'history'=>array_slice($runs,0,20),'freshness'=>self::datasetFreshness($id,$now)];
         }
         return ['jobs'=>$entries,'last_tick'=>$state['last_tick']??null,'last_tick_at'=>$state['last_tick_at']??null,'mode'=>$mode,'scheduler'=>$scheduler,'dispatcher_recent'=>$freshTick,'systemd'=>self::systemTimers()];
     }
