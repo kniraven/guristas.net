@@ -58,6 +58,34 @@ function ops_reconcile(): void {
         foreach([$log,GuristasOperations::dir().'/stdout-'.$token.'.log',GuristasOperations::dir().'/stderr-'.$token.'.log'] as $file)if(is_file($file))unlink($file);
     }
 }
+// Retry only known TRADE publication lock contention. Persist under the shared state lock.
+function ops_trade_retry(string $token): void {
+    GuristasOperations::withLock(static function() use ($token) {
+        $s=GuristasOperations::state();
+        foreach ($s['runs']['trade']??[] as $r) {
+            if (($r['token']??'')!==$token) continue;
+            if (($r['status']??'')!=='skipped'||($r['kind']??'')!=='overlap') return;
+            $attempt=(int)($r['retry_attempt']??0);
+            if ($attempt>=4) return;
+            foreach ($s['queue'] as $q) if (($q['job']??'')==='trade') return;
+            $s['queue'][]=['job'=>'trade','trigger'=>'retry','actor'=>0,'requested'=>time(),
+                'not_before'=>time()+90,'retry_attempt'=>$attempt+1,'retry_parent'=>$token];
+            GuristasOperations::save($s);
+            return;
+        }
+    });
+}
+function ops_due_requests(array $queue,int $now): array {
+    $due=[];$future=[];
+    foreach($queue as $request){
+        if(!isset(GuristasOperations::jobs()[$request['job']??'']))continue;
+        if(($request['not_before']??0)>$now){$future[]=$request;continue;}
+        $id=$request['job'];
+        // A queued manual request takes precedence; retries supersede due schedules.
+        if(!isset($due[$id])||($request['trigger']??'')==='manual')$due[$id]=$request;
+    }
+    return [$due,$future];
+}
 function ops_work(string $id,string $token): int {
     $jobs=GuristasOperations::jobs();
     if(!isset($jobs[$id])||!preg_match('/^[a-f0-9]{24}$/',$token))throw new InvalidArgumentException('Invalid worker job or token');
@@ -122,6 +150,10 @@ function ops_work(string $id,string $token): int {
         if($exit===125)$diag=['summary'=>'Output exceeded the 2 MiB capture limit.','cause'=>'The worker stopped a noisy process to bound diagnostic storage.','kind'=>'output_limit'];
         $result=$diag['kind']==='overlap'?'skipped':($exit===124?'timeout':($exit===0&&$diag['kind']==='ok'?'success':'failed'));
         ops_finish($id,$token,['status'=>$result,'ended'=>time(),'duration'=>round(microtime(true)-$started,2),'exit_code'=>$exit>=0?$exit:null,'signal'=>$signal,'summary'=>$diag['summary'],'cause'=>$diag['cause'],'kind'=>$diag['kind'],'stdout'=>$out,'stderr'=>$err,'output'=>$output,'heartbeat'=>time()]);
+        if($id==='trade'&&$result==='success')GuristasOperations::withLock(static function(){
+            $s=GuristasOperations::state();$s['queue']=array_values(array_filter($s['queue'],static fn($q)=>!(($q['job']??'')==='trade'&&($q['trigger']??'')==='retry')));GuristasOperations::save($s);
+        });
+        if($id==='trade'&&$result==='skipped'&&$diag['kind']==='overlap')ops_trade_retry($token);
         $finished=true;return in_array($result,['success','skipped'],true)?0:1;
     }catch(Throwable $e){
         if(is_resource($proc)){
@@ -172,13 +204,14 @@ function ops_tick(): int {
             $state['last_tick_minute']=$minute;
         }
         $state['last_tick']=date('Y-m-d h:i:s A T');$state['last_tick_at']=time();
-        foreach($state['queue'] as $request)if(isset(GuristasOperations::jobs()[$request['job']??'']))$due[$request['job']]=$request;
-        $state['queue']=[];$spawn=[];
+        [$ready,$future]=ops_due_requests($state['queue'],time());
+        foreach($ready as $id=>$request)$due[$id]=$request;
+        $state['queue']=$future;$spawn=[];
         foreach($due as $id=>$request){
             $blocked=false;foreach($state['runs'][$id]??[] as $run)if(GuristasOperations::active($run)&&(($run['version']??0)===57||time()-(int)($run['started']??0)<=GuristasOperations::settings($id,$state)['timeout']+90)){$blocked=true;break;}
-            if($blocked){if($request['trigger']==='manual')$state['queue'][]=$request;continue;}
+            if($blocked){if(in_array($request['trigger'],['manual','retry'],true))$state['queue'][]=$request;continue;}
             $token=bin2hex(random_bytes(12));if(!isset($state['runs'][$id]))$state['runs'][$id]=[];
-            array_unshift($state['runs'][$id],['version'=>57,'token'=>$token,'status'=>'starting','trigger'=>$request['trigger'],'actor'=>$request['actor'],'requested'=>$request['requested'],'started'=>null,'ended'=>null,'heartbeat'=>time()]);
+            array_unshift($state['runs'][$id],['version'=>57,'token'=>$token,'status'=>'starting','trigger'=>$request['trigger'],'actor'=>$request['actor'],'requested'=>$request['requested'],'retry_attempt'=>$request['retry_attempt']??0,'retry_parent'=>$request['retry_parent']??null,'started'=>null,'ended'=>null,'heartbeat'=>time()]);
             $state['runs'][$id]=array_slice($state['runs'][$id],0,100);$spawn[]=[$id,$token];
         }
         GuristasOperations::save($state);return $spawn;
