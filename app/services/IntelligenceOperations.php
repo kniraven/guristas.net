@@ -218,13 +218,26 @@ final class GuristasOperations {
             'priority'=>['region-10000015',1800,'fetched_at'],
             'rotate'=>['region-10001000',1800,'fetched_at'],
             'forge'=>['region-10000002',10800,'fetched_at'],
+            'domain'=>['region-10000043',10800,'fetched_at'],
             'sinq'=>['region-10000032',10800,'fetched_at'],
             'offers'=>['lp-offers',86400,'fetched_at'],
             'trade'=>['trade-orders',1800,'collected_at'],
             'build'=>['build-orders',1800,'collected_at'],
         ];
-        if($id==='domain')return ['status'=>'unverified','reason'=>'Domain snapshot has not been independently checked by the production health diagnostic.'];
-        if($id==='planets')return ['status'=>'unverified','reason'=>'Planet reference availability does not establish that the hourly collection completed.'];
+        if($id==='planets'){
+            $path=$dir.'/build-venal-planets.json';
+            if(!is_file($path))return ['status'=>'missing','reason'=>'Venal planet catalog does not exist.'];
+            $data=json_decode((string)file_get_contents($path),true);
+            if(!is_array($data)||!is_array($data['planets']??null)||($data['region_id']??null)!==10000015)return ['status'=>'unverified','reason'=>'Venal planet catalog structure or region is invalid.'];
+            $stamp=strtotime((string)($data['updated_at']??''));
+            if(!$stamp||$stamp>$now+120)return ['status'=>'unverified','reason'=>'Planet collector update timestamp missing, invalid or future.'];
+            $age=max(0,$now-$stamp);$limit=!empty($data['complete'])?2592000:7200;
+            if($age>$limit)return ['status'=>'stale','age_seconds'=>$age,'limit_seconds'=>$limit,'reason'=>'Planet catalog is older than its permitted completeness/progress window.'];
+            if(empty($data['complete']))return ['status'=>'collecting','age_seconds'=>$age,'limit_seconds'=>$limit,'reason'=>'Venal planet catalog is being populated; an updated partial scan is not a complete dataset.'];
+            $completed=strtotime((string)($data['collected_at']??''));
+            if(!$completed||$completed>$now+120)return ['status'=>'unverified','reason'=>'Complete planet catalog has no valid completion timestamp.'];
+            return ['status'=>'fresh','age_seconds'=>$age,'limit_seconds'=>$limit,'reason'=>'Complete Venal planet catalog is within its 30-day reference validity window; hourly job execution is assessed separately.'];
+        }
         if($id==='sde')return ['status'=>'unverified','reason'=>'SDE check outcome must be assessed from its revision/status metadata, not snapshot age alone.'];
         if(!isset($sources[$id]))return ['status'=>'unverified','reason'=>'No verified freshness signal configured.'];
         [$key,$max,$field]=$sources[$id];$path=$dir.'/'.$key.'.json';
@@ -269,8 +282,35 @@ final class GuristasOperations {
         }
         return null;
     }
+    /** Pure queue telemetry; does not alter requests or execution order. */
+    public static function queueTelemetry(array $state,int $now): array {
+        $market=['offers','trade','priority','rotate','forge','domain','sinq'];$rows=[];
+        foreach($state['queue']??[] as $q){
+            $id=$q['job']??'';
+            if(!in_array($id,$market,true))continue;
+            $requested=(int)($q['requested']??$now);
+            $rows[]=['job'=>$id,'requested'=>$requested,'age_seconds'=>max(0,$now-$requested),'not_before'=>(int)($q['not_before']??0),'trigger'=>$q['trigger']??'unknown'];
+        }
+        // Operational order is indicative; the dispatcher also considers active work and retry cooldowns.
+        usort($rows,static function($a,$b)use($now){
+            $rank=static fn($r)=>max(0,$now-$r['requested'])+($r['job']==='offers'?900:($r['job']==='trade'?600:0));
+            return ($rank($b)<=>$rank($a))?:($a['requested']<=>$b['requested']);
+        });
+        foreach($rows as $i=>&$r)$r['position']=$i+1;
+        unset($r);
+        return $rows;
+    }
+    /** Read-only evidence from persisted history that a saved schedule affected dispatch. */
+    public static function scheduleEvidence(array $settings,array $runs): array {
+        foreach($runs as $run){
+            if(($run['trigger']??'')!=='schedule'||empty($run['requested']))continue;
+            return ['requested'=>(int)$run['requested'],'matches_current_schedule'=>self::due($settings,(int)$run['requested']),'status'=>$run['status']??'unknown',
+                'reason'=>'Historical executions may precede the latest settings edit; matching alone cannot prove the newest edit was executed.'];
+        }
+        return ['requested'=>null,'matches_current_schedule'=>null,'status'=>'unverified','reason'=>'No scheduled execution retained in history.'];
+    }
     public static function view(): array {
-        $state=self::state();$now=time();$entries=[];$scheduler=self::scheduler();$mode=$scheduler['mode'];
+        $state=self::state();$now=time();$entries=[];$scheduler=self::scheduler();$mode=$scheduler['mode'];$queueTelemetry=self::queueTelemetry($state,$now);
         $freshTick=$now-(int)($state['last_tick_at']??0)<=180;
         foreach(self::jobs() as $id=>$job){
             $s=self::settings($id,$state);$runs=$state['runs'][$id]??[];
@@ -287,8 +327,8 @@ final class GuristasOperations {
                 elseif(!$last)$health='awaiting_first_run';
                 else $health=match($last['status']??''){ 'success'=>'healthy','skipped'=>'skipped','failed','timeout'=>'failed','crashed'=>'crashed',default=>'unverified'};
             }
-            $entries[]=['id'=>$id,'name'=>$job['name'],'group'=>$job['group'],'hint'=>$job['hint'],'source'=>$job['source'],'pulls'=>$job['pulls'],'purpose'=>$job['purpose'],'settings'=>$s,'last'=>$last,'average_seconds'=>$avg,'p95_seconds'=>$p95,'samples'=>count($dur),'next_scheduled_at'=>self::nextScheduledAt($s,$now),'queue'=>$queued,'health'=>$health,'history'=>array_slice($runs,0,20),'freshness'=>self::datasetFreshness($id,$now)];
+            $entries[]=['id'=>$id,'name'=>$job['name'],'group'=>$job['group'],'hint'=>$job['hint'],'source'=>$job['source'],'pulls'=>$job['pulls'],'purpose'=>$job['purpose'],'settings'=>$s,'last'=>$last,'average_seconds'=>$avg,'p95_seconds'=>$p95,'samples'=>count($dur),'next_scheduled_at'=>self::nextScheduledAt($s,$now),'queue'=>$queued,'queue_entries'=>array_values(array_filter($queueTelemetry,static fn($q)=>$q['job']===$id)),'schedule_evidence'=>self::scheduleEvidence($s,$runs),'health'=>$health,'history'=>array_slice($runs,0,20),'freshness'=>self::datasetFreshness($id,$now)];
         }
-        return ['jobs'=>$entries,'last_tick'=>$state['last_tick']??null,'last_tick_at'=>$state['last_tick_at']??null,'mode'=>$mode,'scheduler'=>$scheduler,'dispatcher_recent'=>$freshTick,'systemd'=>self::systemTimers(),'audit'=>array_slice(is_array($state['audit']??null)?$state['audit']:[],0,50),'alerts'=>array_slice(is_array($state['alerts']??null)?$state['alerts']:[],0,100)];
+        return ['jobs'=>$entries,'market_queue'=>$queueTelemetry,'last_tick'=>$state['last_tick']??null,'last_tick_at'=>$state['last_tick_at']??null,'mode'=>$mode,'scheduler'=>$scheduler,'dispatcher_recent'=>$freshTick,'systemd'=>self::systemTimers(),'audit'=>array_slice(is_array($state['audit']??null)?$state['audit']:[],0,50),'alerts'=>array_slice(is_array($state['alerts']??null)?$state['alerts']:[],0,100)];
     }
 }
