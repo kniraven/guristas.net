@@ -1,0 +1,42 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/bin/guristas-ops.php';
+function assert585(bool $truth,string $message): void {if(!$truth)throw new RuntimeException('FAIL: '.$message);echo 'PASS: '.$message."\n";}
+$now=1760000000;
+function request585(string $job,int $requested,string $trigger='schedule',int $notBefore=0): array {return ['job'=>$job,'requested'=>$requested,'trigger'=>$trigger,'actor'=>0,'not_before'=>$notBefore];}
+$state=['queue'=>[],'runs'=>[]];
+$due=['forge'=>request585('forge',$now),'domain'=>request585('domain',$now),'raid'=>request585('raid',$now)];
+[$s,$d]=ops_plan_market($state,$due,$now);
+assert585(isset($d['raid'])&&count(array_intersect(array_keys($d),ops_market_jobs()))===1,'only one market worker launched alongside RAID');
+assert585(count($s['queue'])===1,'unselected scheduled market workload retained');
+$id=isset($d['forge'])?'forge':'domain';$other=$id==='forge'?'domain':'forge';
+$s['runs'][$id]=[['version'=>57,'status'=>'running']];
+[$busy,$blocked]=ops_plan_market($s,[],$now+60);
+assert585(!isset($blocked[$other])&&count($busy['queue'])===1,'running market job blocks the second collector without losing its request');
+$s['runs'][$id]=[['version'=>57,'status'=>'success']];
+[$released,$next]=ops_plan_market($s,[],$now+120);
+assert585(isset($next[$other])&&$released['queue']===[],'pending collector runs after first finishes');
+$state=['queue'=>[request585('domain',$now-400),request585('trade',$now-30),request585('offers',$now-20)],'runs'=>[]];
+[$s,$d]=ops_plan_market($state,[],$now);
+assert585(isset($d['offers']),'daily LP is protected from starvation');
+[$s2,$d2]=ops_plan_market($s,[],$now+60);
+assert585(isset($d2['trade']),'publication gets priority after daily LP');
+$state=['queue'=>[request585('forge',$now-500)],'runs'=>['sinq'=>[['version'=>57,'status'=>'running']]]];
+[$s,$d]=ops_plan_market($state,['forge'=>request585('forge',$now)],$now);
+assert585($s['queue'][0]['requested']===$now-500,'repeat schedule preserves an older pending job and its fairness age');
+$state=['queue'=>[request585('trade',$now-10,'retry',$now+90),request585('domain',$now-20,'retry',$now+90)],'runs'=>[]];
+[$s,$d]=ops_plan_market($state,[],$now);
+assert585($d===[]&&count($s['queue'])===2,'not-before timestamps respected');
+[$s,$d]=ops_plan_market($s,[],$now+100);
+assert585(count($d)===1&&count($s['queue'])===1,'only one delayed retry becomes reserved');
+$state=['queue'=>[request585('offers',$now-40,'manual')],'runs'=>[]];
+[$s,$d]=ops_plan_market($state,['offers'=>request585('offers',$now)],$now);
+assert585(($d['offers']['trigger']??'')==='manual','manual request is not replaced by a scheduled request');
+$state=['queue'=>[request585('domain',$now-50,'retry',$now+90)],'runs'=>[]];
+[$s,$d]=ops_plan_market($state,['domain'=>request585('domain',$now)],$now);
+assert585($d===[]&&count($s['queue'])===1&&$s['queue'][0]['trigger']==='retry','scheduled request does not bypass pending retry cooldown');
+$state=['queue'=>[request585('sinq',$now-100)],'runs'=>['forge'=>[['version'=>56,'status'=>'running']]]];
+[$s,$d]=ops_plan_market($state,[],$now);
+assert585(isset($d['sinq']),'legacy historical running state does not block managed market execution');
+assert585(GuristasOperations::collector('forge')&&ops_market_job('trade')&&ops_market_job('offers'),'all seven shared-lock workload types participate');
+echo "PASS v58.5 market serialization assertions (pure logic, no production state).\n";

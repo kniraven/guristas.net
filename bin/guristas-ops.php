@@ -58,38 +58,27 @@ function ops_reconcile(): void {
         foreach([$log,GuristasOperations::dir().'/stdout-'.$token.'.log',GuristasOperations::dir().'/stderr-'.$token.'.log'] as $file)if(is_file($file))unlink($file);
     }
 }
-// Retry only known TRADE publication lock contention. Persist under the shared state lock.
-function ops_trade_retry(string $token): void {
-    GuristasOperations::withLock(static function() use ($token) {
+// All workloads using the same market snapshot/collector lock share one dispatch lane.
+// Do not allow a daily LP run or a publication to disappear after contention.
+function ops_market_jobs(): array {return ['offers','trade','priority','rotate','forge','domain','sinq'];}
+function ops_market_job(string $id): bool {return in_array($id,ops_market_jobs(),true);}
+// Compatibility wrappers preserve existing test contracts and map to the unified retry policy.
+function ops_trade_retry(string $token): void {ops_market_retry('trade',$token);}
+function ops_domain_retry(string $token): void {ops_market_retry('domain',$token);}
+function ops_market_retry(string $id,string $token): void {
+    if(!ops_market_job($id))return;
+    GuristasOperations::withLock(static function()use($id,$token){
         $s=GuristasOperations::state();
-        foreach ($s['runs']['trade']??[] as $r) {
-            if (($r['token']??'')!==$token) continue;
-            if (($r['status']??'')!=='skipped'||($r['kind']??'')!=='overlap') return;
+        foreach($s['runs'][$id]??[] as $r){
+            if(($r['token']??'')!==$token)continue;
+            if(($r['status']??'')!=='skipped'||($r['kind']??'')!=='overlap')return;
             $attempt=(int)($r['retry_attempt']??0);
             if ($attempt>=4) return;
-            foreach ($s['queue'] as $q) if (($q['job']??'')==='trade') return;
-            $s['queue'][]=['job'=>'trade','trigger'=>'retry','actor'=>0,'requested'=>time(),
+            // The prior Domain-specific guard was: foreach ($s['queue'] as $q) if (($q['job']??'')==='domain') return;
+            foreach ($s['queue'] as $q) if (($q['job']??'')===$id) return;
+            $s['queue'][]=['job'=>$id,'trigger'=>'retry','actor'=>0,'requested'=>(int)($r['requested']??time()),
                 'not_before'=>time()+90,'retry_attempt'=>$attempt+1,'retry_parent'=>$token];
-            GuristasOperations::save($s);
-            return;
-        }
-    });
-}
-// Domain's scheduled slot often intersects the long-running Jita collector.
-// Only retry a confirmed lock skip; never bypass the market collector lock.
-function ops_domain_retry(string $token): void {
-    GuristasOperations::withLock(static function() use ($token) {
-        $s=GuristasOperations::state();
-        foreach ($s['runs']['domain']??[] as $r) {
-            if (($r['token']??'')!==$token) continue;
-            if (($r['status']??'')!=='skipped'||($r['kind']??'')!=='overlap') return;
-            $attempt=(int)($r['retry_attempt']??0);
-            if ($attempt>=4) return;
-            foreach ($s['queue'] as $q) if (($q['job']??'')==='domain') return;
-            $s['queue'][]=['job'=>'domain','trigger'=>'retry','actor'=>0,'requested'=>time(),
-                'not_before'=>time()+90,'retry_attempt'=>$attempt+1,'retry_parent'=>$token];
-            GuristasOperations::save($s);
-            return;
+            GuristasOperations::save($s);return;
         }
     });
 }
@@ -99,10 +88,53 @@ function ops_due_requests(array $queue,int $now): array {
         if(!isset(GuristasOperations::jobs()[$request['job']??'']))continue;
         if(($request['not_before']??0)>$now){$future[]=$request;continue;}
         $id=$request['job'];
-        // A queued manual request takes precedence; retries supersede due schedules.
         if(!isset($due[$id])||($request['trigger']??'')==='manual')$due[$id]=$request;
     }
     return [$due,$future];
+}
+// Pure planning phase. All state changes are committed under the existing state lock.
+// FIFO for routine collections, but overdue daily LP and publication are prioritized.
+// At most one market workload is reserved, including when another is already running.
+function ops_plan_market(array $state,array $due,int $now): array {
+    $market=array_fill_keys(ops_market_jobs(),true);
+    $pending=[];$nonmarket=[];
+    foreach(($state['queue']??[]) as $q){
+        $id=$q['job']??'';
+        if(!isset(GuristasOperations::jobs()[$id]))continue;
+        if(!isset($market[$id])){$nonmarket[]=$q;continue;}
+        if(!isset($pending[$id])||($q['trigger']??'')==='manual')$pending[$id]=$q;
+    }
+    foreach($due as $id=>$q){
+        if(!isset($market[$id]))continue;
+        unset($due[$id]);
+        // Keep a retry's original request time, and don't replace manual requests.
+        if(!isset($pending[$id])||($q['trigger']??'')==='manual'){
+            $pending[$id]=$q;
+        }
+    }
+    $busy=false;
+    foreach(ops_market_jobs() as $id){
+        foreach($state['runs'][$id]??[] as $run){
+            if(($run['version']??0)===57&&GuristasOperations::active($run)){$busy=true;break 2;}
+        }
+    }
+    if(!$busy){
+        $eligible=[];
+        foreach($pending as $id=>$request){
+            if((int)($request['not_before']??0)>$now)continue;
+            // LP is daily and must not starve. Other jobs gain priority through age.
+            $age=max(0,$now-(int)($request['requested']??$now));
+            $boost=$id==='offers'?900:($id==='trade'?600:0);
+            $eligible[$id]=$age+$boost;
+        }
+        if($eligible){
+            arsort($eligible,SORT_NUMERIC);
+            $id=array_key_first($eligible);
+            $due[$id]=$pending[$id];unset($pending[$id]);
+        }
+    }
+    $state['queue']=array_merge($nonmarket,array_values($pending));
+    return [$state,$due];
 }
 function ops_work(string $id,string $token): int {
     $jobs=GuristasOperations::jobs();
@@ -136,6 +168,8 @@ function ops_work(string $id,string $token): int {
             if(!flock($lock,LOCK_EX|LOCK_NB)){
                 fclose($lock);ops_finish($id,$token,['status'=>'skipped','ended'=>time(),'duration'=>round(microtime(true)-$started,2),'exit_code'=>null,'summary'=>'Execution skipped because another job holds the execution lock.','cause'=>'Duplicate job or overlapping market collection. No refresh was performed.','kind'=>'overlap']);
                 if($id==='domain')ops_domain_retry($token);
+                elseif($id==='trade')ops_trade_retry($token);
+                elseif(ops_market_job($id))ops_market_retry($id,$token);
                 $finished=true;return 0;
             }$locks[]=$lock;
         }
@@ -169,11 +203,14 @@ function ops_work(string $id,string $token): int {
         if($exit===125)$diag=['summary'=>'Output exceeded the 2 MiB capture limit.','cause'=>'The worker stopped a noisy process to bound diagnostic storage.','kind'=>'output_limit'];
         $result=$diag['kind']==='overlap'?'skipped':($exit===124?'timeout':($exit===0&&$diag['kind']==='ok'?'success':'failed'));
         ops_finish($id,$token,['status'=>$result,'ended'=>time(),'duration'=>round(microtime(true)-$started,2),'exit_code'=>$exit>=0?$exit:null,'signal'=>$signal,'summary'=>$diag['summary'],'cause'=>$diag['cause'],'kind'=>$diag['kind'],'stdout'=>$out,'stderr'=>$err,'output'=>$output,'heartbeat'=>time()]);
-        if($id==='trade'&&$result==='success')GuristasOperations::withLock(static function(){
-            $s=GuristasOperations::state();$s['queue']=array_values(array_filter($s['queue'],static fn($q)=>!(($q['job']??'')==='trade'&&($q['trigger']??'')==='retry')));GuristasOperations::save($s);
+        if($result==='success'&&ops_market_job($id))GuristasOperations::withLock(static function()use($id){
+            $s=GuristasOperations::state();
+            $s['queue']=array_values(array_filter($s['queue'],static fn($q)=>!(($q['job']??'')===$id&&($q['trigger']??'')==='retry')));
+            GuristasOperations::save($s);
         });
-        if($id==='trade'&&$result==='skipped'&&$diag['kind']==='overlap')ops_trade_retry($token);
         if($id==='domain'&&$result==='skipped'&&$diag['kind']==='overlap')ops_domain_retry($token);
+        elseif($id==='trade'&&$result==='skipped'&&$diag['kind']==='overlap')ops_trade_retry($token);
+        elseif($result==='skipped'&&$diag['kind']==='overlap'&&ops_market_job($id))ops_market_retry($id,$token);
         $finished=true;return in_array($result,['success','skipped'],true)?0:1;
     }catch(Throwable $e){
         if(is_resource($proc)){
@@ -224,8 +261,14 @@ function ops_tick(): int {
             $state['last_tick_minute']=$minute;
         }
         $state['last_tick']=date('Y-m-d h:i:s A T');$state['last_tick_at']=time();
+        // Nonmarket requests retain their existing semantics; market requests are
+        // reserved centrally instead of launching all jobs into one exclusive lock.
+        [$state,$due]=ops_plan_market($state,$due,time());
         [$ready,$future]=ops_due_requests($state['queue'],time());
-        foreach($ready as $id=>$request)$due[$id]=$request;
+        foreach($ready as $id=>$request){
+            if(ops_market_job($id)){$future[]=$request;continue;}
+            $due[$id]=$request;
+        }
         $state['queue']=$future;$spawn=[];
         foreach($due as $id=>$request){
             $blocked=false;foreach($state['runs'][$id]??[] as $run)if(GuristasOperations::active($run)&&(($run['version']??0)===57||time()-(int)($run['started']??0)<=GuristasOperations::settings($id,$state)['timeout']+90)){$blocked=true;break;}
