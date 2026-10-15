@@ -37,7 +37,18 @@ if(curr.trigger==='manual'||pref==='all'||(pref==='failure'&&failed)||(pref==='r
 const visibleKeys=new Set(jobs.flatMap(j=>j.history.map(r=>j.id+':'+r.token)));for(const key of lastSeen.keys())if(!visibleKeys.has(key))lastSeen.delete(key);
 if(messages.length)info(messages.join(' | '),alert);
 $('ops-systemd').innerHTML=(data.systemd||[]).map(t=>`<div><strong>${esc(t.name)}</strong><small>${esc(t.unit)} · ${t.verified?esc(t.timer.ActiveState)+' / '+esc(t.timer.SubState):'Unverified'}</small>${t.verified?`<small>Next: ${esc(t.timer.NextElapseUSecRealtime||'Not reported')} · Last trigger: ${esc(t.timer.LastTriggerUSec||'Not reported')}</small><small>Service: ${esc(t.service.ActiveState)} · Last result: ${esc(t.service.Result||'Not reported')} · Exit: ${esc(t.service.ExecMainStatus??'Not reported')}</small>`:''}</div>`).join('');
-$('ops-audit').innerHTML=(data.audit||[]).length?(data.audit||[]).map(a=>`<article><strong>${esc(a.action==='settings_changed'?'Settings changed':a.action==='manual_queued'?'Manual run queued':a.action)}</strong> · ${esc(a.job)} · ${esc(time(a.time))} · Pilot ${esc(a.actor)}${a.action==='settings_changed'?`<details><summary>Before / after</summary><pre>${esc(JSON.stringify(a.details,null,2))}</pre></details>`:''}</article>`).join(''):'No audited administrative changes recorded yet.';
+function auditDiff(details){
+const before=details?.before||{},after=details?.after||{};
+const names={enabled:'Scheduled',minutes:'Minutes of hour',hours:'Hours',timeout:'Timeout',notify:'Notifications'};
+const text=v=>Array.isArray(v)?v.join(', '):typeof v==='boolean'?(v?'Yes':'No'):String(v??'Not set');
+const rows=Object.keys(names).filter(key=>{
+ const a=before[key],b=after[key];
+ if(Array.isArray(a)&&Array.isArray(b))return a.length!==b.length||a.some(v=>!b.includes(v));
+ return a!==b;
+}).map(key=>`<li><strong>${names[key]}:</strong> ${esc(text(before[key]))} → ${esc(text(after[key]))}</li>`);
+return rows.length?`<ul>${rows.join('')}</ul><details><summary>Technical before / after</summary><pre>${esc(JSON.stringify(details,null,2))}</pre></details>`:'<span>No effective settings difference (historical audit entry).</span>';
+}
+$('ops-audit').innerHTML=(data.audit||[]).length?(data.audit||[]).map(a=>`<article><strong>${esc(a.action==='settings_changed'?'Settings changed':a.action==='manual_queued'?'Manual run queued':a.action)}</strong> · ${esc(a.job)} · ${esc(time(a.time))} · Pilot ${esc(a.actor)}${a.action==='settings_changed'?auditDiff(a.details):''}</article>`).join(''):'No audited administrative changes recorded yet.';
 initialized=true;render();return true;
 }catch(err){info(err.message,true);return false;}}
 function tooltip(j){return 'Source: '+j.source+'\nCollects: '+j.pulls+'\nUsed for: '+j.purpose+'\nRecommended cadence: '+j.hint;}

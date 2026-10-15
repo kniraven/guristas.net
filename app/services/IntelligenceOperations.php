@@ -51,13 +51,25 @@ final class GuristasOperations {
         array_unshift($audit,['time'=>time(),'actor'=>$actor,'action'=>$action,'job'=>$job,'details'=>$details]);
         $state['audit']=array_slice($audit,0,200);
     }
+    // A settings change is semantic, not a difference in PHP associative key order.
+    public static function settingsEqual(array $before,array $after): bool {
+        foreach (['enabled','timeout','notify'] as $key) if (($before[$key]??null)!==($after[$key]??null)) return false;
+        foreach (['minutes','hours'] as $key) {
+            if (!is_array($before[$key]??null)||!is_array($after[$key]??null)) return false;
+            $left=array_values($before[$key]);$right=array_values($after[$key]);
+            if (!self::validTimeList($left,$key==='minutes'?59:23)||!self::validTimeList($right,$key==='minutes'?59:23)) return false;
+            sort($left,SORT_NUMERIC);sort($right,SORT_NUMERIC);
+            if ($left!==$right) return false;
+        }
+        return true;
+    }
     public static function saveJobSettings(string $id,int $actor,array $settings): array {
         if(!isset(self::jobs()[$id])||$actor<=0)throw new InvalidArgumentException('Invalid job or actor');
         if(!self::validTimeList($settings['minutes']??null,59)||!self::validTimeList($settings['hours']??null,23)||!is_bool($settings['enabled']??null)||!is_int($settings['timeout']??null)||$settings['timeout']<10||$settings['timeout']>1800||!in_array($settings['notify']??null,['failure','recovery','all','none'],true))throw new InvalidArgumentException('Invalid operations settings');
         return self::withLock(static function()use($id,$actor,$settings){
             $state=self::state();$before=self::settings($id,$state);
             $after=['minutes'=>array_values($settings['minutes']),'hours'=>array_values($settings['hours']),'timeout'=>$settings['timeout'],'notify'=>$settings['notify'],'enabled'=>$settings['enabled']];
-            if($before===$after)return ['saved'=>true,'changed'=>false,'next_scheduled_at'=>self::nextScheduledAt($after,time())];
+            if(self::settingsEqual($before,$after))return ['saved'=>true,'changed'=>false,'next_scheduled_at'=>self::nextScheduledAt($after,time())];
             $state['settings'][$id]=$after;
             self::auditEvent($state,'settings_changed',$id,$actor,['before'=>$before,'after'=>$after]);
             self::save($state);
