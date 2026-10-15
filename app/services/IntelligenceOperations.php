@@ -44,6 +44,26 @@ final class GuristasOperations {
             if(!chmod($tmp,0660)||!rename($tmp,$dir.'/state.json'))throw new RuntimeException('Unable to commit operations state');
         }finally{if(is_file($tmp))unlink($tmp);}
     }
+    public static function auditEvent(array &$state,string $action,string $job,int $actor,array $details=[]): void {
+        if(!in_array($action,['manual_queued','settings_changed'],true)||!isset(self::jobs()[$job])||$actor<=0)throw new InvalidArgumentException('Invalid audit event');
+        $audit=$state['audit']??[];
+        if(!is_array($audit))throw new RuntimeException('Invalid operations audit state');
+        array_unshift($audit,['time'=>time(),'actor'=>$actor,'action'=>$action,'job'=>$job,'details'=>$details]);
+        $state['audit']=array_slice($audit,0,200);
+    }
+    public static function saveJobSettings(string $id,int $actor,array $settings): array {
+        if(!isset(self::jobs()[$id])||$actor<=0)throw new InvalidArgumentException('Invalid job or actor');
+        if(!self::validTimeList($settings['minutes']??null,59)||!self::validTimeList($settings['hours']??null,23)||!is_bool($settings['enabled']??null)||!is_int($settings['timeout']??null)||$settings['timeout']<10||$settings['timeout']>1800||!in_array($settings['notify']??null,['failure','recovery','all','none'],true))throw new InvalidArgumentException('Invalid operations settings');
+        return self::withLock(static function()use($id,$actor,$settings){
+            $state=self::state();$before=self::settings($id,$state);
+            $after=['minutes'=>array_values($settings['minutes']),'hours'=>array_values($settings['hours']),'timeout'=>$settings['timeout'],'notify'=>$settings['notify'],'enabled'=>$settings['enabled']];
+            if($before===$after)return ['saved'=>true,'changed'=>false,'next_scheduled_at'=>self::nextScheduledAt($after,time())];
+            $state['settings'][$id]=$after;
+            self::auditEvent($state,'settings_changed',$id,$actor,['before'=>$before,'after'=>$after]);
+            self::save($state);
+            return ['saved'=>true,'changed'=>true,'next_scheduled_at'=>self::nextScheduledAt($after,time())];
+        });
+    }
     public static function settings(string $id,array $state): array {
         $j=self::jobs()[$id];$v=$state['settings'][$id]??[];
         return ['enabled'=>(bool)($v['enabled']??true),'minutes'=>$v['minutes']??$j['minutes'],'hours'=>$v['hours']??$j['hours'],'timeout'=>(int)($v['timeout']??$j['timeout']),'notify'=>$v['notify']??'recovery'];
@@ -126,7 +146,7 @@ final class GuristasOperations {
             if(time()-(int)($state['last_tick_at']??0)>180)throw new InvalidArgumentException('The managed dispatcher has not reported recently. Inspect EC2 before queueing work.');
             foreach($state['queue'] as $q)if($q['job']===$id)return ['queued'=>false,'reason'=>'Already queued'];
             foreach($state['runs'][$id]??[] as $run)if(self::active($run)&&(($run['version']??0)===57||time()-(int)($run['started']??0)<=self::settings($id,$state)['timeout']+90))return ['queued'=>false,'reason'=>'Job is already running or awaiting reconciliation'];
-            $state['queue'][]=['job'=>$id,'trigger'=>$trigger,'actor'=>$actor,'requested'=>time()];self::save($state);return ['queued'=>true];
+            $state['queue'][]=['job'=>$id,'trigger'=>$trigger,'actor'=>$actor,'requested'=>time()];if($trigger==='manual')self::auditEvent($state,'manual_queued',$id,$actor);self::save($state);return ['queued'=>true];
         });
     }
     public static function digest(string $output,int $exit): array {
@@ -235,6 +255,6 @@ final class GuristasOperations {
             }
             $entries[]=['id'=>$id,'name'=>$job['name'],'group'=>$job['group'],'hint'=>$job['hint'],'source'=>$job['source'],'pulls'=>$job['pulls'],'purpose'=>$job['purpose'],'settings'=>$s,'last'=>$last,'average_seconds'=>$avg,'p95_seconds'=>$p95,'samples'=>count($dur),'next_scheduled_at'=>self::nextScheduledAt($s,$now),'queue'=>$queued,'health'=>$health,'history'=>array_slice($runs,0,20),'freshness'=>self::datasetFreshness($id,$now)];
         }
-        return ['jobs'=>$entries,'last_tick'=>$state['last_tick']??null,'last_tick_at'=>$state['last_tick_at']??null,'mode'=>$mode,'scheduler'=>$scheduler,'dispatcher_recent'=>$freshTick,'systemd'=>self::systemTimers()];
+        return ['jobs'=>$entries,'last_tick'=>$state['last_tick']??null,'last_tick_at'=>$state['last_tick_at']??null,'mode'=>$mode,'scheduler'=>$scheduler,'dispatcher_recent'=>$freshTick,'systemd'=>self::systemTimers(),'audit'=>array_slice(is_array($state['audit']??null)?$state['audit']:[],0,50)];
     }
 }
