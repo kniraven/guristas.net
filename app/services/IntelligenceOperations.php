@@ -187,13 +187,41 @@ final class GuristasOperations {
         if(in_array($key,['build-orders','trade-orders'],true)&&!is_array(($data['data']??$data)['orders']??null))return ['status'=>'unverified','reason'=>'Published recommendation payload unavailable.','age_seconds'=>$age];
         return ['status'=>$age<=$max?'fresh':'stale','age_seconds'=>$age,'limit_seconds'=>$max,'reason'=>$age<=$max?'Published dataset timestamp and structure are within the configured freshness threshold.':'Published dataset exceeds its configured freshness threshold.'];
     }
+    /** Most recent 50 successful, completed, measured executions. Never count skipped overlaps. */
+    public static function successfulDurations(array $runs,int $limit=50): array {
+        $dur=[];
+        foreach($runs as $run){
+            if(($run['status']??null)!=='success'||!isset($run['ended'],$run['duration'])||!is_numeric($run['duration']))continue;
+            $seconds=(float)$run['duration'];
+            if(!is_finite($seconds)||$seconds<0)continue;
+            $dur[]=$seconds;
+            if(count($dur)>=$limit)break;
+        }
+        sort($dur,SORT_NUMERIC);
+        return $dur;
+    }
+    /** Next eligible wall-clock minute in America/Chicago; null means disabled or unresolvable. */
+    public static function nextScheduledAt(array $settings,int $now): ?int {
+        if(empty($settings['enabled'])||!self::validTimeList($settings['minutes']??null,59)||!self::validTimeList($settings['hours']??null,23))return null;
+        $tz=new DateTimeZone('America/Chicago');
+        $start=(new DateTimeImmutable('@'.$now))->setTimezone($tz)->setTime(
+            (int)(new DateTimeImmutable('@'.$now))->setTimezone($tz)->format('G'),
+            (int)(new DateTimeImmutable('@'.$now))->setTimezone($tz)->format('i'),0
+        )->modify('+1 minute');
+        // Search 48h, covering daily schedules and DST boundaries.
+        for($i=0;$i<2880;$i++){
+            $candidate=$start->modify('+'.$i.' minutes');
+            if(in_array((int)$candidate->format('G'),$settings['hours'],true)&&in_array((int)$candidate->format('i'),$settings['minutes'],true))return $candidate->getTimestamp();
+        }
+        return null;
+    }
     public static function view(): array {
         $state=self::state();$now=time();$entries=[];$scheduler=self::scheduler();$mode=$scheduler['mode'];
         $freshTick=$now-(int)($state['last_tick_at']??0)<=180;
         foreach(self::jobs() as $id=>$job){
             $s=self::settings($id,$state);$runs=$state['runs'][$id]??[];
-            $done=array_values(array_filter($runs,static fn($r)=>isset($r['duration'],$r['ended'])&&!self::active($r)&&is_numeric($r['duration'])));
-            $dur=array_column(array_slice($done,0,50),'duration');sort($dur,SORT_NUMERIC);
+            // Runtime statistics describe completed successful workloads only, not lock skips or failures.
+            $dur=self::successfulDurations($runs,50);
             $avg=$dur?round(array_sum($dur)/count($dur),1):null;$p95=$dur?$dur[(int)ceil(count($dur)*.95)-1]:null;
             $last=$runs[0]??null;$queued=(bool)array_filter($state['queue'],static fn($q)=>$q['job']===$id);
             $health='unverified';
@@ -205,7 +233,7 @@ final class GuristasOperations {
                 elseif(!$last)$health='awaiting_first_run';
                 else $health=match($last['status']??''){ 'success'=>'healthy','skipped'=>'skipped','failed','timeout'=>'failed','crashed'=>'crashed',default=>'unverified'};
             }
-            $entries[]=['id'=>$id,'name'=>$job['name'],'group'=>$job['group'],'hint'=>$job['hint'],'source'=>$job['source'],'pulls'=>$job['pulls'],'purpose'=>$job['purpose'],'settings'=>$s,'last'=>$last,'average_seconds'=>$avg,'p95_seconds'=>$p95,'samples'=>count($dur),'queue'=>$queued,'health'=>$health,'history'=>array_slice($runs,0,20),'freshness'=>self::datasetFreshness($id,$now)];
+            $entries[]=['id'=>$id,'name'=>$job['name'],'group'=>$job['group'],'hint'=>$job['hint'],'source'=>$job['source'],'pulls'=>$job['pulls'],'purpose'=>$job['purpose'],'settings'=>$s,'last'=>$last,'average_seconds'=>$avg,'p95_seconds'=>$p95,'samples'=>count($dur),'next_scheduled_at'=>self::nextScheduledAt($s,$now),'queue'=>$queued,'health'=>$health,'history'=>array_slice($runs,0,20),'freshness'=>self::datasetFreshness($id,$now)];
         }
         return ['jobs'=>$entries,'last_tick'=>$state['last_tick']??null,'last_tick_at'=>$state['last_tick_at']??null,'mode'=>$mode,'scheduler'=>$scheduler,'dispatcher_recent'=>$freshTick,'systemd'=>self::systemTimers()];
     }
