@@ -1,0 +1,34 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__).'/app/services/IntelligenceOperations.php';
+function check88(bool $ok,string $text): void {if(!$ok)throw new RuntimeException('FAIL: '.$text);echo 'PASS: '.$text."\n";}
+$now=1792116000;
+$timer=['LoadState'=>'loaded','ActiveState'=>'active','SubState'=>'waiting','LastTriggerUSec'=>gmdate('Y-m-d H:i:s', $now-120).' UTC','NextElapseUSecRealtime'=>gmdate('Y-m-d H:i:s',$now+3480).' UTC'];
+$service=['LoadState'=>'loaded','ActiveState'=>'inactive','Result'=>'success','ExecMainStatus'=>'0','ExecMainExitTimestamp'=>gmdate('Y-m-d H:i:s',$now-120).' UTC'];
+$venal=json_encode(['ok'=>true,'collector'=>'Venal hourly activity','result'=>['status'=>'recorded','bucket'=>'2026-10-16T01:00:00+00:00','path'=>'/var/www/sites/guristas.net/storage/history/venal/2026101601.json'],'retention_hours'=>720],JSON_PRETTY_PRINT);
+$cleanup=json_encode(['mode'=>'apply','grace_hours'=>24,'counts'=>['eligible'=>1,'removed'=>1,'preserved'=>441,'skipped'=>0]],JSON_PRETTY_PRINT);
+$fixtures=['guristas-venal-collector'=>['timer'=>$timer,'service'=>$service,'journal'=>$venal], 'guristas-cache-cleanup'=>['timer'=>$timer,'service'=>$service,'journal'=>$cleanup]];
+$r=GuristasOperations::systemTimers($fixtures,$now);
+check88(count($r)===2&&$r[0]['health']==='healthy'&&$r[1]['health']==='healthy','both independent systemd jobs classified healthy');
+check88($r[0]['service']['ActiveState']==='inactive'&&$r[0]['health']==='healthy','inactive oneshot is healthy between triggers');
+check88($r[0]['metrics']['result']==='recorded','Venal journal result parsed');
+check88($r[1]['metrics']['removed']===1&&$r[1]['metrics']['preserved']===441,'cleanup removal metrics parsed');
+check88($r[0]['freshness']['status']==='unverified'&&$r[1]['freshness']['status']==='not_applicable','service result not mislabeled as dataset freshness');
+$failed=$fixtures;$failed['guristas-cache-cleanup']['service']['Result']='exit-code';$failed['guristas-cache-cleanup']['service']['ExecMainStatus']='1';
+$bad=GuristasOperations::systemTimers($failed,$now);check88($bad[1]['health']==='failed','failed exit detected');
+$paused=$fixtures;$paused['guristas-venal-collector']['timer']['ActiveState']='inactive';
+check88(GuristasOperations::systemTimers($paused,$now)[0]['health']==='failed','disabled timer detected');
+$stale=$fixtures;$stale['guristas-venal-collector']['timer']['LastTriggerUSec']=gmdate('Y-m-d H:i:s',$now-8000).' UTC';
+check88(GuristasOperations::systemTimers($stale,$now)[0]['health']==='stale','missed hourly timer detected');
+$none=$fixtures;$none['guristas-cache-cleanup']['journal']='';
+check88(GuristasOperations::systemTimers($none,$now)[1]['health']==='unverified','successful exit alone not enough');
+$state=['alerts'=>[]];GuristasOperations::recordSystemTimerObservations($state,$r,$now);
+check88(count($state['alerts'])===0,'first healthy observation does not create false recovery');
+GuristasOperations::recordSystemTimerObservations($state,$bad,$now+60);
+GuristasOperations::recordSystemTimerObservations($state,$bad,$now+120);
+check88(count($state['alerts'])===1&&$state['alerts'][0]['event']==='failure','one durable alert per failure incident');
+GuristasOperations::recordSystemTimerObservations($state,$r,$now+180);
+GuristasOperations::recordSystemTimerObservations($state,$r,$now+240);
+check88(count($state['alerts'])===2&&$state['alerts'][0]['event']==='recovery','one recovery after incident resolves');
+check88(($state['alerts'][0]['trigger']??null)==='systemd','systemd origin preserved');
+echo "PASS v58.8 isolated systemd monitoring and alert transitions; no live timers modified.\n";

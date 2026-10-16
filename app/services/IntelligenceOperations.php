@@ -195,19 +195,89 @@ final class GuristasOperations {
         if(preg_match('/"ok"\s*:\s*false\b/i',$text))return ['summary'=>'The command reported an unsuccessful application result.','cause'=>'Process exited zero, but its output contains ok: false.','kind'=>'application'];
         return ['summary'=>'Completed successfully.','cause'=>'','kind'=>'ok'];
     }
-    public static function systemTimers(): array {
-        $timers=[];
-        foreach(['guristas-venal-collector'=>'Venal collection','guristas-cache-cleanup'=>'Cache cleanup'] as $unit=>$name){
-            $row=['name'=>$name,'unit'=>$unit.'.timer','control'=>'read-only','verified'=>false];
-            if(PHP_OS_FAMILY!=='Windows'){
-                $t=self::inspectCommand(['/usr/bin/systemctl','show',$unit.'.timer','--no-pager','--property=LoadState,ActiveState,SubState,NextElapseUSecRealtime,LastTriggerUSec']);
-                $s=self::inspectCommand(['/usr/bin/systemctl','show',$unit.'.service','--no-pager','--property=LoadState,ActiveState,Result,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp']);
-                foreach(['timer'=>$t,'service'=>$s] as $key=>$result){$row[$key]=[];if($result['exit']===0)foreach(explode("\n",trim($result['output'])) as $line){$kv=explode('=',$line,2);if(count($kv)===2)$row[$key][$kv[0]]=$kv[1];}}
-                $row['verified']=($row['timer']['LoadState']??'')==='loaded'&&($row['service']['LoadState']??'')==='loaded';
+    /** Observe externally scheduled systemd oneshot services; never start or modify them. */
+    public static function systemTimers(?array $fixtures=null, ?int $now=null): array {
+        $now=$now??time();$timers=[];
+        foreach(['guristas-venal-collector'=>['Venal collection',3900],'guristas-cache-cleanup'=>['Cache cleanup',93600]] as $unit=>$spec){
+            [$name,$maxAge]=$spec;
+            $row=['id'=>$unit,'name'=>$name,'unit'=>$unit.'.timer','control'=>'read-only','scheduler'=>'systemd','verified'=>false,'health'=>'unverified','freshness'=>['status'=>'unverified','reason'=>'No independent dataset validation configured.'],'history'=>[],'metrics'=>[]];
+            if($fixtures!==null){$t=$fixtures[$unit]['timer']??[];$svc=$fixtures[$unit]['service']??[];$log=(string)($fixtures[$unit]['journal']??'');}
+            elseif(PHP_OS_FAMILY!=='Windows'){
+                $tt=self::inspectCommand(['/usr/bin/systemctl','show',$unit.'.timer','--no-pager','--property=LoadState,ActiveState,SubState,NextElapseUSecRealtime,LastTriggerUSec']);
+                $ss=self::inspectCommand(['/usr/bin/systemctl','show',$unit.'.service','--no-pager','--property=LoadState,ActiveState,SubState,Result,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp']);
+                $t=$tt['exit']===0?self::keyValueOutput($tt['output']):[];$svc=$ss['exit']===0?self::keyValueOutput($ss['output']):[];
+                $journal=self::inspectCommand(['/usr/bin/journalctl','-u',$unit.'.service','-n','240','--no-pager','-o','cat']);
+                $log=$journal['exit']===0?$journal['output']:'';
+            }else{$t=[];$svc=[];$log='';}
+            $row['timer']=$t;$row['service']=$svc;
+            $row['verified']=($t['LoadState']??'')==='loaded'&&($svc['LoadState']??'')==='loaded';
+            $row['last_trigger_at']=self::systemdTimestamp($t['LastTriggerUSec']??'');
+            $row['next_trigger_at']=self::systemdTimestamp($t['NextElapseUSecRealtime']??'');
+            $row['last_exit_at']=self::systemdTimestamp($svc['ExecMainExitTimestamp']??'');
+            $row['history']=self::systemdJournalEvents($log,$unit);
+            $latest=$row['history'][0]??null;
+            if($latest){$row['metrics']=$latest['metrics'];$row['summary']=$latest['summary'];}
+            $age=$row['last_trigger_at']===null?null:max(0,$now-$row['last_trigger_at']);
+            $row['age_seconds']=$age;
+            if(!$row['verified']){$row['health']='unverified';$row['reason']='Timer or service definition cannot be verified.';}
+            elseif(($t['ActiveState']??'')!=='active'){$row['health']='failed';$row['reason']='Systemd timer is not active.';}
+            elseif(in_array($svc['ActiveState']??'',['activating','active'],true)){$row['health']='running';$row['reason']='Systemd service is executing.';}
+            elseif(($svc['Result']??'')!=='success'||(string)($svc['ExecMainStatus']??'')!=='0'){$row['health']='failed';$row['reason']='Last systemd service exit was unsuccessful.';}
+            elseif($age===null){$row['health']='unverified';$row['reason']='No successful timer trigger timestamp.';}
+            elseif($age>$maxAge){$row['health']='stale';$row['reason']='Last timer trigger is older than its allowed cadence plus grace.';}
+            elseif(!$latest||!$latest['valid']){$row['health']='unverified';$row['reason']='Last application outcome could not be validated from service journal.';}
+            else {$row['health']='healthy';$row['reason']='Active timer, successful service exit, and valid application outcome.';}
+            if($unit==='guristas-venal-collector'){
+                $row['freshness']=['status'=>$row['health']==='healthy'?'unverified':$row['health'],'reason'=>'Hourly activity outcome recorded; stored JSON content has not been independently inspected.'];
+            }else{
+                $row['freshness']=['status'=>$row['health']==='healthy'?'not_applicable':$row['health'],'reason'=>'Cleanup is a retention operation rather than a published dataset.'];
             }
             $timers[]=$row;
         }
         return $timers;
+    }
+    public static function keyValueOutput(string $output): array {
+        $data=[];foreach(explode("\n",trim($output)) as $line){$kv=explode('=',$line,2);if(count($kv)===2)$data[$kv[0]]=$kv[1];}return $data;
+    }
+    public static function systemdTimestamp(string $stamp): ?int {
+        if($stamp===''||$stamp==='n/a'||$stamp==='0')return null;
+        $v=strtotime($stamp);return $v===false?null:$v;
+    }
+    /** Parse complete JSON objects emitted by the jobs, ignoring journal status lines. */
+    public static function systemdJournalEvents(string $log,string $unit): array {
+        $events=[];$open=false;$buffer='';$depth=0;
+        foreach(explode("\n",$log) as $line){
+            $trim=trim($line);
+            if(!$open){if($trim!=='{')continue;$open=true;$buffer='';$depth=0;}
+            $buffer.=$trim."\n";$depth+=substr_count($trim,'{')-substr_count($trim,'}');
+            if($depth>0)continue;
+            $open=false;$decoded=json_decode($buffer,true);if(!is_array($decoded))continue;
+            if($unit==='guristas-venal-collector'){
+                $r=$decoded['result']??[];$valid=($decoded['ok']??false)===true&&in_array($r['status']??null,['recorded','existing'],true)&&is_string($r['bucket']??null)&&is_string($r['path']??null);
+                $metrics=['result'=>$r['status']??'unknown','bucket'=>$r['bucket']??null,'path'=>$r['path']??null,'retention_hours'=>$decoded['retention_hours']??null];
+                $summary=$valid?'Venal activity '.($r['status']==='recorded'?'recorded':'already present').' for '.$r['bucket']:'Unverified Venal collection outcome';
+            }else{
+                $c=$decoded['counts']??[];$valid=($decoded['mode']??null)==='apply'&&is_array($c)&&isset($c['eligible'],$c['removed'],$c['preserved'],$c['skipped'])&&count(array_filter([$c['eligible'],$c['removed'],$c['preserved'],$c['skipped']],static fn($v)=>is_int($v)&&$v>=0))===4&&$c['removed']<=$c['eligible'];
+                $metrics=$c;
+                $summary=$valid?'Cache cleanup: '.$c['removed'].' removed, '.$c['preserved'].' preserved, '.$c['skipped'].' skipped.':'Unverified cache cleanup outcome';
+            }
+            $events[]=['valid'=>$valid,'summary'=>$summary,'metrics'=>$metrics];
+        }
+        return array_slice(array_reverse($events),0,8);
+    }
+    /** Persist transitions on managed ticks, including when the administration page is closed. */
+    public static function recordSystemTimerObservations(array &$state,array $timers,int $now): void {
+        $previous=$state['systemd_monitor']??[];$alerts=$state['alerts']??[];
+        if(!is_array($previous)||!is_array($alerts))throw new RuntimeException('Invalid operations monitoring state');
+        foreach($timers as $t){
+            $id=$t['id'];$status=$t['health'];$prior=$previous[$id]['status']??null;
+            $bad=in_array($status,['failed','stale'],true);
+            $wasBad=in_array($prior,['failed','stale'],true);
+            $event=$bad&&!$wasBad?'failure':(!$bad&&$wasBad&&$status==='healthy'?'recovery':null);
+            if($event!==null){array_unshift($alerts,['time'=>$now,'job'=>$id,'name'=>$t['name'],'token'=>$id.':'.$event.':'.$now,'event'=>$event,'status'=>$status,'trigger'=>'systemd','summary'=>substr((string)($t['reason']??$status),0,500),'exit_code'=>isset($t['service']['ExecMainStatus'])?(int)$t['service']['ExecMainStatus']:null]);}
+            $previous[$id]=['status'=>$status,'observed_at'=>$now,'last_trigger_at'=>$t['last_trigger_at']??null];
+        }
+        $state['systemd_monitor']=$previous;$state['alerts']=array_slice($alerts,0,200);
     }
     /** Read published cache files only; do not trigger ESI requests or data publication. */
     public static function datasetFreshness(string $id, ?int $now=null, ?string $cacheDir=null): array {

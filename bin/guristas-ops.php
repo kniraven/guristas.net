@@ -254,13 +254,15 @@ function ops_tick(): int {
     $mode=GuristasOperations::scheduler();
     if($mode['mode']!=='managed'){fwrite(STDERR,'Dispatcher refused: scheduler mode is '.$mode['mode'].". Legacy cron was not changed.\n");return 1;}
     ops_reconcile();
-    $batch=GuristasOperations::withLock(static function(){
+    $systemObservations=GuristasOperations::systemTimers();
+    $batch=GuristasOperations::withLock(static function()use($systemObservations){
         $state=GuristasOperations::state();$minute=(int)floor(time()/60);$due=[];
         if(($state['last_tick_minute']??null)!==$minute){
             foreach(GuristasOperations::jobs() as $id=>$job)if(GuristasOperations::due(GuristasOperations::settings($id,$state),time()))$due[$id]=['job'=>$id,'trigger'=>'schedule','actor'=>0,'requested'=>time()];
             $state['last_tick_minute']=$minute;
         }
         $state['last_tick']=date('Y-m-d h:i:s A T');$state['last_tick_at']=time();
+        GuristasOperations::recordSystemTimerObservations($state,$systemObservations,time());
         // Nonmarket requests retain their existing semantics; market requests are
         // reserved centrally instead of launching all jobs into one exclusive lock.
         [$state,$due]=ops_plan_market($state,$due,time());
