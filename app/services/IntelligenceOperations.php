@@ -214,6 +214,7 @@ final class GuristasOperations {
             $row['verified']=($t['LoadState']??'')==='loaded'&&($svc['LoadState']??'')==='loaded';
             $row['last_trigger_at']=self::systemdTimestamp($t['LastTriggerUSec']??'');
             $row['next_trigger_at']=self::systemdTimestamp($t['NextElapseUSecRealtime']??'');
+            $row['last_start_at']=self::systemdTimestamp($svc['ExecMainStartTimestamp']??'');
             $row['last_exit_at']=self::systemdTimestamp($svc['ExecMainExitTimestamp']??'');
             $row['history']=self::systemdJournalEvents($log,$unit);
             $latest=$row['history'][0]??null;
