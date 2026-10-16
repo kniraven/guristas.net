@@ -200,16 +200,17 @@ final class GuristasOperations {
         $now=$now??time();$timers=[];
         foreach(['guristas-venal-collector'=>['Venal collection',3900],'guristas-cache-cleanup'=>['Cache cleanup',93600]] as $unit=>$spec){
             [$name,$maxAge]=$spec;
-            $row=['id'=>$unit,'name'=>$name,'unit'=>$unit.'.timer','control'=>'read-only','scheduler'=>'systemd','verified'=>false,'health'=>'unverified','freshness'=>['status'=>'unverified','reason'=>'No independent dataset validation configured.'],'history'=>[],'metrics'=>[]];
+            $row=['id'=>$unit,'name'=>$name,'unit'=>$unit.'.timer','control'=>'systemd','scheduler'=>'systemd','verified'=>false,'health'=>'unverified','freshness'=>['status'=>'unverified','reason'=>'No independent dataset validation configured.'],'history'=>[],'metrics'=>[]];
             if($fixtures!==null){$t=$fixtures[$unit]['timer']??[];$svc=$fixtures[$unit]['service']??[];$log=(string)($fixtures[$unit]['journal']??'');}
             elseif(PHP_OS_FAMILY!=='Windows'){
                 $tt=self::inspectCommand(['/usr/bin/systemctl','show',$unit.'.timer','--no-pager','--property=LoadState,ActiveState,SubState,NextElapseUSecRealtime,LastTriggerUSec']);
                 $ss=self::inspectCommand(['/usr/bin/systemctl','show',$unit.'.service','--no-pager','--property=LoadState,ActiveState,SubState,Result,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp']);
                 $t=$tt['exit']===0?self::keyValueOutput($tt['output']):[];$svc=$ss['exit']===0?self::keyValueOutput($ss['output']):[];
-                $journal=self::inspectCommand(['/usr/bin/journalctl','-u',$unit.'.service','-n','240','--no-pager','-o','cat']);
+                $journal=self::inspectCommand(['/usr/bin/sudo','-n','/usr/local/sbin/guristas-systemd-control','journal',$unit]);
                 $log=$journal['exit']===0?$journal['output']:'';
             }else{$t=[];$svc=[];$log='';}
             $row['timer']=$t;$row['service']=$svc;
+            $row['schedule']=($fixtures!==null ? ($fixtures[$unit]['schedule']??null) : self::systemdConfig($unit));
             $row['verified']=($t['LoadState']??'')==='loaded'&&($svc['LoadState']??'')==='loaded';
             $row['last_trigger_at']=self::systemdTimestamp($t['LastTriggerUSec']??'');
             $row['next_trigger_at']=self::systemdTimestamp($t['NextElapseUSecRealtime']??'');
@@ -235,6 +236,35 @@ final class GuristasOperations {
             $timers[]=$row;
         }
         return $timers;
+    }
+    public static function systemdConfig(string $unit): ?array {
+        if(!in_array($unit,['guristas-venal-collector','guristas-cache-cleanup'],true))return null;
+        $r=self::inspectCommand(['/usr/bin/sudo','-n','/usr/local/sbin/guristas-systemd-control','config',$unit]);
+        if($r['exit']!==0)return null;
+        $v=json_decode($r['output'],true);
+        return is_array($v)&&isset($v['mode'],$v['minute'],$v['hour'],$v['enabled'])?$v:null;
+    }
+    public static function systemdAction(string $id,string $action,int $actor,array $settings=[]): array {
+        if(!in_array($id,['guristas-venal-collector','guristas-cache-cleanup'],true)||$actor<=0)throw new InvalidArgumentException('Invalid system service.');
+        if(!in_array($action,['run','settings'],true))throw new InvalidArgumentException('Invalid system action.');
+        $cmd=['/usr/bin/sudo','-n','/usr/local/sbin/guristas-systemd-control',$action,$id];
+        if($action==='settings'){
+            $mode=$id==='guristas-venal-collector'?'hourly':'daily';
+            $minute=$settings['minute']??null;$hour=$settings['hour']??null;$enabled=$settings['enabled']??null;
+            if(!is_int($minute)||$minute<0||$minute>59||!is_int($hour)||$hour<0||$hour>23||!is_bool($enabled))throw new InvalidArgumentException('Invalid timer values.');
+            array_push($cmd,$mode,(string)$minute,(string)$hour,$enabled?'1':'0','confirmed');
+        }
+        $before=$action==='settings'?self::systemdConfig($id):null;
+        $result=self::inspectCommand($cmd);
+        if($result['exit']!==0)throw new RuntimeException('Restricted systemd helper rejected request (exit '.$result['exit'].').');
+        $out=json_decode($result['output'],true);
+        if(!is_array($out)||($out['ok']??false)!==true)throw new RuntimeException('Systemd helper did not confirm the action.');
+        self::withLock(static function()use($actor,$id,$action,$out,$before){
+            $state=self::state();$logs=$state['audit']??[];
+            array_unshift($logs,['time'=>time(),'actor'=>$actor,'action'=>$action==='run'?'systemd_manual_requested':'systemd_settings_changed','job'=>$id,'details'=>$action==='settings'?['before'=>$before,'after'=>$out]:$out]);
+            $state['audit']=array_slice($logs,0,200);self::save($state);
+        });
+        return $out;
     }
     public static function keyValueOutput(string $output): array {
         $data=[];foreach(explode("\n",trim($output)) as $line){$kv=explode('=',$line,2);if(count($kv)===2)$data[$kv[0]]=$kv[1];}return $data;
