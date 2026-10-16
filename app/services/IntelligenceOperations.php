@@ -238,7 +238,36 @@ final class GuristasOperations {
             if(!$completed||$completed>$now+120)return ['status'=>'unverified','reason'=>'Complete planet catalog has no valid completion timestamp.'];
             return ['status'=>'fresh','age_seconds'=>$age,'limit_seconds'=>$limit,'reason'=>'Complete Venal planet catalog is within its 30-day reference validity window; hourly job execution is assessed separately.'];
         }
-        if($id==='sde')return ['status'=>'unverified','reason'=>'SDE check outcome must be assessed from its revision/status metadata, not snapshot age alone.'];
+        if($id==='sde'){
+            // Revision checks can succeed without changing the active reference.
+            // Never mark a failed, partial, or lock-skipped check as fresh.
+            $statusFile=$dir.'/sde-sync-status.json';
+            $referenceFile=$dir.'/industry-reference-live.json';
+            $catalogFile=$dir.'/manufacturing-full.sqlite';
+            if(!is_file($statusFile))return ['status'=>'missing','reason'=>'SDE daily-check status file is missing.'];
+            $check=json_decode((string)file_get_contents($statusFile),true);
+            if(!is_array($check))return ['status'=>'unverified','reason'=>'SDE daily-check status JSON is invalid.'];
+            $outcome=$check['status']??null;
+            if(($check['ok']??null)!==true||!in_array($outcome,['unchanged','activated'],true))
+                return ['status'=>'unverified','reason'=>'Last SDE check did not establish a successful revision validation.'];
+            $checkedAt=strtotime((string)($check['checked_at']??''));
+            if(!$checkedAt||$checkedAt>$now+120)return ['status'=>'unverified','reason'=>'SDE check timestamp is missing, invalid or in the future.'];
+            $age=max(0,$now-$checkedAt);$limit=129600; // Daily check plus 12-hour grace.
+            if(!is_file($referenceFile)||!is_file($catalogFile))
+                return ['status'=>'missing','age_seconds'=>$age,'limit_seconds'=>$limit,'reason'=>'Validated active SDE reference or full manufacturing catalog is missing.'];
+            $ref=json_decode((string)file_get_contents($referenceFile),true);
+            if(!is_array($ref))return ['status'=>'unverified','reason'=>'Active SDE reference is not valid JSON.'];
+            $build=$check['build']??null;$activeBuild=$ref['sde_build']??null;
+            if(!is_int($build)||$build<1000000||$build>99999999||!ctype_digit((string)$activeBuild)||(string)$build!==(string)$activeBuild)
+                return ['status'=>'unverified','reason'=>'SDE checked build does not match the active reference.'];
+            foreach(['blueprints'=>50,'pi_schematics'=>60,'reprocessing'=>1000,'types'=>500] as $field=>$minimum){
+                if(!is_array($ref[$field]??null)||count($ref[$field])<$minimum)
+                    return ['status'=>'unverified','reason'=>'Active SDE reference is incomplete: '.$field];
+            }
+            if(!is_file($catalogFile)||filesize($catalogFile)<=0)return ['status'=>'unverified','reason'=>'Full manufacturing catalog is empty.'];
+            return ['status'=>$age<=$limit?'fresh':'stale','age_seconds'=>$age,'limit_seconds'=>$limit,
+                'reason'=>$age<=$limit?'Successful SDE revision check ('.$outcome.') matches active build '.$build.'; active reference and catalog are present.':'SDE revision check exceeded its daily freshness window.'];
+        }
         if(!isset($sources[$id]))return ['status'=>'unverified','reason'=>'No verified freshness signal configured.'];
         [$key,$max,$field]=$sources[$id];$path=$dir.'/'.$key.'.json';
         if(!is_file($path))return ['status'=>'missing','reason'=>'Expected dataset is missing: '.$key];
