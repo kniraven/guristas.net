@@ -37,6 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }); } catch (InvalidArgumentException $error) { http_response_code(409); exit(escape($error->getMessage())); }
         catch (Throwable $error) { http_response_code(503); exit('Story could not be saved. Please try again.'); }
         header('Location: /account/?view=romance', true, 303); exit;
+    } elseif (($_POST['action'] ?? '') === 'export_skills') {
+        require_once dirname(__DIR__, 2) . '/app/services/CharacterSkillExport.php';
+        guristas_export_character_skills_csv($viewer);
+        exit;
     } elseif (($_POST['action'] ?? '') === 'save') {
         $theme = (string)($_POST['theme'] ?? '');
         $favorite = (string)($_POST['favorite_ship'] ?? '');
@@ -127,6 +131,14 @@ require dirname(__DIR__, 2) . '/app/views/partials/site-header.php';
 </select></label>
 <button type="submit" name="action" value="save">Save settings</button>
 </form>
+<div class="account-skills-export">
+<h3>Character skills</h3>
+<p class="note">Download all EVE skills, including skills you have not injected, with current trained levels and skill points.</p>
+<form method="post">
+<input type="hidden" name="csrf" value="<?= escape(eve_csrf()) ?>">
+<button type="submit" name="action" value="export_skills">Export skills (CSV)</button>
+</form>
+</div>
 <p class="note">Your ship table's visible columns, order, and locked columns also sync to this character while signed in.</p>
 <form action="/auth/logout.php" method="post"><input type="hidden" name="csrf" value="<?= escape(eve_csrf()) ?>"><button type="submit">Log out</button></form>
 </section></div></div><?php endif; ?>
